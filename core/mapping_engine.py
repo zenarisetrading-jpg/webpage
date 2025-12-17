@@ -144,8 +144,11 @@ class MappingEngine:
                     merge_cols.extend(['_ag_norm', 'AdGroupId'])
                     on_keys.append('_ag_norm')
                 
-                # Dedupe and merge
-                id_lookup = bulk_norm[merge_cols].drop_duplicates()
+                # Dedupe and merge - CRITICAL: Use groupby().first() to enforce 1-to-1 mapping
+                # drop_duplicates() alone keeps duplicates if IDs differ for same name
+                # Fix: Exclude keys from value selection to avoid 'already exists' error on reset_index
+                val_cols = [c for c in merge_cols if c not in on_keys]
+                id_lookup = bulk_norm.groupby(on_keys)[val_cols].first().reset_index()
                 enriched = enriched.merge(id_lookup, on=on_keys, how='left')
                 
                 # Stats
@@ -197,7 +200,8 @@ class MappingEngine:
                     
                     # For EXACT keywords: Match on Campaign + Ad Group + Targeting (strict)
                     if not exact_kw.empty:
-                        exact_kw = exact_kw[['_camp_norm', '_ag_norm', '_target_norm', 'KeywordId']].drop_duplicates()
+                        # CRITICAL: Enforce uniqueness on join keys
+                        exact_kw = exact_kw.groupby(['_camp_norm', '_ag_norm', '_target_norm'])['KeywordId'].first().reset_index()
                         enriched = enriched.merge(exact_kw, on=['_camp_norm', '_ag_norm', '_target_norm'], how='left', suffixes=('', '_exact'))
                         
                         if 'KeywordId_exact' in enriched.columns:
@@ -244,7 +248,8 @@ class MappingEngine:
                     
                     # For ASIN/Category PT: Strict match on targeting expression
                     if not specific_pt.empty:
-                        specific_pt = specific_pt[['_camp_norm', '_ag_norm', '_target_norm', 'TargetingId']].drop_duplicates()
+                        # CRITICAL: Enforce uniqueness on join keys
+                        specific_pt = specific_pt.groupby(['_camp_norm', '_ag_norm', '_target_norm'])['TargetingId'].first().reset_index()
                         enriched = enriched.merge(specific_pt, on=['_camp_norm', '_ag_norm', '_target_norm'], how='left', suffixes=('', '_spec'))
                         
                         if 'TargetingId_spec' in enriched.columns:
@@ -335,6 +340,10 @@ class MappingEngine:
         if subcat_col:
             rename[subcat_col] = 'Sub-Category'
         lookup = lookup.rename(columns=rename)
+        
+        # CRITICAL: Enforce uniqueness on SKU (Join Key)
+        # If an SKU maps to multiple categories, take the first one to avoid row explosion
+        lookup = lookup.groupby('_sku_norm').first().reset_index()
         
         # Merge
         enriched = df.merge(lookup[['_sku_norm', 'Category', 'Sub-Category'] if 'Category' in lookup.columns and 'Sub-Category' in lookup.columns 

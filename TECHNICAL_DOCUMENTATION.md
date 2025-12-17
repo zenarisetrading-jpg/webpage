@@ -187,12 +187,12 @@ identify_negative_candidates(df, config, harvest_df)
   ├─ Stage 3.2: Performance Negatives (Bleeders)
   │   ├─ Filter: Sales == 0 AND non-exact match
   │   ├─ Aggregate by (Campaign, Ad Group, Term)
-  │   ├─ Apply thresholds:
-  │   │   └─ Clicks >= 10 OR Spend >= 15
-  │   ├─ Classify:
-  │   │   ├─ Hard Stop: Clicks >= 15 (1.5x threshold)
-  │   │   └─ Performance: Meets min threshold
-  │   └─ Add to negatives list
+  │   ├─ Apply thresholds (Default):
+  │   │   └─ Clicks >= 10 OR Spend >= 10
+  │   ├─ Classify Severity:
+  │   │   ├─ 🔴 Hard Stop: Clicks >= 15 (Statistically confirmed failure)
+  │   │   └─ 🟡 Performance: Meets min threshold (Wasting money)
+  │   └─ Add to negatives list (Action: Negative Exact)
   │
   └─ Stage 3.3: ASIN Mapper Integration
       ├─ Read session_state['latest_asin_analysis']
@@ -233,8 +233,9 @@ Term "phone case" harvested to Campaign_Exact
 ```
 calculate_bid_optimizations(df, config, harvested_terms)
   ├─ Segment data:
-  │   ├─ Direct: Exact match + specific ASIN PTs
-  │   └─ Aggregated: Broad/Phrase/Auto/Category
+  │   ├─ Direct (High Granularity): Exact, Broad, Phrase, Auto (with targets)
+  │   │   └─ Process every keyword/target individually to preserve specific text
+  │   └─ Aggregated (Fallback): Only undefined generic targets (rare)
   │
   ├─ Process Direct Segment
   │   ├─ Group by (Campaign, AdGroup, Keyword/PT)
@@ -679,7 +680,7 @@ USER_ASINS = ["B09...", "B08..."]
 | `HARVEST_MIN_CLICKS` | 10 | Min clicks to harvest |
 | `HARVEST_MIN_SPEND` | 20 AED | Min spend to harvest |
 | `NEGATIVE_CLICKS_THRESHOLD` | 10 | Min clicks to negate |
-| `NEGATIVE_SPEND_THRESHOLD` | 15 AED | Min spend to negate |
+| `NEGATIVE_SPEND_THRESHOLD` | 10 AED | Min spend to negate |
 | `ROAS_TARGET` | 2.5 | Target ROAS for bids |
 | `BID_MIN` | 0.15 AED | Min bid allowed |
 | `BID_MAX` | 5.00 AED | Max bid allowed |

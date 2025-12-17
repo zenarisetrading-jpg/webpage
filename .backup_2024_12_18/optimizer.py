@@ -55,13 +55,8 @@ DEFAULT_CONFIG = {
     "ALPHA_BROAD": 0.20,
     "ALPHA": 0.20,
     "MAX_BID_CHANGE": 0.20,
+    "MIN_CLICKS_BID": 3,
     "TARGET_ROAS": 2.50,
-    
-    # Min clicks thresholds per bucket (user-configurable)
-    "MIN_CLICKS_EXACT": 5,
-    "MIN_CLICKS_PT": 5,
-    "MIN_CLICKS_BROAD": 10,
-    "MIN_CLICKS_AUTO": 10,
     
     # Harvest forecast
     "HARVEST_EFFICIENCY_MULTIPLIER": 1.30,  # 30% efficiency gain from exact match
@@ -760,23 +755,19 @@ def calculate_bid_optimizations(
         (~mask_auto)
     )
     
-    # 4. Process each bucket with configurable thresholds
+    # 4. Process each bucket with appropriate thresholds
     
-    # Exact: Fast reaction
-    bids_exact = _process_bucket(df_clean[mask_exact], config, 
-                                  min_clicks=config.get("MIN_CLICKS_EXACT", 5), bucket_name="Exact")
+    # Exact: Fast reaction (Min 5 clicks)
+    bids_exact = _process_bucket(df_clean[mask_exact], config, min_clicks=5, bucket_name="Exact")
     
-    # PT: Fast reaction
-    bids_pt = _process_bucket(df_clean[mask_pt], config, 
-                               min_clicks=config.get("MIN_CLICKS_PT", 5), bucket_name="Product Targeting")
+    # PT: Fast reaction (Min 5 clicks)
+    bids_pt = _process_bucket(df_clean[mask_pt], config, min_clicks=5, bucket_name="Product Targeting")
     
-    # Broad/Phrase (Aggregated): Conservative
-    bids_agg = _process_bucket(df_clean[mask_broad_phrase], config, 
-                                min_clicks=config.get("MIN_CLICKS_BROAD", 10), bucket_name="Broad/Phrase")
+    # Broad/Phrase (Aggregated): Conservative (Min 10 clicks)
+    bids_agg = _process_bucket(df_clean[mask_broad_phrase], config, min_clicks=10, bucket_name="Broad/Phrase")
     
-    # Auto/Category
-    bids_auto = _process_bucket(df_clean[mask_auto], config, 
-                                 min_clicks=config.get("MIN_CLICKS_AUTO", 10), bucket_name="Auto/Category")
+    # Auto/Category: Slow reaction (Min 15 clicks)
+    bids_auto = _process_bucket(df_clean[mask_auto], config, min_clicks=15, bucket_name="Auto/Category")
     
     return bids_exact, bids_pt, bids_agg, bids_auto
 
@@ -829,14 +820,20 @@ def _process_bucket(segment_df: pd.DataFrame, config: dict, min_clicks: int, buc
     grouped["ROAS"] = np.where(grouped["Spend"] > 0, grouped["Sales"] / grouped["Spend"], 0)
     
     # =====================================================
-    # BUCKET-LEVEL Median ROAS as baseline
-    # Since we calculate from current upload data, no seasonal
-    # adjustment needed - use raw median.
+    # NEW: Use BUCKET-LEVEL Median ROAS as baseline
+    # This is more stable than campaign-level and represents
+    # typical performance for this match type (Auto, Exact, PT, etc.)
+    # Apply 0.8x seasonal multiplier since benchmark is lifetime data
     # =====================================================
-    all_valid_roas = grouped[(grouped["Spend"] > 0) & (grouped["Sales"] > 0)]["ROAS"]
-    baseline_roas = all_valid_roas.median() if len(all_valid_roas) >= 1 else config.get("TARGET_ROAS", 2.5)
+    SEASONAL_MULTIPLIER = 0.8  # Account for seasonal variance
     
-    print(f"[{bucket_name}] Bucket Median ROAS: {baseline_roas:.2f}x (baseline)")
+    all_valid_roas = grouped[(grouped["Spend"] > 0) & (grouped["Sales"] > 0)]["ROAS"]
+    bucket_median = all_valid_roas.median() if len(all_valid_roas) >= 1 else config.get("TARGET_ROAS", 2.5)
+    
+    # Apply seasonal adjustment
+    baseline_roas = bucket_median * SEASONAL_MULTIPLIER
+    
+    print(f"[{bucket_name}] Bucket Median ROAS: {bucket_median:.2f}x → Baseline (×0.8): {baseline_roas:.2f}x")
     
     # Calculate Ad Group level aggregates for fallback
     adgroup_stats = grouped.groupby(["Campaign Name", "Ad Group Name"]).agg({
@@ -901,12 +898,10 @@ def _classify_and_bid(roas: float, median_roas: float, base_bid: float, alpha: f
     """
     Classify ROAS vs bucket baseline and determine bid action.
     
-    Uses ±10% band around median for classification:
-    - Promote: ROAS >= 1.10× baseline → Bid UP
-    - Stable: ROAS between 0.90× – 1.10× baseline → HOLD  
-    - Bid Down: ROAS < 0.90× baseline → Bid DOWN
-    
-    The bid adjustment amount is controlled by alpha and MAX_BID_CHANGE.
+    Thresholds are alpha-based:
+    - Promote: ROAS >= (1 + alpha)× baseline → Bid UP
+    - Stable: ROAS between (1-alpha) – (1+alpha) × baseline → HOLD
+    - Bid Down: ROAS < (1 - alpha)× baseline → Bid DOWN
     """
     max_change = config.get("MAX_BID_CHANGE", 0.25)
     
@@ -915,10 +910,9 @@ def _classify_and_bid(roas: float, median_roas: float, base_bid: float, alpha: f
         median_roas = config.get("TARGET_ROAS", 2.5)
         data_source = f"{data_source}|default"
     
-    # Fixed ±10% threshold band (narrow = more actions)
-    THRESHOLD_BAND = 0.10
-    promote_threshold = median_roas * (1 + THRESHOLD_BAND)
-    stable_threshold = median_roas * (1 - THRESHOLD_BAND)
+    # Alpha-based thresholds (e.g., alpha=0.25 → 1.25x and 0.75x)
+    promote_threshold = median_roas * (1 + alpha)
+    stable_threshold = median_roas * (1 - alpha)
     
     if roas >= promote_threshold:
         # PROMOTE: Bid UP by alpha
@@ -1073,7 +1067,7 @@ def create_heatmap(
             actions.append(f"⬇️ {int(row['Bid_Decrease_Count'])} bid decreases")
         
         is_low_volume = (
-            row["Clicks"] < config.get("MIN_CLICKS_EXACT", 5) or 
+            row["Clicks"] < config.get("MIN_CLICKS_BID", 3) or 
             row["Orders_Attributed"] < 2
         )
         
@@ -1783,13 +1777,10 @@ class OptimizerModule(BaseFeature):
             "opt_alpha_exact": config_source.get("ALPHA_EXACT", DEFAULT_CONFIG["ALPHA_EXACT"]),
             "opt_alpha_broad": config_source.get("ALPHA_BROAD", DEFAULT_CONFIG["ALPHA_BROAD"]),
             "opt_max_bid_change": config_source.get("MAX_BID_CHANGE", DEFAULT_CONFIG["MAX_BID_CHANGE"]),
+            "opt_min_clicks_bid": config_source.get("MIN_CLICKS_BID", DEFAULT_CONFIG["MIN_CLICKS_BID"]),
             "opt_target_roas": config_source.get("TARGET_ROAS", DEFAULT_CONFIG["TARGET_ROAS"]),
             "opt_neg_clicks_threshold": config_source.get("NEGATIVE_CLICKS_THRESHOLD", DEFAULT_CONFIG["NEGATIVE_CLICKS_THRESHOLD"]),
             "opt_neg_spend_threshold": config_source.get("NEGATIVE_SPEND_THRESHOLD", DEFAULT_CONFIG["NEGATIVE_SPEND_THRESHOLD"]),
-            "opt_min_clicks_exact": config_source.get("MIN_CLICKS_EXACT", DEFAULT_CONFIG.get("MIN_CLICKS_EXACT", 5)),
-            "opt_min_clicks_pt": config_source.get("MIN_CLICKS_PT", DEFAULT_CONFIG.get("MIN_CLICKS_PT", 5)),
-            "opt_min_clicks_broad": config_source.get("MIN_CLICKS_BROAD", DEFAULT_CONFIG.get("MIN_CLICKS_BROAD", 10)),
-            "opt_min_clicks_auto": config_source.get("MIN_CLICKS_AUTO", DEFAULT_CONFIG.get("MIN_CLICKS_AUTO", 10)),
             "opt_run_simulation": True,
         }
         for key, default in widget_defaults.items():
@@ -1932,13 +1923,10 @@ class OptimizerModule(BaseFeature):
             self.config["ALPHA_EXACT"] = st.session_state["opt_alpha_exact"]
             self.config["ALPHA_BROAD"] = st.session_state["opt_alpha_broad"]
             self.config["MAX_BID_CHANGE"] = st.session_state["opt_max_bid_change"]
+            self.config["MIN_CLICKS_BID"] = st.session_state["opt_min_clicks_bid"]
             self.config["TARGET_ROAS"] = st.session_state["opt_target_roas"]
             self.config["NEGATIVE_CLICKS_THRESHOLD"] = st.session_state["opt_neg_clicks_threshold"]
             self.config["NEGATIVE_SPEND_THRESHOLD"] = st.session_state["opt_neg_spend_threshold"]
-            self.config["MIN_CLICKS_EXACT"] = st.session_state.get("opt_min_clicks_exact", 5)
-            self.config["MIN_CLICKS_PT"] = st.session_state.get("opt_min_clicks_pt", 5)
-            self.config["MIN_CLICKS_BROAD"] = st.session_state.get("opt_min_clicks_broad", 10)
-            self.config["MIN_CLICKS_AUTO"] = st.session_state.get("opt_min_clicks_auto", 10)
             
             # Teal button styling
             st.markdown("""

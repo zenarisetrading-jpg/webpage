@@ -205,26 +205,6 @@ def run_consolidated_optimizer():
                 "Min Spend (0 Sales)", value=opt.config["NEGATIVE_SPEND_THRESHOLD"], min_value=1.0, key="main_neg_spend"
             )
         
-        # Min Clicks per Bucket (collapsible)
-        with st.expander("⚙️ Min Clicks per Bucket", expanded=False):
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                opt.config["MIN_CLICKS_EXACT"] = st.number_input(
-                    "Exact KW", value=opt.config.get("MIN_CLICKS_EXACT", 5), min_value=1, max_value=50, key="min_clicks_exact"
-                )
-            with c2:
-                opt.config["MIN_CLICKS_PT"] = st.number_input(
-                    "Prod Target", value=opt.config.get("MIN_CLICKS_PT", 5), min_value=1, max_value=50, key="min_clicks_pt"
-                )
-            with c3:
-                opt.config["MIN_CLICKS_BROAD"] = st.number_input(
-                    "Broad/Phrase", value=opt.config.get("MIN_CLICKS_BROAD", 10), min_value=1, max_value=50, key="min_clicks_broad"
-                )
-            with c4:
-                opt.config["MIN_CLICKS_AUTO"] = st.number_input(
-                    "Auto/Category", value=opt.config.get("MIN_CLICKS_AUTO", 10), min_value=1, max_value=50, key="min_clicks_auto"
-                )
-        
         st.divider()
         
         run_sim = st.checkbox("Include Simulation", value=True, key="run_simulation_main")
