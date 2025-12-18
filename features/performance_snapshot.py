@@ -211,60 +211,9 @@ class PerformanceSnapshotModule(BaseFeature):
                     # Cleanup
                     self.data.drop(columns=['ID_List'], inplace=True, errors='ignore')
 
-        # --- DEBUG SECTION ---
-        # help user diagnose missing data
-        with st.expander("🛠 Debug Data Merge Stats"):
-            c1, c2, c3 = st.columns(3)
-            with c1: st.metric("Total Rows", len(self.data))
-            
-            sku_found = self.data['SKU_advertised'].notna().sum() if 'SKU_advertised' in self.data.columns else 0
-            with c2: st.metric("Rows with SKU Linked", f"{sku_found} ({sku_found/len(self.data)*100:.1f}%)")
-            
-            cat_found = self.data['Category'].notna().sum() if 'Category' in self.data.columns else 0
-            with c3: st.metric("Rows with Category Linked", f"{cat_found} ({cat_found/len(self.data)*100:.1f}%)")
-            
-            # Detailed Bridge Debugging
-            st.divider()
-            st.markdown("#### 🕵️ Bridge Diagnostics")
-            
-            # 1. Advertised Product Report Status
-            adv_loaded = hub.is_loaded('advertised_product_report')
-            st.write(f"**Advertised Product Report Loaded:** {adv_loaded}")
-            if adv_loaded:
-                adv_df = hub.get_data('advertised_product_report')
-                st.write(f"- Columns: {list(adv_df.columns)}")
-                st.write(f"- Rows: {len(adv_df)}")
-            
-            # 2. Bulk File Status
-            bulk_loaded = hub.is_loaded('bulk_id_mapping')
-            st.write(f"**Bulk ID Mapping Loaded:** {bulk_loaded}")
-            if bulk_loaded:
-                bulk_df = hub.get_data('bulk_id_mapping')
-                st.write(f"- Columns: {list(bulk_df.columns)}")
-                st.write(f"- Rows: {len(bulk_df)}")
-                
-                # Check SKU Column detection
-                sku_candidates = [c for c in bulk_df.columns if c.lower() in ['sku', 'msku', 'vendor sku', 'vendor_sku']]
-                st.write(f"- Detected SKU Candidates: {sku_candidates}")
-                
-            # 3. Merge Sample
-            st.write("**Merge Match Debugging**")
-            if 'Campaign Name' in self.data.columns:
-                unique_camps = self.data['Campaign Name'].dropna().unique()[:5]
-                st.write(f"- Sample Campaigns in Report: {list(unique_camps)}")
-            else:
-                st.error("❌ 'Campaign Name' column MISSING in Main Data!")
-                
-            if 'SKU_advertised' in self.data.columns:
-                 filled = self.data['SKU_advertised'].notna().mean()
-                 st.write(f"- Final 'SKU_advertised' Fill Rate: {filled:.2%}")
-            else:
-                 st.write("- 'SKU_advertised' column NOT CREATED.")
-            
-            if cat_found == 0 and hub.is_loaded('category_mapping'):
-                st.error("Merge Failed: No categories matched. Check if SKU column in Category Map matches SKUs in Advertised Product Report.")
-                st.write("Sample Data SKUs:", self.data['SKU_advertised'].dropna().head(3).tolist() if 'SKU_advertised' in self.data.columns else "No SKUs")
         # ---------------------
+        
+        # 3. Compact Header Layout (Title + Date Picker)
         
         # 3. Compact Header Layout (Title + Date Picker)
         col_header, col_date = st.columns([8, 3])

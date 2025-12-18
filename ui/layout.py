@@ -23,25 +23,34 @@ def render_sidebar(navigate_to):
     Returns:
         Selected module name
     """
-    # Account selector FIRST (auto-hides if only 1 account)
+    # Sidebar Logo at TOP (theme-aware, prominent)
+    import base64
+    from pathlib import Path
+    theme_mode = st.session_state.get('theme_mode', 'dark')
+    logo_filename = "saddle_logo.png" if theme_mode == 'dark' else "saddle_logo_light.png"
+    logo_path = Path(__file__).parent.parent / "static" / logo_filename
+    
+    if logo_path.exists():
+        with open(logo_path, "rb") as f:
+            logo_data = base64.b64encode(f.read()).decode()
+        st.sidebar.markdown(
+            f'<div style="text-align: center; padding: 15px 0 20px 0;"><img src="data:image/png;base64,{logo_data}" style="width: 200px;" /></div>',
+            unsafe_allow_html=True
+        )
+    
+    # Account selector
     from ui.account_manager import render_account_selector
     render_account_selector()
     
-    st.sidebar.markdown("## **S2C LaunchPad**")
-    
-    # Theme Toggle
-    ThemeManager.render_toggle()
-    
-    st.sidebar.markdown("*PPC Intelligence Suite*")
+    st.sidebar.markdown("---")
     
     if st.sidebar.button("Home", use_container_width=True):
         navigate_to('home')
     
-    st.sidebar.markdown("---")
     st.sidebar.markdown("##### SYSTEM")
     
     # Data Hub - central upload
-    if st.sidebar.button("Data Upload", use_container_width=True):
+    if st.sidebar.button("Data Hub", use_container_width=True):
         navigate_to('data_hub')
     
     st.sidebar.markdown("---")
@@ -68,16 +77,40 @@ def render_sidebar(navigate_to):
     if st.sidebar.button("Help", use_container_width=True):
         navigate_to('readme')
     
+    # Theme Toggle at BOTTOM
+    st.sidebar.markdown("---")
+    ThemeManager.render_toggle()
+    
     return st.session_state.get('current_module', 'home')
 
 def render_home():
-    """Render the S2C Ads OS Dashboard."""
+    """Render the Saddle AdPulse Dashboard."""
     
-    # Hero Section
-    st.markdown("""
-    <div style="text-align: center; padding: 40px 0; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 12px; margin-bottom: 30px;">
-        <h1 style="font-size: 3rem; margin-bottom: 10px; background: linear-gradient(90deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">S2C Ads Operating System</h1>
-        <p style="font-size: 1.2rem; color: #94a3b8;">Intelligent PPC Management for Amazon & Noon</p>
+    # Hero Section with Logo
+    import base64
+    from pathlib import Path
+    
+    # Determine which logo to use based on theme
+    theme_mode = st.session_state.get('theme_mode', 'dark')
+    logo_filename = "saddle_logo.png" if theme_mode == 'dark' else "saddle_logo_light.png"
+    
+    # Load logo image
+    logo_path = Path(__file__).parent.parent / "static" / logo_filename
+    if logo_path.exists():
+        with open(logo_path, "rb") as f:
+            logo_data = base64.b64encode(f.read()).decode()
+        logo_html = f'<img src="data:image/png;base64,{logo_data}" style="width: 500px; margin-bottom: 0;" />'
+    else:
+        logo_html = ""
+    
+    # Dynamic text colors based on theme
+    title_color = "#e2e8f0" if theme_mode == 'dark' else "#1e293b"
+    subtitle_color = "#94a3b8" if theme_mode == 'dark' else "#475569"
+    
+    st.markdown(f"""
+    <div style="text-align: center; padding: 30px 0 20px 0; margin-top: -60px; position: relative; z-index: 10;">
+        {logo_html}
+        <p style="font-size: 1.8rem; color: {subtitle_color}; margin-top: -100px; font-weight: 400;">Decision Engine for Amazon PPC</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -93,7 +126,7 @@ def render_home():
     else:
         st.caption("🔴 System Idle | Database Not Connected")
 
-    st.divider()
+    st.markdown("<hr style='border: none; border-top: 1px solid #334155; margin: 20px 0;'>", unsafe_allow_html=True)
     
     # Workflow Cards (Ingest -> Analyze -> Optimize -> Execute)
     col1, col2, col3, col4 = st.columns(4)

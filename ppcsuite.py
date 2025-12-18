@@ -1,6 +1,6 @@
 """
-S2C LaunchPad Suite - Main Application
-Refactored Architecture - Clean & Modular
+Saddle AdPulse - Main Application
+Central entry point
 
 This is the thin orchestrator that coordinates all modules.
 All business logic lives in features/ directory.
@@ -17,7 +17,7 @@ from features.ai_insights import AIInsightsModule
 # PAGE CONFIGURATION
 # ==========================================
 st.set_page_config(
-    page_title="S2C LaunchPad Suite", 
+    page_title="Saddle AdPulse", 
     layout="wide", 
     page_icon="🚀"
 )

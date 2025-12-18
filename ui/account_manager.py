@@ -55,7 +55,7 @@ def render_account_selector():
         st.session_state['single_account_mode'] = True
         
         # Show current account with option to add more
-        st.sidebar.markdown(f"**📊 Account:** {account_name}")
+        st.sidebar.markdown(f"**Account:** {account_name}")
         if st.sidebar.button("➕ Add Account", use_container_width=True, key="add_account_single"):
             st.session_state['show_account_form'] = True
         
@@ -82,7 +82,7 @@ def render_account_selector():
                 break
     
     selected = st.selectbox(
-        "📊 Active Account",
+        "Active Account",
         options=options.keys(),
         index=current_idx,
         key="account_selector"
@@ -147,7 +147,8 @@ def render_account_selector():
         st.session_state['active_account_id'] = account_id
         st.session_state['active_account_name'] = account_name
     
-    st.sidebar.markdown("---")
+    # No trailing line here to avoid double lines in callers
+    pass
 
 
 def _show_account_creation_form():

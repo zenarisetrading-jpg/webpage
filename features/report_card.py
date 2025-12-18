@@ -24,7 +24,7 @@ class ReportCardModule(BaseFeature):
     
     def render_ui(self):
         """Render the feature's user interface."""
-        st.title("📄 Optimization Report Card")
+        st.title("Optimization Report Card")
         
     def validate_data(self, data: pd.DataFrame) -> tuple[bool, str]:
         """Validate input data has required columns."""
@@ -1105,7 +1105,7 @@ class ReportCardModule(BaseFeature):
             </style>
         </head>
         <body>
-            <h1>📄 Optimization Report Card</h1>
+            <h1>Optimization Report Card</h1>
             <p class="meta">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
             
             <h2>Performance Snapshot</h2>

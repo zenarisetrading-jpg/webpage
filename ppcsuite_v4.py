@@ -1,5 +1,5 @@
 """
-S2C LaunchPad Suite - V4 (Consolidated)
+Saddle AdPulse - V4 (Consolidated)
 Main Application Entry Point
 
 Features:
@@ -55,7 +55,7 @@ from pathlib import Path
 # PAGE CONFIGURATION
 # ==========================================
 st.set_page_config(
-    page_title="S2C LaunchPad Suite V4", 
+    page_title="Saddle AdPulse", 
     layout="wide", 
     page_icon="🚀"
 )
@@ -502,23 +502,34 @@ def main():
     
     # Simplified V4 Sidebar - Remove Feature Breakdown since they are tabs now
     with st.sidebar:
-        st.title("S2C LaunchPad")
+        # Sidebar Logo at TOP (theme-aware, prominent)
+        import base64
+        from pathlib import Path
+        theme_mode = st.session_state.get('theme_mode', 'dark')
+        logo_filename = "saddle_logo.png" if theme_mode == 'dark' else "saddle_logo_light.png"
+        logo_path = Path(__file__).parent / "static" / logo_filename
         
-        # Theme Toggle
-        from ui.theme import ThemeManager
-        ThemeManager.render_toggle()
-        
-        st.caption("v4.0 — PPC Intelligence Suite")
+        if logo_path.exists():
+            with open(logo_path, "rb") as f:
+                logo_data = base64.b64encode(f.read()).decode()
+            st.markdown(
+                f'<div style="text-align: center; padding: 15px 0 20px 0;"><img src="data:image/png;base64,{logo_data}" style="width: 200px;" /></div>',
+                unsafe_allow_html=True
+            )
         
         # Account Selector
         from ui.account_manager import render_account_selector
         render_account_selector()
         
+        # Consolidation: render_account_selector used to have its own line, 
+        # now callers handle it. 
+        st.markdown("---")
+        
         if st.button("Home", use_container_width=True):
             st.session_state['current_module'] = 'home'
         
         st.markdown("##### SYSTEM")
-        if st.button("Data Upload", use_container_width=True):
+        if st.button("Data Hub", use_container_width=True):
             st.session_state['current_module'] = 'data_hub'
         
         st.markdown("##### ANALYZE")
@@ -526,7 +537,7 @@ def main():
             st.session_state['current_module'] = 'performance'
         if st.button("Impact Analyzer", use_container_width=True):
             st.session_state['current_module'] = 'impact'
-        if st.button("📄 Report Card", use_container_width=True):
+        if st.button("Report Card", use_container_width=True):
             st.session_state['current_module'] = 'report_card'
         if st.button("Optimization Hub", use_container_width=True):
             st.session_state['current_module'] = 'optimizer'
@@ -543,6 +554,11 @@ def main():
         st.divider()
         if st.button("Help", use_container_width=True):
             st.session_state['current_module'] = 'readme'
+        
+        # Theme Toggle at BOTTOM
+        st.divider()
+        from ui.theme import ThemeManager
+        ThemeManager.render_toggle()
         
         # Database Mode Toggle (below Help)
         st.divider()

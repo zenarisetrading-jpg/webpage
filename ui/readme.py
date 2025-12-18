@@ -1,5 +1,5 @@
 """
-Help and Documentation Page - S2C Ads OS V4
+Help and Documentation Page - Saddle AdPulse V4
 """
 
 import streamlit as st
@@ -7,7 +7,7 @@ import streamlit as st
 def render_readme():
     """Render the comprehensive help & documentation page."""
     
-    st.title("📚 S2C Ads OS Documentation")
+    st.title("📚 Saddle AdPulse Documentation")
     st.caption("Version 4.0 | The Intelligent PPC Operating System")
     
     tab_overview, tab_modules, tab_setup = st.tabs(["🚀 Platform Overview", "📖 Module Guides", "⚙️ Setup & Config"])
@@ -17,7 +17,7 @@ def render_readme():
     # =========================================================================
     with tab_overview:
         st.markdown("""
-        ### Welcome to S2C Ads OS
+        ### Welcome to Saddle AdPulse
         
         This isn't just a reporting tool—it's an **Operating System** for Amazon & Noon PPC. It automates analysis, 
         strategy, and execution to help you scale efficiently while cutting wasted spend.

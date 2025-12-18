@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 class AssistantModule:
     """
-    S2C Ads OS Intelligent Assistant - Deep Strategist
+    Saddle AdPulse Intelligent Assistant - Deep Strategist
     
     Operates as a fully context-aware 'Senior Amazon Ads Strategist' with access to:
     - Granular search term performance data
