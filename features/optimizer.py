@@ -1544,9 +1544,90 @@ def generate_bids_bulk(bids_df):
     
     return df, len(changes)
 
-def _log_optimization_events(results, client_id, report_date):
-    """Log actions to database."""
-    # Logging logic (silent fallback)
+def _log_optimization_events(results: dict, client_id: str, report_date: str):
+    """
+    Standardizes and logs optimization actions (bids, negatives, harvests) to the database.
+    This enables the Impact Analyzer to track performance 'before' and 'after' these actions.
+    """
+    from core.db_manager import get_db_manager
+    import uuid
+    import streamlit as st
+    
+    db = get_db_manager(st.session_state.get('test_mode', False))
+    batch_id = str(uuid.uuid4())[:8]
+    actions_to_log = []
+
+    # 1. Process Negative Keywords
+    for _, row in results.get('neg_kw', pd.DataFrame()).iterrows():
+        actions_to_log.append({
+            'entity_name': 'Keyword',
+            'action_type': 'NEGATIVE',
+            'old_value': 'ENABLED',
+            'new_value': 'PAUSED',
+            'reason': row.get('Reason', 'Low efficiency / Waste'),
+            'campaign_name': row.get('Campaign Name', ''),
+            'ad_group_name': row.get('Ad Group Name', ''),
+            'target_text': row.get('Term', ''),
+            'match_type': row.get('Match Type', 'NEGATIVE')
+        })
+
+    # 2. Process Negative Product Targets (ASINs)
+    for _, row in results.get('neg_pt', pd.DataFrame()).iterrows():
+        actions_to_log.append({
+            'entity_name': 'ASIN',
+            'action_type': 'NEGATIVE',
+            'old_value': 'ENABLED',
+            'new_value': 'PAUSED',
+            'reason': row.get('Reason', 'Low efficiency / Waste'),
+            'campaign_name': row.get('Campaign Name', ''),
+            'ad_group_name': row.get('Ad Group Name', ''),
+            'target_text': row.get('Term', ''),
+            'match_type': 'TARGETING_EXPRESSION'
+        })
+
+    # 3. Process Bid Optimizations (Combined)
+    bid_dfs = [
+        results.get('bids_exact', pd.DataFrame()),
+        results.get('bids_pt', pd.DataFrame()),
+        results.get('bids_agg', pd.DataFrame()),
+        results.get('bids_auto', pd.DataFrame())
+    ]
+    for b_df in bid_dfs:
+        if b_df.empty: continue
+        for _, row in b_df.iterrows():
+            actions_to_log.append({
+                'entity_name': 'Target',
+                'action_type': 'BID_CHANGE',
+                'old_value': str(row.get('Current Bid', '')),
+                'new_value': str(row.get('New Bid', '')),
+                'reason': row.get('Reason', 'Portfolio Optimization'),
+                'campaign_name': row.get('Campaign Name', ''),
+                'ad_group_name': row.get('Ad Group Name', ''),
+                'target_text': row.get('Targeting', ''),
+                'match_type': row.get('Match Type', '')
+            })
+
+    # 4. Process Harvests
+    for _, row in results.get('harvest', pd.DataFrame()).iterrows():
+        actions_to_log.append({
+            'entity_name': 'Keyword',
+            'action_type': 'HARVEST',
+            'old_value': 'DISCOVERY',
+            'new_value': 'PROMOTED',
+            'reason': f"Conv: {row.get('Orders', 0)} orders",
+            'campaign_name': row.get('Campaign Name', ''),
+            'ad_group_name': row.get('Ad Group Name', ''),
+            'target_text': row.get('Customer Search Term', ''),
+            'match_type': 'EXACT'
+        })
+
+    if actions_to_log:
+        try:
+            db.log_action_batch(actions_to_log, client_id, batch_id, report_date)
+            return len(actions_to_log)
+        except Exception as e:
+            st.error(f"Failed to log actions: {str(e)}")
+            return 0
     return 0
 
 
@@ -1574,10 +1655,10 @@ class OptimizerModule(BaseFeature):
             "opt_harvest_clicks": config_source.get("HARVEST_CLICKS", 10),
             "opt_harvest_orders": config_source.get("HARVEST_ORDERS", 3),
             "opt_harvest_sales": config_source.get("HARVEST_SALES", 150.0),
-            "opt_harvest_roas_mult": config_source.get("HARVEST_ROAS_MULT", 0.8),
-            "opt_alpha_exact": config_source.get("ALPHA_EXACT", 0.15),
-            "opt_alpha_broad": config_source.get("ALPHA_BROAD", 0.10),
-            "opt_max_bid_change": config_source.get("MAX_BID_CHANGE", 0.20),
+            "opt_harvest_roas_mult": int(config_source.get("HARVEST_ROAS_MULT", 0.8) * 100),
+            "opt_alpha_exact": int(config_source.get("ALPHA_EXACT", 0.15) * 100),
+            "opt_alpha_broad": int(config_source.get("ALPHA_BROAD", 0.10) * 100),
+            "opt_max_bid_change": int(config_source.get("MAX_BID_CHANGE", 0.20) * 100),
             "opt_target_roas": config_source.get("TARGET_ROAS", 2.5),
             "opt_neg_clicks_threshold": config_source.get("NEGATIVE_CLICKS_THRESHOLD", 10),
             "opt_neg_spend_threshold": config_source.get("NEGATIVE_SPEND_THRESHOLD", 25.0),
@@ -1633,20 +1714,20 @@ class OptimizerModule(BaseFeature):
             # Define preset values
             preset_configs = {
                 "Conservative": {
-                    "harvest_clicks": 15, "harvest_orders": 4, "harvest_sales": 200.0, "harvest_roas": 0.9,
-                    "alpha_exact": 0.15, "alpha_broad": 0.12, "max_change": 0.15, "target_roas": 2.5,
+                    "harvest_clicks": 15, "harvest_orders": 4, "harvest_sales": 200.0, "harvest_roas": 90,
+                    "alpha_exact": 15, "alpha_broad": 12, "max_change": 15, "target_roas": 2.5,
                     "neg_clicks": 15, "neg_spend": 15.0,
                     "min_clicks_exact": 8, "min_clicks_pt": 8, "min_clicks_broad": 12, "min_clicks_auto": 12
                 },
                 "Balanced": {
-                    "harvest_clicks": 10, "harvest_orders": 3, "harvest_sales": 150.0, "harvest_roas": 0.8,
-                    "alpha_exact": 0.20, "alpha_broad": 0.16, "max_change": 0.20, "target_roas": 2.5,
+                    "harvest_clicks": 10, "harvest_orders": 3, "harvest_sales": 150.0, "harvest_roas": 80,
+                    "alpha_exact": 20, "alpha_broad": 16, "max_change": 20, "target_roas": 2.5,
                     "neg_clicks": 10, "neg_spend": 10.0,
                     "min_clicks_exact": 5, "min_clicks_pt": 5, "min_clicks_broad": 10, "min_clicks_auto": 10
                 },
                 "Aggressive": {
-                    "harvest_clicks": 8, "harvest_orders": 2, "harvest_sales": 100.0, "harvest_roas": 0.7,
-                    "alpha_exact": 0.25, "alpha_broad": 0.20, "max_change": 0.25, "target_roas": 2.5,
+                    "harvest_clicks": 8, "harvest_orders": 2, "harvest_sales": 100.0, "harvest_roas": 70,
+                    "alpha_exact": 25, "alpha_broad": 20, "max_change": 25, "target_roas": 2.5,
                     "neg_clicks": 8, "neg_spend": 8.0,
                     "min_clicks_exact": 3, "min_clicks_pt": 3, "min_clicks_broad": 8, "min_clicks_auto": 8
                 }
@@ -1703,13 +1784,13 @@ class OptimizerModule(BaseFeature):
                         key="opt_harvest_orders"
                     )
                     st.slider(
-                        "ROAS Threshold", 
-                        min_value=0.5, 
-                        max_value=1.0, 
-                        step=0.1,
-                        help="% of account median (0.8 = 80%)",
+                        "Efficiency Target", 
+                        min_value=50, 
+                        max_value=120, 
+                        step=5,
+                        help="Relative to account median (e.g. 80% means anything above 0.8x account median is a winner)",
                         key="opt_harvest_roas_mult",
-                        format="%.0f%%"
+                        format="%d%%"
                     )
             
             # === BID SETTINGS ===
@@ -1719,32 +1800,32 @@ class OptimizerModule(BaseFeature):
                 col1, col2 = st.columns(2)
                 with col1:
                     st.slider(
-                        "Change Size (Exact)", 
-                        min_value=0.05, 
-                        max_value=0.40, 
-                        step=0.05,
-                        help="Bid adjustment % for Exact keywords",
+                        "Step Size (Exact)", 
+                        min_value=5, 
+                        max_value=40, 
+                        step=5,
+                        help="Bid change % for Exact keywords",
                         key="opt_alpha_exact",
-                        format="%.0f%%"
+                        format="%d%%"
                     )
                     st.slider(
-                        "Max Change Cap", 
-                        min_value=0.10, 
-                        max_value=0.50, 
-                        step=0.05,
-                        help="Never exceed this % change",
+                        "Safety Cap", 
+                        min_value=10, 
+                        max_value=50, 
+                        step=5,
+                        help="Maximum single bid change allowed (%)",
                         key="opt_max_bid_change",
-                        format="%.0f%%"
+                        format="%d%%"
                     )
                 with col2:
                     st.slider(
-                        "Change Size (Broad)", 
-                        min_value=0.05, 
-                        max_value=0.40, 
-                        step=0.05,
-                        help="Bid adjustment % for Broad/Auto",
+                        "Step Size (Broad)", 
+                        min_value=5, 
+                        max_value=40, 
+                        step=5,
+                        help="Bid change % for Broad/Auto",
                         key="opt_alpha_broad",
-                        format="%.0f%%"
+                        format="%d%%"
                     )
                     st.number_input(
                         "Target ROAS", 
@@ -1835,14 +1916,14 @@ class OptimizerModule(BaseFeature):
                 help="Generate impact projections and scenario analysis"
             )
             
-            # Sync all session state values to self.config
+            # Sync all session state values to self.config (convert integers to decimals)
             self.config["HARVEST_CLICKS"] = st.session_state["opt_harvest_clicks"]
             self.config["HARVEST_ORDERS"] = st.session_state["opt_harvest_orders"]
             self.config["HARVEST_SALES"] = st.session_state["opt_harvest_sales"]
-            self.config["HARVEST_ROAS_MULT"] = st.session_state["opt_harvest_roas_mult"]
-            self.config["ALPHA_EXACT"] = st.session_state["opt_alpha_exact"]
-            self.config["ALPHA_BROAD"] = st.session_state["opt_alpha_broad"]
-            self.config["MAX_BID_CHANGE"] = st.session_state["opt_max_bid_change"]
+            self.config["HARVEST_ROAS_MULT"] = st.session_state["opt_harvest_roas_mult"] / 100.0
+            self.config["ALPHA_EXACT"] = st.session_state["opt_alpha_exact"] / 100.0
+            self.config["ALPHA_BROAD"] = st.session_state["opt_alpha_broad"] / 100.0
+            self.config["MAX_BID_CHANGE"] = st.session_state["opt_max_bid_change"] / 100.0
             self.config["TARGET_ROAS"] = st.session_state["opt_target_roas"]
             self.config["NEGATIVE_CLICKS_THRESHOLD"] = st.session_state["opt_neg_clicks_threshold"]
             self.config["NEGATIVE_SPEND_THRESHOLD"] = st.session_state["opt_neg_spend_threshold"]

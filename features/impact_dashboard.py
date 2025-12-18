@@ -14,7 +14,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+
+
 
 
 def render_impact_dashboard():
@@ -129,9 +131,10 @@ def render_impact_dashboard():
         # Convert to datetime for filtering
         impact_df['action_date_dt'] = pd.to_datetime(impact_df['action_date'], errors='coerce')
         
-        # Calculate cutoff date
-        from datetime import timedelta
-        cutoff_date = datetime.now() - timedelta(days=days)
+        # Calculate cutoff date relative to the horizon of performance data, not just actions
+        # This makes 14D vs 30D more meaningful by filtering based on the 'current' data window
+        latest_data_date = pd.to_datetime(available_dates[0]) if available_dates else impact_df['action_date_dt'].max()
+        cutoff_date = latest_data_date - timedelta(days=days)
         
         # Filter to only actions within the time frame
         impact_df = impact_df[impact_df['action_date_dt'] >= cutoff_date].copy()

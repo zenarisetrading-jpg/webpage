@@ -403,14 +403,67 @@ class PerformanceSnapshotModule(BaseFeature):
             'date_col': date_col
         }
 
+    def _calculate_comparison_metrics(self, df: pd.DataFrame, days: int = 7) -> Dict[str, Any]:
+        """Calculate metrics for the latest N days vs. the previous N days."""
+        if df.empty or 'Date' not in df.columns:
+            return {}
+
+        df['Date_Parsed'] = pd.to_datetime(df['Date'], errors='coerce')
+        max_date = df['Date_Parsed'].max()
+        if pd.isna(max_date):
+            return {}
+
+        # Define Periods
+        period_end = max_date
+        period_start = max_date - pd.Timedelta(days=days-1)
+        prev_period_end = period_start - pd.Timedelta(days=1)
+        prev_period_start = prev_period_end - pd.Timedelta(days=days-1)
+
+        # Current Period Data
+        curr_df = df[(df['Date_Parsed'] >= period_start) & (df['Date_Parsed'] <= period_end)]
+        # Previous Period Data
+        prev_df = df[(df['Date_Parsed'] >= prev_period_start) & (df['Date_Parsed'] <= prev_period_end)]
+
+        def get_kpis(data_df):
+            spend = data_df['Spend'].sum()
+            sales = data_df['Sales'].sum()
+            orders = data_df['Orders'].sum()
+            roas = sales / spend if spend > 0 else 0
+            acos = (spend / sales * 100) if sales > 0 else 0
+            return {'spend': spend, 'sales': sales, 'orders': orders, 'roas': roas, 'acos': acos}
+
+        curr_stats = get_kpis(curr_df)
+        prev_stats = get_kpis(prev_df)
+
+        deltas = {}
+        for key in curr_stats:
+            curr_v = curr_stats[key]
+            prev_v = prev_stats[key]
+            
+            if prev_v > 0:
+                # For ACOS, decrease is positive (+) delta in common parlance, but let's keep it literal (-)
+                change_pct = ((curr_v / prev_v) - 1) * 100
+                deltas[key] = f"{change_pct:+.1f}%"
+            else:
+                deltas[key] = None
+        
+        return deltas
+
     def display_results(self, results: Dict[str, Any]):
         """Display the dashboard."""
         df = results['data']
         date_col = results['date_col']
         
         # ==========================================
-        # 1. Executive Dashboard (KPI Cards)
+        # 1. Executive Dashboard (KPI Cards with Trends)
         # ==========================================
+        
+        # Calculate comparison deltas (Default to 7-day change)
+        # Check if user wants 7D or 14D
+        comp_days = st.radio("Trend Comparison Period", [7, 14], index=0, horizontal=True, label_visibility="collapsed")
+        st.caption(f"Showing comparison for Last {comp_days} Days vs. Previous {comp_days} Days")
+        
+        deltas = self._calculate_comparison_metrics(df, comp_days)
         
         # Calculate Totals
         total_spend = df['Spend'].sum()
@@ -430,11 +483,11 @@ class PerformanceSnapshotModule(BaseFeature):
         from ui.components import metric_card
         
         c1, c2, c3, c4, c5 = st.columns(5)
-        with c1: metric_card("Spend", f"AED {total_spend:,.0f}")
-        with c2: metric_card("Revenue", f"AED {total_sales:,.0f}")
-        with c3: metric_card("ACOS", f"{total_acos:.2f}%")
-        with c4: metric_card("ROAS", f"{total_roas:.2f}x")
-        with c5: metric_card("Orders", f"{total_orders:,.0f}")
+        with c1: metric_card("Spend", f"AED {total_spend:,.0f}", delta=deltas.get('spend'))
+        with c2: metric_card("Revenue", f"AED {total_sales:,.0f}", delta=deltas.get('sales'))
+        with c3: metric_card("ACOS", f"{total_acos:.2f}%", delta=deltas.get('acos'))
+        with c4: metric_card("ROAS", f"{total_roas:.2f}x", delta=deltas.get('roas'))
+        with c5: metric_card("Orders", f"{total_orders:,.0f}", delta=deltas.get('orders'))
         
         c6, c7, c8, c9, c10 = st.columns(5)
         with c6: metric_card("Impressions", f"{total_impr:,.0f}")

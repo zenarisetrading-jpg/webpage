@@ -421,15 +421,29 @@ def run_consolidated_optimizer():
         st.session_state['latest_optimizer_run'] = r
     
     # ==========================================
-    # LOG ACTIONS FOR IMPACT ANALYSIS (Silent)
+    # LOG ACTIONS FOR IMPACT ANALYSIS
     # ==========================================
     from features.optimizer import _log_optimization_events
-    try:
-        client_id = st.session_state.get('last_stats_save', {}).get('client_id', 'default_client')
-        report_date = date_info.get('start_date') or st.session_state.get('last_stats_save', {}).get('start_date')
-        _log_optimization_events(r, client_id, report_date)
-    except Exception:
-        pass  # Fail silently
+    
+    # 1. Determine active client
+    active_client = (
+        st.session_state.get('active_account_id') or 
+        st.session_state.get('last_stats_save', {}).get('client_id') or 
+        'default_client'
+    )
+    
+    # 2. Determine report date (defaults to max date in data if missing)
+    action_log_date = date_info.get('start_date')
+    if action_log_date and isinstance(action_log_date, datetime):
+        action_log_date = action_log_date.strftime('%Y-%m-%d')
+    elif not action_log_date:
+        # Fallback to current date or last stats save
+        action_log_date = st.session_state.get('last_stats_save', {}).get('start_date') or datetime.now().strftime('%Y-%m-%d')
+    
+    # 3. Trigger Logging
+    logged_count = _log_optimization_events(r, active_client, action_log_date)
+    if logged_count > 0:
+        st.toast(f"✅ Logged {logged_count} actions for impact analysis.", icon="📊")
 
     # B. Render Tabs (Integrated)
     # Order: Overview | Negatives | Competitor Shield | Bids | Harvest | Audit | Download
