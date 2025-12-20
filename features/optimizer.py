@@ -287,21 +287,14 @@ def calculate_account_benchmarks(df: pd.DataFrame, config: dict) -> dict:
     harvest_clicks = config.get("HARVEST_CLICKS", 10)
     harvest_min_orders = max(3, int(harvest_clicks * account_cvr))
     
-    # Calculate universal (account-wide) median for outlier detection (outlier-resistant)
-    valid_rows = df[(df["Spend"] > 0) & (df["Sales"] > 0)].copy()
-
-    if len(valid_rows) >= 10:
-        substantial_rows = valid_rows[valid_rows["Spend"] >= 5.0]
-        
-        if len(substantial_rows) >= 10:
-            # Use winsorized median (cap at 99th percentile to remove extreme outliers)
-            roas_values = substantial_rows["ROAS"].values
-            cap_value = np.percentile(roas_values, 99)
-            winsorized_roas = np.clip(roas_values, 0, cap_value)
-            universal_median_roas = np.median(winsorized_roas)
-        else:
-            # Not enough substantial data, fall back to all rows
-            universal_median_roas = valid_rows["ROAS"].median()
+    # Calculate universal (account-wide) ROAS using spend-weighted average (Total Sales / Total Spend)
+    # This gives realistic baseline that matches actual account performance
+    valid_rows = df[df["Spend"] > 0].copy()
+    total_spend = valid_rows["Spend"].sum()
+    total_sales = valid_rows["Sales"].sum()
+    
+    if total_spend >= 100:  # Need meaningful spend for reliable ROAS
+        universal_median_roas = total_sales / total_spend
     else:
         universal_median_roas = config.get("TARGET_ROAS", 2.5)
 
@@ -413,27 +406,30 @@ def identify_harvest_candidates(
     if "Customer Search Term" not in merged.columns:
         merged["Customer Search Term"] = merged["Harvest_Term"]
     
-    # Step 2: Calculate bucket median
-    bucket_valid_roas = merged[(merged["Spend"] > 0) & (merged["Sales"] > 0)]["ROAS"]
-    bucket_sample_size = len(bucket_valid_roas)
+    # Step 2: Calculate bucket ROAS using spend-weighted average (Total Sales / Total Spend)
+    # This matches the actual bucket performance shown in UI, not skewed by many 0-sale rows
+    bucket_with_spend = merged[merged["Spend"] > 0]
+    bucket_sample_size = len(bucket_with_spend)
+    total_spend = bucket_with_spend["Spend"].sum()
+    total_sales = bucket_with_spend["Sales"].sum()
+    bucket_weighted_roas = total_sales / total_spend if total_spend > 0 else 0
 
-    # Step 3: Stat sig check
+    # Step 3: Stat sig check - need minimum data for reliable bucket ROAS
     MIN_SAMPLE_SIZE_FOR_STAT_SIG = 20
+    MIN_SPEND_FOR_STAT_SIG = 100  # Need at least AED 100 spend for reliable bucket ROAS
     OUTLIER_THRESHOLD_MULTIPLIER = 1.5
 
-    if bucket_sample_size < MIN_SAMPLE_SIZE_FOR_STAT_SIG:
+    if bucket_sample_size < MIN_SAMPLE_SIZE_FOR_STAT_SIG or total_spend < MIN_SPEND_FOR_STAT_SIG:
         baseline_roas = universal_median_roas  # Use universal
         baseline_source = "Universal Median (insufficient bucket data)"
     else:
-        bucket_median_roas = bucket_valid_roas.median()
-        
         # Step 4: Outlier detection
-        if bucket_median_roas > universal_median_roas * OUTLIER_THRESHOLD_MULTIPLIER:
+        if bucket_weighted_roas > universal_median_roas * OUTLIER_THRESHOLD_MULTIPLIER:
             baseline_roas = universal_median_roas  # Outlier, use universal
             baseline_source = "Universal Median (bucket is outlier)"
         else:
-            baseline_roas = bucket_median_roas  # Valid, use bucket
-            baseline_source = "Bucket Median"
+            baseline_roas = bucket_weighted_roas  # Valid, use bucket weighted ROAS
+            baseline_source = f"Bucket Weighted ROAS (spend={total_spend:.0f})"
 
     print(f"\n=== HARVEST BASELINE ===")
     print(f"Baseline ROAS: {baseline_roas:.2f}x ({baseline_source})")
@@ -976,25 +972,29 @@ def _process_bucket(segment_df: pd.DataFrame, config: dict, min_clicks: int, buc
     grouped = grouped.drop(columns=["_group_key"], errors="ignore")
     grouped["ROAS"] = np.where(grouped["Spend"] > 0, grouped["Sales"] / grouped["Spend"], 0)
     
-    all_valid_roas = grouped[(grouped["Spend"] > 0) & (grouped["Sales"] > 0)]["ROAS"]
-    bucket_sample_size = len(all_valid_roas)
+    # Calculate bucket ROAS using spend-weighted average (Total Sales / Total Spend)
+    # This matches actual bucket performance, not skewed by many 0-sale rows
+    bucket_with_spend = grouped[grouped["Spend"] > 0]
+    bucket_sample_size = len(bucket_with_spend)
+    total_spend = bucket_with_spend["Spend"].sum()
+    total_sales = bucket_with_spend["Sales"].sum()
+    bucket_weighted_roas = total_sales / total_spend if total_spend > 0 else 0
     
     # Stat sig check
     MIN_SAMPLE_SIZE_FOR_STAT_SIG = 20
+    MIN_SPEND_FOR_STAT_SIG = 100  # Need at least AED 100 spend for reliable bucket ROAS
     OUTLIER_THRESHOLD_MULTIPLIER = 1.5
     
-    if bucket_sample_size < MIN_SAMPLE_SIZE_FOR_STAT_SIG:
+    if bucket_sample_size < MIN_SAMPLE_SIZE_FOR_STAT_SIG or total_spend < MIN_SPEND_FOR_STAT_SIG:
         baseline_roas = universal_median_roas
-        baseline_source = f"Universal Median (insufficient bucket data: {bucket_sample_size} < 20)"
+        baseline_source = f"Universal Weighted ROAS (insufficient bucket data: {bucket_sample_size} rows, {total_spend:.0f} spend)"
     else:
-        bucket_median_roas = all_valid_roas.median()
-        
-        if bucket_median_roas > universal_median_roas * OUTLIER_THRESHOLD_MULTIPLIER:
+        if bucket_weighted_roas > universal_median_roas * OUTLIER_THRESHOLD_MULTIPLIER:
             baseline_roas = universal_median_roas
-            baseline_source = f"Universal Median (bucket median {bucket_median_roas:.2f}x is outlier)"
+            baseline_source = f"Universal Weighted ROAS (bucket {bucket_weighted_roas:.2f}x is outlier)"
         else:
-            baseline_roas = bucket_median_roas
-            baseline_source = f"Bucket Median (n={bucket_sample_size})"
+            baseline_roas = bucket_weighted_roas
+            baseline_source = f"Bucket Weighted ROAS (n={bucket_sample_size}, spend={total_spend:.0f})"
     
     # Sanity check floor
     target_roas = config.get("TARGET_ROAS", 2.5)
@@ -1093,10 +1093,13 @@ def create_heatmap(
         "Orders_Attributed": "sum", "Impressions": "sum"
     }).reset_index()
     
+    # Rename to standard names for consistency
+    grouped = grouped.rename(columns={"Sales_Attributed": "Sales", "Orders_Attributed": "Orders"})
+    
     grouped["CTR"] = np.where(grouped["Impressions"] > 0, grouped["Clicks"] / grouped["Impressions"] * 100, 0)
-    grouped["CVR"] = np.where(grouped["Clicks"] > 0, grouped["Orders_Attributed"] / grouped["Clicks"] * 100, 0)
-    grouped["ROAS"] = np.where(grouped["Spend"] > 0, grouped["Sales_Attributed"] / grouped["Spend"], 0)
-    grouped["ACoS"] = np.where(grouped["Sales_Attributed"] > 0, grouped["Spend"] / grouped["Sales_Attributed"] * 100, 999)
+    grouped["CVR"] = np.where(grouped["Clicks"] > 0, grouped["Orders"] / grouped["Clicks"] * 100, 0)
+    grouped["ROAS"] = np.where(grouped["Spend"] > 0, grouped["Sales"] / grouped["Spend"], 0)
+    grouped["ACoS"] = np.where(grouped["Sales"] > 0, grouped["Spend"] / grouped["Sales"] * 100, 999)
     
     grouped["Harvest_Count"] = 0
     grouped["Negative_Count"] = 0
@@ -1126,10 +1129,21 @@ def create_heatmap(
         grouped.at[idx, "Harvest_Count"] = len(h_match)
         grouped.at[idx, "Negative_Count"] = len(n_match)
         
+        # Collect reasons for Actions
+        reasons = []
+        if not h_match.empty and "Reason" in h_match.columns:
+            reasons.extend(h_match["Reason"].dropna().astype(str).unique().tolist())
+            
+        if not n_match.empty and "Reason" in n_match.columns:
+            reasons.extend(n_match["Reason"].dropna().astype(str).unique().tolist())
+            
         if not b_match.empty and "New Bid" in b_match.columns:
             cur_bids = b_match.get("Current Bid", b_match.get("CPC", 0))
             grouped.at[idx, "Bid_Increase_Count"] = (b_match["New Bid"] > cur_bids).sum()
             grouped.at[idx, "Bid_Decrease_Count"] = (b_match["New Bid"] < cur_bids).sum()
+            
+            if "Reason" in b_match.columns:
+                reasons.extend(b_match["Reason"].dropna().astype(str).unique().tolist())
             
         actions = []
         if grouped.at[idx, "Harvest_Count"] > 0: actions.append(f"💎 {int(grouped.at[idx, 'Harvest_Count'])} harvests")
@@ -1139,10 +1153,25 @@ def create_heatmap(
         
         if actions:
             grouped.at[idx, "Actions_Taken"] = " | ".join(actions)
+            # Summarize reasons (top 3 unique)
+            unique_reasons = sorted(list(set([r for r in reasons if r])))
+            if unique_reasons:
+                grouped.at[idx, "Reason_Summary"] = "; ".join(unique_reasons[:3]) + ("..." if len(unique_reasons) > 3 else "")
+            else:
+                grouped.at[idx, "Reason_Summary"] = "Multiple actions"
         elif row["Clicks"] < config.get("MIN_CLICKS_EXACT", 5):
             grouped.at[idx, "Actions_Taken"] = "⏸️ Hold (Low volume)"
+            grouped.at[idx, "Reason_Summary"] = "Low data volume"
         else:
             grouped.at[idx, "Actions_Taken"] = "✅ No action needed"
+            
+            # Provide more specific status based on performance
+            if row["Sales"] == 0 and row["Spend"] > 10:
+                grouped.at[idx, "Reason_Summary"] = "Zero Sales (Monitoring)"
+            elif row["ROAS"] < config.get("TARGET_ROAS", 2.5) * 0.8:
+                grouped.at[idx, "Reason_Summary"] = "Low Efficiency (Monitoring)"
+            else:
+                grouped.at[idx, "Reason_Summary"] = "Stable Performance"
 
     # Priority Scoring
     def score(val, series, high_is_better=True):
@@ -1480,13 +1509,22 @@ def _analyze_risks(bid_changes: pd.DataFrame) -> dict:
         "high_risk": high_risk
     }
 
+EXPORT_COLUMNS = [
+    "Product", "Entity", "Operation", "Campaign Id", "Ad Group Id", 
+    "Campaign Name", "Ad Group Name", "Bid", "Ad Group Default Bid", 
+    "Keyword Text", "Match Type", "Product Targeting Expression", 
+    "Keyword Id", "Product Targeting Id", "State"
+]
+
 def generate_negatives_bulk(neg_kw, neg_pt):
-    """Generate Amazon bulk upload file for negatives."""
+    """Generate Amazon bulk upload file for negatives using standard schema."""
     frames = []
     
     if neg_kw is not None and not neg_kw.empty:
         neg_kw = neg_kw.reset_index(drop=True)
-        df = pd.DataFrame(columns=BULK_COLUMNS)
+        # Initialize with index so scalar assignments work
+        df = pd.DataFrame(index=neg_kw.index, columns=EXPORT_COLUMNS)
+        
         df["Product"] = "Sponsored Products"
         df["Entity"] = "Negative Keyword"
         df["Operation"] = "Create"
@@ -1501,48 +1539,77 @@ def generate_negatives_bulk(neg_kw, neg_pt):
         
     if neg_pt is not None and not neg_pt.empty:
         neg_pt = neg_pt.reset_index(drop=True)
-        df = pd.DataFrame(columns=BULK_COLUMNS)
+        # Initialize with index
+        df = pd.DataFrame(index=neg_pt.index, columns=EXPORT_COLUMNS)
+        
         df["Product"] = "Sponsored Products"
-        df["Entity"] = "Product Targeting"
+        df["Entity"] = "Negative Product Targeting"
         df["Operation"] = "Create"
         df["Campaign Id"] = neg_pt.get("CampaignId", "")
         df["Ad Group Id"] = neg_pt.get("AdGroupId", "")
         df["Campaign Name"] = neg_pt["Campaign Name"]
         df["Ad Group Name"] = neg_pt["Ad Group Name"]
         df["Product Targeting Expression"] = neg_pt["Term"]
-        df["Match Type"] = "negativeExact" # For negative PT
+        df["Match Type"] = "negativeExact" # Often used for negative PT expressions too or left blank
         df["State"] = "enabled"
         frames.append(df)
         
-    return pd.concat(frames) if frames else pd.DataFrame(columns=BULK_COLUMNS)
+    return pd.concat(frames) if frames else pd.DataFrame(columns=EXPORT_COLUMNS)
 
 def generate_bids_bulk(bids_df):
-    """Generate Amazon bulk upload file for bid updates."""
+    """Generate Amazon bulk upload file for bid updates using standard schema."""
     if bids_df is None or bids_df.empty:
-        return pd.DataFrame(columns=BULK_COLUMNS), 0
+        return pd.DataFrame(columns=EXPORT_COLUMNS), 0
         
-    # Filter for actual changes (non-hold)
+    # Filter for actually changed bids (exclude holds)
     changes = bids_df[~bids_df["Reason"].str.contains("Hold", case=False, na=False)].copy()
     if changes.empty:
-        return pd.DataFrame(columns=BULK_COLUMNS), 0
+        return pd.DataFrame(columns=EXPORT_COLUMNS), 0
     
     changes = changes.reset_index(drop=True)
-    df = pd.DataFrame(columns=BULK_COLUMNS)
-    df["Product"] = "Sponsored Products"
-    df["Entity"] = np.where(changes["Match Type"].str.contains("auto", case=False, na=False), "Ad Group", "Keyword")
-    # Actually, for keywords/PT, we need to distinguish
-    df["Entity"] = np.where(changes["Bucket"] == "Product Targeting", "Product Targeting", df["Entity"])
+    # Initialize with index to allow scalar assignment
+    df = pd.DataFrame(index=changes.index, columns=EXPORT_COLUMNS)
     
+    df["Product"] = "Sponsored Products"
     df["Operation"] = "Update"
     df["Campaign Id"] = changes.get("CampaignId", "")
     df["Ad Group Id"] = changes.get("AdGroupId", "")
     df["Campaign Name"] = changes["Campaign Name"]
     df["Ad Group Name"] = changes["Ad Group Name"]
     df["Bid"] = changes["New Bid"]
+    df["State"] = "enabled"
+    
+    # Determine Entity and Specific Columns
+    # Logic: If it has targeting expression or is PT bucket -> Product Targeting
+    # If Match Type is auto -> Product Targeting (auto targets have IDs usually)
+    # If it is keyword -> Keyword
+    # Exceptions: Ad Group default bid updates? (Not handled here unless explicitly passed as Ad Group row)
+    
+    def get_entity_details(row):
+        m_type = str(row.get("Match Type", "")).lower()
+        bucket = str(row.get("Bucket", ""))
+        
+        if "auto" in m_type or bucket == "Auto":
+            # Auto targets are technically Product Targeting in bulk files (queryHighRelMatches etc)
+            return "Product Targeting", "", row.get("Targeting", "")
+        elif bucket == "Product Targeting" or "asin=" in str(row.get("Targeting", "")).lower():
+            return "Product Targeting", "", row.get("Targeting", "")
+        elif "category=" in str(row.get("Targeting", "")).lower():
+            return "Product Targeting", "", row.get("Targeting", "")
+        else:
+            return "Keyword", row.get("Targeting", ""), row.get("Match Type", "")
+
+    # Apply checking
+    details = changes.apply(get_entity_details, axis=1, result_type='expand')
+    df["Entity"] = details[0]
+    df["Keyword Text"] = details[1]
+    df["Product Targeting Expression"] = details[2]
+    # For keywords, put Match Type. For PT, leave blank (expression handles it)
+    df["Match Type"] = np.where(df["Entity"] == "Keyword", details[2], "") 
     
     # ID Mapping
     df["Keyword Id"] = changes.get("KeywordId", "")
-    df["Product Targeting Id"] = changes.get("TargetingId", "")
+    df["Product Targeting Id"] = changes.get("TargetingId", "") # Use generic TargetingId for PT/Auto
     
     return df, len(changes)
 
@@ -2600,8 +2667,11 @@ class OptimizerModule(BaseFeature):
             heat_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>'
             st.markdown(f"#### {heat_icon}Performance Heatmap with Actions ({len(filtered_df)} items)", unsafe_allow_html=True)
             
-            cols = ["Priority", "Campaign Name", "Ad Group Name", "Actions_Taken", "Spend", "Sales", "ROAS", "CVR"]
+            cols = ["Priority", "Campaign Name", "Ad Group Name", "Actions_Taken", "Reason_Summary", "Spend", "Sales", "ROAS", "CVR"]
             display_df = filtered_df[[c for c in cols if c in filtered_df.columns]].copy()
+            
+            # Rename for display
+            display_df = display_df.rename(columns={"Reason_Summary": "Reason"})
             
             def style_priority(val):
                 if "High" in val: return "color: #ef4444; font-weight: bold"
