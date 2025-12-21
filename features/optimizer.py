@@ -359,36 +359,55 @@ def identify_harvest_candidates(
     if discovery_df.empty:
         return pd.DataFrame(columns=["Harvest_Term", "Campaign Name", "Ad Group Name", "ROAS", "Spend", "Sales", "Orders"])
     
-    # FIXED: Aggregate by Targeting (not Customer Search Term) to match bid optimization
-    # For Auto campaigns, Targeting contains the actual targeting expression
-    # that bid optimization groups by
+    # CRITICAL: Use Customer Search Term for harvest (actual user queries)
+    # NOT Targeting (which contains targeting expressions like close-match, category=, etc.)
+    harvest_column = "Customer Search Term" if "Customer Search Term" in discovery_df.columns else "Targeting"
+    
+    # CRITICAL: Filter OUT targeting expressions that are NOT actual search queries
+    # These should NOT be harvested as keywords
+    targeting_expression_patterns = [
+        r'^close-match$', r'^loose-match$', r'^substitutes$', r'^complements$', r'^auto$',
+        r'^asin=', r'^asin-expanded=', r'^category=', r'^keyword-group=',
+    ]
+    
+    # Create mask for rows that are actual search queries (not targeting expressions)
+    is_actual_search_query = ~discovery_df[harvest_column].str.lower().str.strip().str.match(
+        '|'.join(targeting_expression_patterns), na=False
+    )
+    
+    # Filter to only actual search queries
+    discovery_df = discovery_df[is_actual_search_query].copy()
+    
+    if discovery_df.empty:
+        return pd.DataFrame(columns=["Harvest_Term", "Campaign Name", "Ad Group Name", "ROAS", "Spend", "Sales", "Orders"])
+    
+    # Aggregate by Customer Search Term for harvest
     agg_cols = {
         "Impressions": "sum", "Clicks": "sum", "Spend": "sum",
         "Sales": "sum", "Orders": "sum", "CPC": "mean"
     }
     
-    # Also keep Customer Search Term for reference (use first value)
-    if "Customer Search Term" in discovery_df.columns:
-        agg_cols["Customer Search Term"] = "first"
+    # Also keep Targeting for reference
+    if "Targeting" in discovery_df.columns and harvest_column != "Targeting":
+        agg_cols["Targeting"] = "first"
     
-    grouped = discovery_df.groupby("Targeting", as_index=False).agg(agg_cols)
+    grouped = discovery_df.groupby(harvest_column, as_index=False).agg(agg_cols)
     grouped["ROAS"] = np.where(grouped["Spend"] > 0, grouped["Sales"] / grouped["Spend"], 0)
     
-    # Rename Targeting to Customer Search Term for compatibility with downstream code
-    grouped = grouped.rename(columns={"Targeting": "Harvest_Term"})
-    if "Customer Search Term" not in grouped.columns:
-        grouped["Customer Search Term"] = grouped["Harvest_Term"]
+    # Rename to Harvest_Term for consistency
+    grouped = grouped.rename(columns={harvest_column: "Harvest_Term"})
+    grouped["Customer Search Term"] = grouped["Harvest_Term"]
     
     # CHANGE #3: Winner selection score rebalanced (ROAS×5 instead of ×10)
     # Get metadata from BEST performing instance (winner selection)
     # Rank by Sales (primary), then ROAS (secondary)
     discovery_df["_perf_score"] = discovery_df["Sales"] + (discovery_df["ROAS"] * 5)
-    discovery_df["_rank"] = discovery_df.groupby("Targeting")["_perf_score"].rank(
+    discovery_df["_rank"] = discovery_df.groupby("Customer Search Term")["_perf_score"].rank(
         method="first", ascending=False
     )
     
     # Build metadata columns list
-    meta_cols = ["Targeting", "Campaign Name", "Ad Group Name", "Campaign_ROAS"]
+    meta_cols = ["Customer Search Term", "Campaign Name", "Ad Group Name", "Campaign_ROAS"]
     if "CampaignId" in discovery_df.columns:
         meta_cols.append("CampaignId")
     if "AdGroupId" in discovery_df.columns:
@@ -398,9 +417,9 @@ def identify_harvest_candidates(
     if "ASIN_advertised" in discovery_df.columns:
         meta_cols.append("ASIN_advertised")
     
-    # Get winner row for each Targeting value
-    meta_df = discovery_df[discovery_df["_rank"] == 1][meta_cols].drop_duplicates("Targeting")
-    merged = pd.merge(grouped, meta_df, left_on="Harvest_Term", right_on="Targeting", how="left")
+    # Get winner row for each Customer Search Term value
+    meta_df = discovery_df[discovery_df["_rank"] == 1][meta_cols].drop_duplicates("Customer Search Term")
+    merged = pd.merge(grouped, meta_df, on="Customer Search Term", how="left")
     
     # Ensure Customer Search Term column exists for downstream compatibility
     if "Customer Search Term" not in merged.columns:
