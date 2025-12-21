@@ -140,7 +140,7 @@ class ReportCardModule(BaseFeature):
         
         # 2. Optimization Actions (Counts)
         # We need to fetch the latest optimizer run results if available
-        actions = {'bid_increases': 0, 'bid_decreases': 0, 'negatives': 0, 'harvests': 0}
+        actions = {'bid_increases': 0, 'bid_decreases': 0, 'bid_holds': 0, 'negatives': 0, 'harvests': 0}
         
         if 'latest_optimizer_run' in st.session_state:
             res = st.session_state['latest_optimizer_run']
@@ -216,10 +216,14 @@ class ReportCardModule(BaseFeature):
                 row_decreases['Savings'] = (row_decreases[bid_col] - row_decreases['New Bid']) * row_decreases['Clicks']
                 bid_removed_val = row_decreases['Savings'].sum()
                 actions['bid_decreases'] = len(all_bids[all_bids['New Bid'] < all_bids[bid_col]])
+                
+                # Holds (No Change) -> MAINTAINED
+                actions['bid_holds'] = len(all_bids[all_bids['New Bid'] == all_bids[bid_col]])
 
             else:
                  actions['bid_increases'] = 0
                  actions['bid_decreases'] = 0
+                 actions['bid_holds'] = 0
                  row_increases = pd.DataFrame()
                  row_decreases = pd.DataFrame()
 
@@ -390,18 +394,25 @@ class ReportCardModule(BaseFeature):
         
         # Calculate totals for percentages (Moved up for dependencies)
         total_targets = df['Targeting'].nunique() if 'Targeting' in df.columns else len(df)
-        total_terms = df['Customer Search Term'].nunique() if 'Customer Search Term' in df.columns else len(df)
+        
+        # Denominator for Bids: Total number of evaluated bid decisions (groups)
+        evaluated_bids_count = len(all_bids) if 'all_bids' in locals() and not all_bids.empty else total_targets
+        
+        # Denominator for search term actions (Negatives/Harvests): Total number of rows/queries analyzed
+        total_terms = len(df)
 
         # Optimization Coverage Health (% of eligible targets adjusted this cycle)
-        # Adjusted = unique targets with at least one action (bid change, pause, or promotion)
-        # For simplicity, we sum unique actions since each action is on a unique target
-        adjusted_targets = actions['bid_increases'] + actions['bid_decreases'] + actions['negatives'] + actions['harvests']
+        # IMPORTANT: To ensure mathematical accuracy (<100%), we sum actions at the TARGET level
+        # Denominator: Total unique targets (ASINs, Categories, Keywords)
+        # Adjusted = unique targets with an explicit CHANGE action (Bid move, negative, or harvest)
         
-        # Eligible targets = total unique targets in the data
-        eligible_targets = total_targets if total_targets > 0 else 1
+        explicit_changes = actions['bid_increases'] + actions['bid_decreases'] + actions['negatives'] + actions['harvests']
+        # We still use the unique targets from the raw DF for coverage, as it represents the account scope
+        coverage_total = df['Targeting'].nunique() if 'Targeting' in df.columns else total_targets
+        total_eligible = coverage_total if coverage_total > 0 else 1
         
-        # Calculate optimization coverage (clamped 0-100)
-        optimization_coverage = min(100, max(0, (adjusted_targets / eligible_targets) * 100))
+        # Calculate coverage (capped 100)
+        optimization_coverage = min(100, (explicit_changes / total_eligible) * 100)
         
         return {
             "roas": actual_roas,
@@ -411,7 +422,7 @@ class ReportCardModule(BaseFeature):
             "optimization_coverage": optimization_coverage,
             "actions": actions,
             "counts": {
-                "targets": total_targets,
+                "targets": evaluated_bids_count,
                 "terms": total_terms
             },
             "reallocation": {
@@ -507,7 +518,7 @@ class ReportCardModule(BaseFeature):
         st.markdown("<h3 style='font-family: Inter, sans-serif; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; color: #F5F5F7;'>Account Health</h3>", unsafe_allow_html=True)
         st.markdown("<hr style='margin-top: 0; margin-bottom: 10px; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
         
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3 = st.columns(3)
         
         def render_gauge_block(col, value, title, min_v, max_v, suffix, micro_label, tooltip_text, target=None):
             with col:
@@ -533,31 +544,8 @@ class ReportCardModule(BaseFeature):
             "Percentage of total spend allocated to search terms that have generated at least 1 order."
         )
         
-        # Optimization Coverage Health - Custom color zones
-        # 0-3% red, 3-8% yellow, 8-15% green, >15% red
-        coverage_val = metrics['optimization_coverage']
-        with c3:
-            fig = self._create_gauge(coverage_val, "Coverage Health", 0, 20, "%")
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            
-            # Determine color based on coverage zones (Muted Brand Palette)
-            if coverage_val <= 3:
-                zone_color = "#8F8CA3"  # Slate - Under-active
-            elif coverage_val <= 8:
-                zone_color = "#5B556F"  # Purple - Selective/healthy
-            elif coverage_val <= 15:
-                zone_color = "#22d3ee"  # Cyan - Active but controlled
-            else:
-                zone_color = "#5B556F"  # Purple - Over-tuning risk
-            
-            st.markdown(
-                f"<div style='text-align: center; font-size: 13px; font-weight: 600; color: {zone_color}; margin-top: -10px;'>% of eligible targets adjusted this cycle</div>",
-                unsafe_allow_html=True,
-                help="Shows how actively the system adjusted the account. Calculated as % of eligible targets that received at least one action (bid change, pause, or promotion).\n\nColor Zones:\n🔴 0–3% → Under-active\n🟡 3–8% → Selective / healthy\n🟢 8–15% → Active but controlled\n🔴 >15% → Over-tuning risk"
-            )
-            
         render_gauge_block(
-            c4, 100 - metrics['spend_quality'], "Spend Risk", 0, 100, "%",
+            c3, 100 - metrics['spend_quality'], "Spend Risk", 0, 100, "%",
             "% of spend below efficiency threshold",
             "Percentage of spend going to terms with 0 orders (Bleeders)."
         )
@@ -712,6 +700,7 @@ class ReportCardModule(BaseFeature):
         star_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
         money_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'
         waste_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
+        hold_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>'
         growth_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="m12 14 4-4-4-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg>'
 
         # Row 1: Stats & Chart
@@ -724,11 +713,11 @@ class ReportCardModule(BaseFeature):
             <div style="display: flex; flex-direction: column; min-height: 280px; width: 100%;">
                 <div style="font-family: Inter, sans-serif; font-size: 17px; font-weight: 800; color: #F5F5F7; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">System Executed Adjustments</div>
                 <div style="flex-grow: 1; display: flex; justify-content: center; align-items: center;">
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{up_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Bid Increases:</span>{fmt_stat(actions['bid_increases'], counts['targets'], 'targets')}</div>
-                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{down_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Bid Decreases:</span>{fmt_stat(actions['bid_decreases'], counts['targets'], 'targets')}</div>
-                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{neg_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Paused Targets:</span>{fmt_stat(actions['negatives'], counts['terms'], 'terms')}</div>
-                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{star_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Promoted Keywords:</span>{fmt_stat(actions['harvests'], counts['terms'], 'terms')}</div>
+                    <div style="display: flex; flex-direction: column; gap: 14px;">
+                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{up_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Bid Increases:</span>{fmt_stat(actions['bid_increases'], counts['targets'], 'Evaluated')}</div>
+                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{down_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Bid Decreases:</span>{fmt_stat(actions['bid_decreases'], counts['targets'], 'Evaluated')}</div>
+                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{neg_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Paused Targets:</span>{fmt_stat(actions['negatives'], counts['terms'], 'Analyzed')}</div>
+                        <div style="display: flex; align-items: center; justify-content: flex-start;"><span style="width: 24px; display: flex; justify-content: center; margin-right: 8px;">{star_icon}</span><span style="min-width:140px; color:#8F8CA3; font-weight:600; font-size:14px;">Promoted Keywords:</span>{fmt_stat(actions['harvests'], counts['terms'], 'Analyzed')}</div>
                     </div>
                 </div>
             </div>

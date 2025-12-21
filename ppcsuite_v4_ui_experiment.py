@@ -198,18 +198,30 @@ def run_consolidated_optimizer():
     
     st.markdown(f'<h1 style="margin-bottom: 2rem; font-size: 2.2rem; font-weight: 800; text-transform: uppercase; letter-spacing: -0.02em; color: #F5F5F7;">{opt_icon}OPTIMIZATION ENGINE</h1>', unsafe_allow_html=True)
     
-    # Check for data
+    # Check for data - try session first, then database
     hub = DataHub()
-    if not hub.is_loaded("search_term_report"):
-        st.warning("⚠️ Please upload a Search Term Report in the Data Hub first.")
-        st.info("Go to **Data Hub** → Upload files → Return here")
-        return
     
-    # FIXED: Use ONLY the freshly uploaded STR from current session
-    # This ensures we optimize the specific time period uploaded, not historical DB data
+    # If no data in session, try loading from database
+    if not hub.is_loaded("search_term_report"):
+        account_id = st.session_state.get('active_account_id')
+        if account_id:
+            print(f"[Optimizer] No session data found. Attempting to load from database for account: {account_id}")
+            loaded = hub.load_from_database(account_id)
+            if loaded:
+                print(f"[Optimizer] Successfully loaded {hub.get_summary().get('search_terms', 0):,} rows from database")
+            else:
+                print(f"[Optimizer] Database load returned False")
+        
+        # Check again after database load attempt
+        if not hub.is_loaded("search_term_report"):
+            st.warning("⚠️ Please upload a Search Term Report in the Data Hub first.")
+            st.info("Go to **Data Hub** → Upload files → Return here")
+            return
+    
+    # Get data (now either from session upload OR database)
     df_raw = hub.get_data("search_term_report")
     if df_raw is None or df_raw.empty:
-        st.error("❌ No Search Term Report data found in session.")
+        st.error("❌ No Search Term Report data found.")
         return
     
     # Work with a copy to avoid modifying Hub data in-place

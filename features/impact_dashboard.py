@@ -541,7 +541,7 @@ def _render_waterfall_chart(summary: Dict[str, Any]):
 
 
 def _render_winners_losers_chart(impact_df: pd.DataFrame):
-    """Render top winners and losers based on raw performance."""
+    """Render top winners and losers based on raw performance aggregated by target."""
     
     # Chart icon 
     icon_color = "#8F8CA3"
@@ -552,24 +552,28 @@ def _render_winners_losers_chart(impact_df: pd.DataFrame):
         st.info("No impact data available")
         return
     
-    # Calculate RAW individual performance for the chart (not prorated)
-    # This allows actual losers to show as negative even in a growing account
-    df = impact_df.copy()
-    df['raw_perf'] = df['delta_sales'].fillna(0) - df['delta_spend'].fillna(0)
+    # AGGREGATE BY TARGET: This is critical.
+    # impact_df has one row per ACTION. We need one bar per TARGET.
+    target_perf = impact_df.groupby('target_text').agg({
+        'delta_sales': 'first', # These are target-level metrics already
+        'delta_spend': 'first',
+        'before_spend': 'first',
+        'after_spend': 'first'
+    }).reset_index()
+    
+    # Calculate RAW individual performance (not prorated)
+    target_perf['raw_perf'] = target_perf['delta_sales'].fillna(0) - target_perf['delta_spend'].fillna(0)
     
     # Filter to targets that actually had activity
-    df = df[(df['before_spend'] > 0) | (df['after_spend'] > 0)]
+    target_perf = target_perf[(target_perf['before_spend'] > 0) | (target_perf['after_spend'] > 0)]
     
-    if df.empty:
-        st.info("No matched actions with performance data found")
+    if target_perf.empty:
+        st.info("No matched targets with performance data found")
         return
     
     # Get top 5 winners and bottom 5 losers
-    winners = df.sort_values('raw_perf', ascending=False).head(5)
-    losers = df.sort_values('raw_perf', ascending=True).head(5)
-    
-    # Filter out winners that aren't actually positive or losers that aren't actually negative if desired
-    # But usually, showing the extremities is better
+    winners = target_perf.sort_values('raw_perf', ascending=False).head(5)
+    losers = target_perf.sort_values('raw_perf', ascending=True).head(5)
     
     # Combine for chart
     chart_df = pd.concat([winners, losers]).drop_duplicates().sort_values('raw_perf', ascending=False)

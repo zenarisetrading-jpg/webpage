@@ -1761,9 +1761,15 @@ class OptimizerModule(BaseFeature):
             
             # === PRESETS ===
             st.markdown(f'<div style="color: #F5F5F7; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px;">{bolt_icon}Quick Presets</div>', unsafe_allow_html=True)
+            
+            preset_options = ["Conservative", "Balanced", "Aggressive"]
+            active_preset = st.session_state.get("last_preset", "Conservative")
+            preset_idx = preset_options.index(active_preset) if active_preset in preset_options else 0
+            
             preset = st.radio(
                 "preset_selector",
-                ["Conservative", "Balanced", "Aggressive"],
+                preset_options,
+                index=preset_idx,
                 horizontal=True,
                 label_visibility="collapsed",
                 key="opt_preset"

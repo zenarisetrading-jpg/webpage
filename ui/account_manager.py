@@ -43,14 +43,20 @@ def render_account_selector():
         account_id, account_name, account_type = accounts[0]
         
         # Check if we need to initialize/load data
-        if st.session_state.get('active_account_id') != account_id:
+        # Load data if: 1) Different account, OR 2) Same account but no data loaded
+        data_exists = st.session_state.get('unified_data', {}).get('search_term_report') is not None
+        
+        if st.session_state.get('active_account_id') != account_id or not data_exists:
+            print(f"[DEBUG] Loading data for {account_id}: account_changed={st.session_state.get('active_account_id') != account_id}, data_exists={data_exists}")
             st.session_state['active_account_id'] = account_id
             st.session_state['active_account_name'] = account_name
             
             # Load from database on initial setup
             from core.data_hub import DataHub
             hub = DataHub()
-            hub.load_from_database(account_id)
+            result = hub.load_from_database(account_id)
+            print(f"[DEBUG] load_from_database result: {result}")
+        
         
         st.session_state['single_account_mode'] = True
         
