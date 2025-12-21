@@ -9,9 +9,20 @@ Migrated from ppcsuite_v3.2.py with full feature parity:
 - Heatmap with action tracking
 - Advanced simulation with scenarios, sensitivity, risk analysis
 
+Note: Bulk file generation moved to features/bulk_export.py
+
 Architecture: features/_base.py template
 Data Source: DataHub (enriched data with SKUs)
 """
+
+# Import bulk export functions from separate module
+from features.bulk_export import (
+    EXPORT_COLUMNS, 
+    generate_negatives_bulk, 
+    generate_bids_bulk,
+    generate_harvest_bulk,
+    strip_targeting_prefix
+)
 
 import streamlit as st
 import pandas as pd
@@ -1573,111 +1584,8 @@ def _analyze_risks(bid_changes: pd.DataFrame) -> dict:
         "high_risk": high_risk
     }
 
-EXPORT_COLUMNS = [
-    "Product", "Entity", "Operation", "Campaign Id", "Ad Group Id", 
-    "Campaign Name", "Ad Group Name", "Bid", "Ad Group Default Bid", 
-    "Keyword Text", "Match Type", "Product Targeting Expression", 
-    "Keyword Id", "Product Targeting Id", "State"
-]
-
-def generate_negatives_bulk(neg_kw, neg_pt):
-    """Generate Amazon bulk upload file for negatives using standard schema."""
-    frames = []
-    
-    if neg_kw is not None and not neg_kw.empty:
-        neg_kw = neg_kw.reset_index(drop=True)
-        # Initialize with index so scalar assignments work
-        df = pd.DataFrame(index=neg_kw.index, columns=EXPORT_COLUMNS)
-        
-        df["Product"] = "Sponsored Products"
-        df["Entity"] = "Negative Keyword"
-        df["Operation"] = "Create"
-        df["Campaign Id"] = neg_kw.get("CampaignId", "")
-        df["Ad Group Id"] = neg_kw.get("AdGroupId", "")
-        df["Campaign Name"] = neg_kw["Campaign Name"]
-        df["Ad Group Name"] = neg_kw["Ad Group Name"]
-        df["Keyword Text"] = neg_kw["Term"]
-        df["Match Type"] = "negativeExact"
-        df["Keyword Id"] = neg_kw.get("KeywordId", "")  # Map the ID
-        df["State"] = "enabled"
-        frames.append(df)
-        
-    if neg_pt is not None and not neg_pt.empty:
-        neg_pt = neg_pt.reset_index(drop=True)
-        # Initialize with index
-        df = pd.DataFrame(index=neg_pt.index, columns=EXPORT_COLUMNS)
-        
-        df["Product"] = "Sponsored Products"
-        df["Entity"] = "Negative Product Targeting"
-        df["Operation"] = "Create"
-        df["Campaign Id"] = neg_pt.get("CampaignId", "")
-        df["Ad Group Id"] = neg_pt.get("AdGroupId", "")
-        df["Campaign Name"] = neg_pt["Campaign Name"]
-        df["Ad Group Name"] = neg_pt["Ad Group Name"]
-        df["Product Targeting Expression"] = neg_pt["Term"]
-        df["Match Type"] = "negativeExact" # Often used for negative PT expressions too or left blank
-        df["Product Targeting Id"] = neg_pt.get("TargetingId", "")  # Map the ID
-        df["State"] = "enabled"
-        frames.append(df)
-        
-    return pd.concat(frames) if frames else pd.DataFrame(columns=EXPORT_COLUMNS)
-
-def generate_bids_bulk(bids_df):
-    """Generate Amazon bulk upload file for bid updates using standard schema."""
-    if bids_df is None or bids_df.empty:
-        return pd.DataFrame(columns=EXPORT_COLUMNS), 0
-        
-    # Filter for actually changed bids (exclude holds)
-    changes = bids_df[~bids_df["Reason"].str.contains("Hold", case=False, na=False)].copy()
-    if changes.empty:
-        return pd.DataFrame(columns=EXPORT_COLUMNS), 0
-    
-    changes = changes.reset_index(drop=True)
-    # Initialize with index to allow scalar assignment
-    df = pd.DataFrame(index=changes.index, columns=EXPORT_COLUMNS)
-    
-    df["Product"] = "Sponsored Products"
-    df["Operation"] = "Update"
-    df["Campaign Id"] = changes.get("CampaignId", "")
-    df["Ad Group Id"] = changes.get("AdGroupId", "")
-    df["Campaign Name"] = changes["Campaign Name"]
-    df["Ad Group Name"] = changes["Ad Group Name"]
-    df["Bid"] = changes["New Bid"]
-    df["State"] = "enabled"
-    
-    # Determine Entity and Specific Columns
-    # Logic: If it has targeting expression or is PT bucket -> Product Targeting
-    # If Match Type is auto -> Product Targeting (auto targets have IDs usually)
-    # If it is keyword -> Keyword
-    # Exceptions: Ad Group default bid updates? (Not handled here unless explicitly passed as Ad Group row)
-    
-    def get_entity_details(row):
-        m_type = str(row.get("Match Type", "")).lower()
-        bucket = str(row.get("Bucket", ""))
-        
-        if "auto" in m_type or bucket == "Auto":
-            # Auto targets are technically Product Targeting in bulk files (queryHighRelMatches etc)
-            return "Product Targeting", "", row.get("Targeting", "")
-        elif bucket == "Product Targeting" or "asin=" in str(row.get("Targeting", "")).lower():
-            return "Product Targeting", "", row.get("Targeting", "")
-        elif "category=" in str(row.get("Targeting", "")).lower():
-            return "Product Targeting", "", row.get("Targeting", "")
-        else:
-            return "Keyword", row.get("Targeting", ""), row.get("Match Type", "")
-
-    # Apply checking
-    details = changes.apply(get_entity_details, axis=1, result_type='expand')
-    df["Entity"] = details[0]
-    df["Keyword Text"] = details[1]
-    df["Product Targeting Expression"] = details[2]
-    # For keywords, put Match Type. For PT, leave blank (expression handles it)
-    df["Match Type"] = np.where(df["Entity"] == "Keyword", details[2], "") 
-    
-    # ID Mapping
-    df["Keyword Id"] = changes.get("KeywordId", "")
-    df["Product Targeting Id"] = changes.get("TargetingId", "") # Use generic TargetingId for PT/Auto
-    
-    return df, len(changes)
+# NOTE: EXPORT_COLUMNS, generate_negatives_bulk, generate_bids_bulk, generate_harvest_bulk
+# are imported from features/bulk_export.py at the top of this file
 
 def _log_optimization_events(results: dict, client_id: str, report_date: str):
     """
