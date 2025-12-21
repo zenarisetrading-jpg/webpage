@@ -1128,19 +1128,20 @@ class DatabaseManager:
         after_date: Union[date, str] = None
     ) -> pd.DataFrame:
         """
-        Compare actions with before/after performance using automatic time-lag matching.
+        Compare actions with before/after performance using ACCOUNT-LEVEL PRORATION.
         
-        For each action, finds:
-        - "Before" stats: The week the action was taken (same week as action_date)
-        - "After" stats: The following week (action_date < stats.start_date < action_date + 14 days)
+        NEW APPROACH (fixes double-counting):
+        1. Calculate ACCOUNT-LEVEL delta for before vs after periods
+        2. Prorate the account delta to individual actions by spend weight
+        3. Sum of individual attributed deltas = account delta (no double-counting)
         
         Args:
             client_id: Client identifier
-            before_date: Optional - if provided, uses this as the "before" date
-            after_date: Optional - if provided, uses this as the "after" date
+            before_date: Optional - if provided, filters actions on or before this date
+            after_date: Optional - if provided, filters actions on or after this date
             
         Returns:
-            DataFrame with impact metrics per action
+            DataFrame with impact metrics per action (prorated from account-level)
         """
         with self._get_connection() as conn:
             # Build date filter clause
@@ -1153,7 +1154,7 @@ class DatabaseManager:
                 date_filter += " AND DATE(a.action_date) <= ?"
                 params.append(str(before_date))
             
-            # Get all UNIQUE actions with their dates (dedupe by target+action_type+date)
+            # Get all UNIQUE actions with their dates
             actions_query = f"""
                 SELECT 
                     MIN(a.id) as id, a.batch_id, a.action_type, a.entity_name,
@@ -1167,12 +1168,11 @@ class DatabaseManager:
                 ORDER BY action_date DESC
             """
             actions_df = pd.read_sql_query(actions_query, conn, params=tuple(params))
-
             
             if actions_df.empty:
                 return pd.DataFrame()
             
-            # Get all target_stats for this client
+            # Get all target_stats for this client with weekly dates
             stats_query = """
                 SELECT 
                     target_text, campaign_name, ad_group_name, start_date,
@@ -1183,112 +1183,154 @@ class DatabaseManager:
             stats_df = pd.read_sql_query(stats_query, conn, params=(client_id,))
         
         if stats_df.empty:
-            actions_df['before_spend'] = None
-            actions_df['after_spend'] = None
-            actions_df['delta_spend'] = None
-            actions_df['delta_sales'] = None
-            actions_df['impact_score'] = None
+            # No stats - return actions with empty impact
+            for col in ['before_spend', 'after_spend', 'before_sales', 'after_sales',
+                       'delta_spend', 'delta_sales', 'attributed_delta_sales', 
+                       'attributed_delta_spend', 'impact_score', 'is_winner']:
+                actions_df[col] = None
             return actions_df
         
         # Parse dates
         actions_df['action_date_parsed'] = pd.to_datetime(actions_df['action_date'], errors='coerce')
         stats_df['start_date_parsed'] = pd.to_datetime(stats_df['start_date'], errors='coerce')
         
+        # ==========================================
+        # STEP 1: Identify BEFORE and AFTER periods
+        # ==========================================
+        # Get distinct weeks where actions occurred
+        action_weeks = actions_df['action_date_parsed'].dt.to_period('W-MON').unique()
+        action_weeks = sorted([w for w in action_weeks if pd.notna(w)])
+        
+        if not action_weeks:
+            for col in ['before_spend', 'after_spend', 'before_sales', 'after_sales',
+                       'delta_spend', 'delta_sales', 'attributed_delta_sales', 
+                       'attributed_delta_spend', 'impact_score', 'is_winner']:
+                actions_df[col] = None
+            return actions_df
+        
+        # BEFORE period = weeks with actions
+        before_start = action_weeks[0].start_time
+        before_end = action_weeks[-1].end_time
+        
+        # AFTER period = same number of weeks immediately after
+        num_action_weeks = len(action_weeks)
+        after_start = before_end + pd.Timedelta(days=1)
+        after_end = after_start + pd.Timedelta(weeks=num_action_weeks) - pd.Timedelta(days=1)
+        
+        # ==========================================
+        # STEP 2: Calculate ACCOUNT-LEVEL totals
+        # ==========================================
+        before_mask = (stats_df['start_date_parsed'] >= before_start) & (stats_df['start_date_parsed'] <= before_end)
+        after_mask = (stats_df['start_date_parsed'] >= after_start) & (stats_df['start_date_parsed'] <= after_end)
+        
+        before_stats = stats_df[before_mask]
+        after_stats = stats_df[after_mask]
+        
+        account_before_spend = before_stats['spend'].sum()
+        account_before_sales = before_stats['sales'].sum()
+        account_after_spend = after_stats['spend'].sum()
+        account_after_sales = after_stats['sales'].sum()
+        
+        # TRUE account-level deltas
+        account_delta_spend = account_after_spend - account_before_spend
+        account_delta_sales = account_after_sales - account_before_sales
+        
+        # ==========================================
+        # STEP 3: Calculate per-action BEFORE spend (for weighting)
+        # ==========================================
         # Normalize keys for joining
         actions_df['_target_key'] = actions_df['target_text'].astype(str).str.lower().str.strip()
         stats_df['_target_key'] = stats_df['target_text'].astype(str).str.lower().str.strip()
         
-        # For each action, find before/after stats using time-lag logic
+        # CRITICAL: Count how many actions exist per unique target
+        # This is needed to avoid double-counting when same target has multiple actions
+        target_action_counts = actions_df.groupby('_target_key').size().to_dict()
+        
+        # Pre-calculate unique target spend for weight calculation
+        unique_targets = actions_df['_target_key'].unique()
+        target_before_spend_cache = {}
+        for target_key in unique_targets:
+            target_before_filtered = before_stats[before_stats['target_text'].astype(str).str.lower().str.strip() == target_key]
+            target_before_spend_cache[target_key] = float(target_before_filtered['spend'].sum()) if not target_before_filtered.empty else 0.0
+        
+        # Calculate total spend from UNIQUE targets only (not duplicate actions)
+        unique_target_total_spend = sum(target_before_spend_cache.values())
+        
         results = []
         
         for _, action in actions_df.iterrows():
-            action_date = action['action_date_parsed']
             target_key = action['_target_key']
             
-            if pd.isna(action_date):
-                # Can't determine time lag without action date
-                result = action.to_dict()
-                result.update({
-                    'before_spend': None, 'after_spend': None,
-                    'before_sales': None, 'after_sales': None,
-                    'delta_spend': None, 'delta_sales': None,
-                    'impact_score': None, 'is_winner': None
-                })
-                results.append(result)
-                continue
+            # For weighting calculation, use target_text match
+            target_before_filtered = before_stats[before_stats['target_text'].astype(str).str.lower().str.strip() == target_key]
+            target_after_filtered = after_stats[after_stats['target_text'].astype(str).str.lower().str.strip() == target_key]
             
-            # Find matching target stats
-            target_stats = stats_df[stats_df['_target_key'] == target_key]
+            before_spend = float(target_before_filtered['spend'].sum()) if not target_before_filtered.empty else 0.0
+            before_sales = float(target_before_filtered['sales'].sum()) if not target_before_filtered.empty else 0.0
+            after_spend = float(target_after_filtered['spend'].sum()) if not target_after_filtered.empty else 0.0
+            after_sales = float(target_after_filtered['sales'].sum()) if not target_after_filtered.empty else 0.0
             
-            if target_stats.empty:
-                result = action.to_dict()
-                result.update({
-                    'before_spend': None, 'after_spend': None,
-                    'before_sales': None, 'after_sales': None,
-                    'delta_spend': None, 'delta_sales': None,
-                    'impact_score': None, 'is_winner': None
-                })
-                results.append(result)
-                continue
-            
-            # BEFORE: Stats from the SAME WEEK as the report/action
-            # Range: [action_date, action_date + 6 days]
-            # This captures the performance data that triggered the optimization
-            before_start = action_date
-            before_end = action_date + pd.Timedelta(days=6)
-            
-            before_stats = target_stats[
-                (target_stats['start_date_parsed'] >= before_start) & 
-                (target_stats['start_date_parsed'] <= before_end)
-            ]
-            
-            # AFTER: Stats from the FOLLOWING WEEK
-            # Range: [action_date + 7 days, action_date + 13 days]
-            after_start = action_date + pd.Timedelta(days=7)
-            after_end = action_date + pd.Timedelta(days=13)
-            
-            after_stats = target_stats[
-                (target_stats['start_date_parsed'] >= after_start) & 
-                (target_stats['start_date_parsed'] <= after_end)
-            ]
-            
-            # Extract values (SUM across the window to handle daily data)
-            before_spend = float(before_stats['spend'].sum()) if not before_stats.empty else 0.0
-            before_sales = float(before_stats['sales'].sum()) if not before_stats.empty else 0.0
-            before_clicks = int(before_stats['clicks'].sum()) if not before_stats.empty else 0
-            
-            after_spend = float(after_stats['spend'].sum()) if not after_stats.empty else 0.0
-            after_sales = float(after_stats['sales'].sum()) if not after_stats.empty else 0.0
-            after_clicks = int(after_stats['clicks'].sum()) if not after_stats.empty else 0
-            
-            # Calculate deltas
+            # Raw deltas (for reference, not used in totals)
             delta_spend = after_spend - before_spend
             delta_sales = after_sales - before_sales
-            delta_clicks = after_clicks - before_clicks
+            
+            # ==========================================
+            # STEP 4: Prorate ACCOUNT delta by spend weight
+            # ==========================================
+            # Use UNIQUE target spend for weight (not double-counting)
+            if unique_target_total_spend > 0:
+                # Weight based on this target's share of total spend
+                spend_weight = before_spend / unique_target_total_spend
+            else:
+                spend_weight = 0
+            
+            # Divide by number of actions for this target to avoid double-counting
+            num_actions_for_target = target_action_counts.get(target_key, 1)
+            attributed_delta_sales = (account_delta_sales * spend_weight) / num_actions_for_target
+            attributed_delta_spend = (account_delta_spend * spend_weight) / num_actions_for_target
+            
+            # Impact score based on ATTRIBUTED (prorated) values
+            impact_score = attributed_delta_sales - attributed_delta_spend
+            is_winner = impact_score > 0 if before_spend > 0 else None  # Can't determine if no spend
             
             # Calculate ROAS
             before_roas = before_sales / before_spend if before_spend > 0 else 0
             after_roas = after_sales / after_spend if after_spend > 0 else 0
             delta_roas = after_roas - before_roas
             
-            # Impact score: Net profit change
-            impact_score = delta_sales - delta_spend
-            is_winner = impact_score > 0
-            
             result = action.to_dict()
             result.update({
-                'before_spend': before_spend, 'after_spend': after_spend,
-                'before_sales': before_sales, 'after_sales': after_sales,
-                'before_clicks': before_clicks, 'after_clicks': after_clicks,
-                'delta_spend': delta_spend, 'delta_sales': delta_sales,
-                'delta_clicks': delta_clicks,
-                'before_roas': before_roas, 'after_roas': after_roas,
+                'before_spend': before_spend, 
+                'after_spend': after_spend,
+                'before_sales': before_sales, 
+                'after_sales': after_sales,
+                'delta_spend': delta_spend, 
+                'delta_sales': delta_sales,
+                'attributed_delta_sales': attributed_delta_sales,
+                'attributed_delta_spend': attributed_delta_spend,
+                'spend_weight': spend_weight,
+                'before_roas': before_roas, 
+                'after_roas': after_roas,
                 'delta_roas': delta_roas,
-                'impact_score': impact_score, 'is_winner': is_winner
+                'impact_score': impact_score, 
+                'is_winner': is_winner,
+                # Metadata for debugging
+                'before_period': f"{before_start.strftime('%Y-%m-%d')} to {before_end.strftime('%Y-%m-%d')}",
+                'after_period': f"{after_start.strftime('%Y-%m-%d')} to {after_end.strftime('%Y-%m-%d')}"
             })
             results.append(result)
         
         result_df = pd.DataFrame(results)
+        
+        # Store account-level totals as attributes for summary
+        result_df.attrs['account_before_spend'] = account_before_spend
+        result_df.attrs['account_after_spend'] = account_after_spend
+        result_df.attrs['account_before_sales'] = account_before_sales
+        result_df.attrs['account_after_sales'] = account_after_sales
+        result_df.attrs['account_delta_spend'] = account_delta_spend
+        result_df.attrs['account_delta_sales'] = account_delta_sales
+        result_df.attrs['before_period'] = f"{before_start.strftime('%Y-%m-%d')} to {before_end.strftime('%Y-%m-%d')}"
+        result_df.attrs['after_period'] = f"{after_start.strftime('%Y-%m-%d')} to {after_end.strftime('%Y-%m-%d')}"
         
         # Cleanup temp columns
         for col in ['_target_key', 'action_date_parsed', 'action_day']:
@@ -1299,13 +1341,12 @@ class DatabaseManager:
     
     def get_impact_summary(self, client_id: str, before_date: Union[date, str] = None, after_date: Union[date, str] = None) -> Dict[str, Any]:
         """
-        Get aggregate impact metrics.
-        
-        Uses auto time-lag matching to compare actions with following week's performance.
+        Get aggregate impact metrics using ACCOUNT-LEVEL proration.
         
         Returns:
             dict with: total_actions, winners, losers, win_rate,
-                      net_sales_impact, net_spend_change, avg_roas_change, roi
+                      net_sales_impact (account-level), net_spend_change (account-level),
+                      avg_roas_change, roi, before_period, after_period
         """
         impact_df = self.get_action_impact(client_id, before_date, after_date)
         
@@ -1319,11 +1360,19 @@ class DatabaseManager:
                 'net_spend_change': 0,
                 'avg_roas_change': 0,
                 'roi': 0,
-                'by_action_type': {}
+                'by_action_type': {},
+                'before_period': '',
+                'after_period': ''
             }
         
-        # Filter to rows with actual impact data (have after stats)
-        has_data = impact_df['after_spend'].notna() & (impact_df['after_spend'] > 0)
+        # Get ACCOUNT-LEVEL deltas from DataFrame attrs (ground truth - no double-counting)
+        account_delta_sales = impact_df.attrs.get('account_delta_sales', 0)
+        account_delta_spend = impact_df.attrs.get('account_delta_spend', 0)
+        before_period = impact_df.attrs.get('before_period', '')
+        after_period = impact_df.attrs.get('after_period', '')
+        
+        # Filter to rows with actual before spend data (participated in before period)
+        has_data = impact_df['before_spend'].notna() & (impact_df['before_spend'] > 0)
         impact_with_data = impact_df[has_data]
         
         total = len(impact_with_data)
@@ -1331,22 +1380,26 @@ class DatabaseManager:
         losers = total - winners
         win_rate = (winners / total * 100) if total > 0 else 0
         
-        net_sales = float(impact_with_data['delta_sales'].sum()) if total > 0 else 0
-        net_spend = float(impact_with_data['delta_spend'].sum()) if total > 0 else 0
+        # Use ACCOUNT-LEVEL deltas for net sales/spend (ground truth, no double-counting)
+        net_sales = float(account_delta_sales)
+        net_spend = float(account_delta_spend)
+        
+        # Average ROAS change across actions
         avg_roas_change = float(impact_with_data['delta_roas'].mean()) if total > 0 else 0
         
         # ROI = (Net Sales Impact - Net Spend Change) / |Net Spend Change|
+        # This is profit impact / additional spend
         roi = ((net_sales - net_spend) / abs(net_spend)) if net_spend != 0 else 0
         
-        # Breakdown by action type
+        # Breakdown by action type using ATTRIBUTED deltas (prorated, sums to account total)
         by_type = {}
         if total > 0:
             for action_type in impact_with_data['action_type'].unique():
                 type_data = impact_with_data[impact_with_data['action_type'] == action_type]
                 by_type[action_type] = {
                     'count': len(type_data),
-                    'net_sales': float(type_data['delta_sales'].sum()),
-                    'net_spend': float(type_data['delta_spend'].sum()),
+                    'net_sales': float(type_data['attributed_delta_sales'].sum()) if 'attributed_delta_sales' in type_data.columns else float(type_data['delta_sales'].sum()),
+                    'net_spend': float(type_data['attributed_delta_spend'].sum()) if 'attributed_delta_spend' in type_data.columns else float(type_data['delta_spend'].sum()),
                     'winners': int((type_data['is_winner'] == True).sum())
                 }
         
@@ -1359,7 +1412,9 @@ class DatabaseManager:
             'net_spend_change': net_spend,
             'avg_roas_change': avg_roas_change,
             'roi': roi,
-            'by_action_type': by_type
+            'by_action_type': by_type,
+            'before_period': before_period,
+            'after_period': after_period
         }
     
     def get_available_dates(self, client_id: str) -> List[str]:
