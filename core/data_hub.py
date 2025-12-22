@@ -443,6 +443,12 @@ class DataHub:
                 'advertised_product_report': False,
                 'bulk_id_mapping': False,
                 'category_mapping': False
+            },
+            'upload_timestamps': {
+                'search_term_report': None,
+                'advertised_product_report': None,
+                'bulk_id_mapping': None,
+                'category_mapping': None
             }
         }
     
