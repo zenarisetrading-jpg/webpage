@@ -455,13 +455,13 @@ class DataHub:
             # Get last 4 weeks of data for accurate monthly baseline
             with db._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute(f'''
                     SELECT DISTINCT start_date FROM target_stats 
-                    WHERE client_id = ? 
+                    WHERE client_id = {db.placeholder} 
                     ORDER BY start_date DESC 
                     LIMIT 4
                 ''', (account_id,))
-                recent_dates = [row[0] for row in cursor.fetchall()]
+                recent_dates = [row['start_date'] if isinstance(row, dict) else row[0] for row in cursor.fetchall()]
             
             if not recent_dates:
                 self.clear_all()

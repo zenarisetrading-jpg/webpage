@@ -778,28 +778,36 @@ def identify_negative_candidates(
                 suffixes=('', '_exact')
             )
         
-        # Fallback: If no exact match, get any ID from same campaign+adgroup
-        if 'KeywordId' not in neg_df.columns or neg_df['KeywordId'].isna().any():
-            id_fallback = bulk.groupby(['_camp_norm', '_ag_norm']).agg({
-                'KeywordId': 'first',
-                'TargetingId': 'first'
-            }).reset_index()
+        # Fallback: If no exact match or missing IDs, get any ID from same campaign+adgroup
+        if any(col not in neg_df.columns or (neg_df[col].isna() | (neg_df[col].astype(str) == "")).any() for col in ['KeywordId', 'TargetingId', 'CampaignId', 'AdGroupId']):
+            fallback_agg = {}
+            for col in ['KeywordId', 'TargetingId', 'CampaignId', 'AdGroupId']:
+                if col in bulk.columns:
+                    fallback_agg[col] = 'first'
             
-            neg_df = neg_df.merge(
-                id_fallback,
-                on=['_camp_norm', '_ag_norm'],
-                how='left',
-                suffixes=('', '_fallback')
-            )
-            
-            # Coalesce: use exact match if available, otherwise fallback
-            for col in ['KeywordId', 'TargetingId']:
-                fallback_col = f'{col}_fallback'
-                if fallback_col in neg_df.columns:
-                    if col not in neg_df.columns:
-                        neg_df[col] = neg_df[fallback_col]
-                    else:
-                        neg_df[col] = neg_df[col].fillna(neg_df[fallback_col])
+            if fallback_agg:
+                id_fallback = bulk.groupby(['_camp_norm', '_ag_norm']).agg(fallback_agg).reset_index()
+                
+                neg_df = neg_df.merge(
+                    id_fallback,
+                    on=['_camp_norm', '_ag_norm'],
+                    how='left',
+                    suffixes=('', '_fallback')
+                )
+                
+                # Coalesce: use exact match if available, otherwise fallback
+                for col in fallback_agg.keys():
+                    fallback_col = f'{col}_fallback'
+                    if fallback_col in neg_df.columns:
+                        if col not in neg_df.columns:
+                            neg_df[col] = neg_df[fallback_col]
+                        else:
+                            # Use np.where to handle both NaN and empty strings
+                            neg_df[col] = np.where(
+                                (neg_df[col].isna()) | (neg_df[col].astype(str) == ""),
+                                neg_df[fallback_col],
+                                neg_df[col]
+                            )
         
         # Cleanup
         neg_df.drop(columns=['_camp_norm', '_ag_norm', '_term_norm', 'KeywordId_fallback', 'TargetingId_fallback', 
@@ -994,6 +1002,50 @@ def calculate_bid_optimizations(
     # Combine auto and category for backwards compatibility (displayed as "Auto/Category")
     bids_auto_combined = pd.concat([bids_auto, bids_category], ignore_index=True) if not bids_category.empty else bids_auto
     
+    # FINAL ENRICHMENT: Ensure IDs are present for Bulk Export
+    from core.data_hub import DataHub
+    bulk = DataHub().get_data('bulk_id_mapping')
+    
+    if bulk is not None and not bulk.empty:
+        def normalize_for_matching(series):
+            return series.astype(str).str.strip().str.lower().str.replace(r'[^a-z0-9]', '', regex=True)
+            
+        bulk_norm = bulk.copy()
+        bulk_norm['_camp_norm'] = normalize_for_matching(bulk_norm['Campaign Name'])
+        bulk_norm['_ag_norm'] = normalize_for_matching(bulk_norm['Ad Group Name'])
+        
+        # Build fallback ID lookup
+        fallback_cols = [c for c in ['CampaignId', 'AdGroupId', 'KeywordId', 'TargetingId'] if c in bulk_norm.columns]
+        if fallback_cols:
+            id_lookup = bulk_norm.groupby(['_camp_norm', '_ag_norm'])[fallback_cols].first().reset_index()
+            
+            # Enrich each bucket
+            enriched_buckets = []
+            for b_df in [bids_exact, bids_pt, bids_agg, bids_auto_combined]:
+                if b_df.empty:
+                    enriched_buckets.append(b_df)
+                    continue
+                    
+                b_df = b_df.copy()
+                b_df['_camp_norm'] = normalize_for_matching(b_df['Campaign Name'])
+                b_df['_ag_norm'] = normalize_for_matching(b_df['Ad Group Name'])
+                
+                b_df = b_df.merge(id_lookup, on=['_camp_norm', '_ag_norm'], how='left', suffixes=('', '_bulk'))
+                
+                # Coalesce
+                for col in fallback_cols:
+                    bulk_col = f'{col}_bulk'
+                    if bulk_col in b_df.columns:
+                        if col not in b_df.columns:
+                            b_df[col] = b_df[bulk_col]
+                        else:
+                            b_df[col] = b_df[col].fillna(b_df[bulk_col])
+                
+                b_df.drop(columns=['_camp_norm', '_ag_norm'] + [f'{c}_bulk' for c in fallback_cols if f'{c}_bulk' in b_df.columns], inplace=True, errors='ignore')
+                enriched_buckets.append(b_df)
+            
+            return tuple(enriched_buckets)
+
     return bids_exact, bids_pt, bids_agg, bids_auto_combined
 
 def _process_bucket(segment_df: pd.DataFrame, config: dict, min_clicks: int, bucket_name: str, universal_median_roas: float) -> pd.DataFrame:
@@ -2104,6 +2156,13 @@ class OptimizerModule(BaseFeature):
                     key="opt_run_simulation",
                     help="Generate impact projections and scenario analysis"
                 )
+                
+                st.checkbox(
+                    "Show technical IDs",
+                    key="opt_show_ids",
+                    help="Display Campaign, Ad Group, and Targeting IDs in results",
+                    value=False
+                )
             
             # Sync all session state values to self.config (convert integers to decimals)
             self.config["HARVEST_CLICKS"] = st.session_state["opt_harvest_clicks"]
@@ -2385,13 +2444,19 @@ class OptimizerModule(BaseFeature):
         if active_tab == "Keyword Negatives":
             tab_header("Negative Keywords Identified", shield_icon)
             if not neg_kw.empty:
-                st.data_editor(neg_kw, use_container_width=True, height=400, disabled=True, hide_index=True)
+                cols = list(neg_kw.columns)
+                if not st.session_state.get("opt_show_ids", False):
+                    cols = [c for c in cols if "Id" not in c and "Basis" not in c]
+                st.data_editor(neg_kw[cols], use_container_width=True, height=400, disabled=True, hide_index=True)
             else:
                 st.info("No negative keywords found.")
         else:
             tab_header("Product Targeting Candidates", shield_icon)
             if not neg_pt.empty:
-                st.data_editor(neg_pt, use_container_width=True, height=400, disabled=True, hide_index=True)
+                cols = list(neg_pt.columns)
+                if not st.session_state.get("opt_show_ids", False):
+                    cols = [c for c in cols if "Id" not in c and "Basis" not in c]
+                st.data_editor(neg_pt[cols], use_container_width=True, height=400, disabled=True, hide_index=True)
             else:
                 st.info("No product targeting negatives found.")
 
@@ -2415,6 +2480,9 @@ class OptimizerModule(BaseFeature):
         
         # Define preferred column order (includes bid columns from bulk file)
         preferred_cols = ["Targeting", "Campaign Name", "Match Type", "Clicks", "Orders", "Sales", "ROAS", "Ad Group Default Bid", "Bid", "CPC", "New Bid", "Reason", "Decision_Basis", "Bucket"]
+        
+        if st.session_state.get("opt_show_ids", False):
+            preferred_cols = ["CampaignId", "AdGroupId", "KeywordId", "TargetingId"] + preferred_cols
         
         # sub-navigation for bids
         bid_tabs = [
@@ -2702,14 +2770,53 @@ class OptimizerModule(BaseFeature):
         </p>
         """, unsafe_allow_html=True)
         
-        # 1. Negative Keywords
+        # 1. Negative Keywords + PT (combined)
         neg_kw = results.get("neg_kw", pd.DataFrame())
-        if not neg_kw.empty:
+        neg_pt = results.get("neg_pt", pd.DataFrame())
+        
+        # Combine both KW and PT negatives into one file
+        if not neg_kw.empty or not neg_pt.empty:
             shield_icon_sub = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>'
             st.markdown(f"<div style='color: #F5F5F7; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center;'>{shield_icon_sub}Negative Keywords Bulk</div>", unsafe_allow_html=True)
-            kw_bulk = generate_negatives_bulk(neg_kw, pd.DataFrame())
+            kw_bulk, kw_issues = generate_negatives_bulk(neg_kw, neg_pt)
+            
+            # Calculate usability % - requires Campaign Id, Ad Group Id, AND entity-specific ID
+            total_rows = len(kw_bulk)
+            if total_rows > 0:
+                # For negatives: need Campaign Id + Ad Group Id + (Keyword Id OR PT Id)
+                has_campaign = kw_bulk["Campaign Id"].notna() & (kw_bulk["Campaign Id"] != "")
+                has_adgroup = kw_bulk["Ad Group Id"].notna() & (kw_bulk["Ad Group Id"] != "")
+                has_kwid = kw_bulk["Keyword Id"].notna() & (kw_bulk["Keyword Id"] != "")
+                has_ptid = kw_bulk["Product Targeting Id"].notna() & (kw_bulk["Product Targeting Id"] != "")
+                has_entity_id = has_kwid | has_ptid
+                
+                complete_rows = len(kw_bulk[has_campaign & has_adgroup & has_entity_id])
+                usability_pct = (complete_rows / total_rows) * 100
+                
+                # Color based on usability
+                if usability_pct >= 90:
+                    color = "#30D158"  # Green
+                elif usability_pct >= 70:
+                    color = "#FFD60A"  # Yellow
+                else:
+                    color = "#FF453A"  # Red
+                
+                st.markdown(f"<div style='color: {color}; font-size: 14px; margin-bottom: 8px;'>📊 <b>{usability_pct:.0f}%</b> complete ({complete_rows}/{total_rows} rows have Campaign + Ad Group + Entity IDs)</div>", unsafe_allow_html=True)
+            
+            # Display validation warnings
+            if kw_issues:
+                with st.expander(f"⚠️ {len(kw_issues)} Validation Issues", expanded=False):
+                    for issue in kw_issues:
+                        rule = issue.get('rule') or issue.get('code', 'UNKNOWN')
+                        msg = issue.get('msg') or issue.get('message', '')
+                        severity = issue.get('severity', 'warning')
+                        if severity == 'error':
+                            st.error(f"**[{rule}]** {msg}")
+                        else:
+                            st.warning(f"**[{rule}]** {msg}")
+            
             with st.expander("👁️ Preview File Content", expanded=False):
-                st.dataframe(kw_bulk.head(5), use_container_width=True)
+                st.dataframe(kw_bulk, use_container_width=True, height=300)
             
             buf = dataframe_to_excel(kw_bulk)
             st.download_button(
@@ -2728,9 +2835,43 @@ class OptimizerModule(BaseFeature):
         if not all_bids.empty:
             sliders_icon_sub = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>'
             st.markdown(f"<div style='color: #F5F5F7; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center;'>{sliders_icon_sub}Bid Optimizations Bulk</div>", unsafe_allow_html=True)
-            bid_bulk, _ = generate_bids_bulk(all_bids)
+            bid_bulk, bid_issues = generate_bids_bulk(all_bids)
+            
+            # Calculate usability %
+            total_rows = len(bid_bulk)
+            if total_rows > 0:
+                # For bids, check Campaign Id + entity-specific ID
+                complete_rows = len(bid_bulk[
+                    (bid_bulk["Campaign Id"].notna() & (bid_bulk["Campaign Id"] != "")) &
+                    ((bid_bulk["Keyword Id"].notna() & (bid_bulk["Keyword Id"] != "")) | 
+                     (bid_bulk["Product Targeting Id"].notna() & (bid_bulk["Product Targeting Id"] != "")))
+                ])
+                usability_pct = (complete_rows / total_rows) * 100
+                
+                # Color based on usability
+                if usability_pct >= 90:
+                    color = "#30D158"  # Green
+                elif usability_pct >= 70:
+                    color = "#FFD60A"  # Yellow
+                else:
+                    color = "#FF453A"  # Red
+                
+                st.markdown(f"<div style='color: {color}; font-size: 14px; margin-bottom: 8px;'>📊 <b>{usability_pct:.0f}%</b> of rows have complete IDs ({complete_rows}/{total_rows})</div>", unsafe_allow_html=True)
+            
+            # Display bid validation warnings
+            if bid_issues:
+                with st.expander(f"⚠️ {len(bid_issues)} Validation Issues", expanded=False):
+                    for issue in bid_issues:
+                        rule = issue.get('rule') or issue.get('code', 'UNKNOWN')
+                        msg = issue.get('msg') or issue.get('message', '')
+                        severity = issue.get('severity', 'warning')
+                        if severity == 'error':
+                            st.error(f"**[{rule}]** {msg}")
+                        else:
+                            st.warning(f"**[{rule}]** {msg}")
+            
             with st.expander("👁️ Preview File Content", expanded=False):
-                st.dataframe(bid_bulk.head(5), use_container_width=True)
+                st.dataframe(bid_bulk, use_container_width=True, height=300)
             
             buf = dataframe_to_excel(bid_bulk)
             st.download_button(

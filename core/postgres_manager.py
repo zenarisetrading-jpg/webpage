@@ -29,6 +29,11 @@ class PostgresManager:
         self.db_url = db_url
         self._init_schema()
     
+    @property
+    def placeholder(self) -> str:
+        """SQL parameter placeholder for Postgres."""
+        return "%s"
+    
     @contextmanager
     def _get_connection(self):
         """Context manager for safe database connections."""

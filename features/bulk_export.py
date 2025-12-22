@@ -11,7 +11,21 @@ Separated from optimizer.py for cleaner maintenance.
 
 import pandas as pd
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
+
+# Import comprehensive validation engine
+from core.bulk_validation import (
+    validate_bulk_export,
+    validate_isolation_negative,
+    validate_bleeder_negative,
+    validate_bid_update,
+    detect_negative_type,
+    NegativeType,
+    Severity,
+    ValidationResult,
+    is_blank,
+    ERROR_MESSAGES,
+)
 
 # ==========================================
 # AMAZON BULK FILE SCHEMA
@@ -23,6 +37,161 @@ EXPORT_COLUMNS = [
     "Keyword Text", "Match Type", "Product Targeting Expression", 
     "Keyword Id", "Product Targeting Id", "State"
 ]
+
+
+# ==========================================
+# LEGACY VALIDATION (DEPRECATED - use validate_bulk_export)
+# ==========================================
+
+def validate_negatives_bulk(df: pd.DataFrame, currency: str = "USD") -> Tuple[pd.DataFrame, List[dict]]:
+    """
+    Validate negatives bulk export for Amazon compliance.
+    
+    Uses new comprehensive validation engine with Isolation/Bleeder detection.
+    
+    Returns:
+        Tuple of (sorted DataFrame, list of validation issues)
+    """
+    if df is None or df.empty:
+        return df, []
+    
+    df = df.copy()
+    
+    # Run comprehensive validation
+    validated_df, result = validate_bulk_export(df, export_type="negatives", currency=currency)
+    
+    # Convert to unified format
+    issues = result.to_dict_list()
+    
+    # Additional cleaning logic
+
+    # --- NEG001: Mutual Exclusivity ---
+    for idx, row in df.iterrows():
+        entity = str(row.get("Entity", "")).lower()
+        
+        if "keyword" in entity:
+            # KW entity: PT fields must be blank
+            if not is_blank(row.get("Product Targeting Expression")):
+                issues.append({"row": idx, "code": "NEG001", "msg": "Keyword entity has PT Expression filled (auto-cleared)", "severity": "warning"})
+                df.at[idx, "Product Targeting Expression"] = ""
+            if not is_blank(row.get("Product Targeting Id")):
+                issues.append({"row": idx, "code": "NEG001", "msg": "Keyword entity has PT Id filled (auto-cleared)", "severity": "warning"})
+                df.at[idx, "Product Targeting Id"] = ""
+        
+        elif "product" in entity or "targeting" in entity:
+            # PT entity: KW fields must be blank
+            if not is_blank(row.get("Keyword Text")):
+                issues.append({"row": idx, "code": "NEG001", "msg": "PT entity has Keyword Text filled (auto-cleared)", "severity": "warning"})
+                df.at[idx, "Keyword Text"] = ""
+            if not is_blank(row.get("Keyword Id")):
+                issues.append({"row": idx, "code": "NEG001", "msg": "PT entity has Keyword Id filled (auto-cleared)", "severity": "warning"})
+                df.at[idx, "Keyword Id"] = ""
+    
+    # --- NEG002: Match Type ---
+    for idx, row in df.iterrows():
+        entity = str(row.get("Entity", "")).lower()
+        
+        if "keyword" in entity:
+            if row.get("Match Type") != "negativeExact":
+                issues.append({"row": idx, "code": "NEG002", "msg": f"Match Type corrected to negativeExact", "severity": "warning"})
+                df.at[idx, "Match Type"] = "negativeExact"
+        
+        elif "product" in entity or "targeting" in entity:
+            if not is_blank(row.get("Match Type")):
+                issues.append({"row": idx, "code": "NEG002", "msg": "PT Match Type cleared (should be blank)", "severity": "warning"})
+                df.at[idx, "Match Type"] = ""
+    
+    # --- NEG003: Bid Column Blank ---
+    if "Bid" in df.columns:
+        for idx, row in df.iterrows():
+            if not is_blank(row.get("Bid")):
+                issues.append({"row": idx, "code": "NEG003", "msg": "Bid cleared (must be blank for negatives)", "severity": "warning"})
+                df.at[idx, "Bid"] = ""
+    
+    # --- GEN001: Flag Missing Campaign/AdGroup IDs ---
+    df["_has_campaign_id"] = df["Campaign Id"].apply(lambda x: not is_blank(x))
+    df["_has_adgroup_id"] = df["Ad Group Id"].apply(lambda x: not is_blank(x))
+    df["_missing_ids"] = ~(df["_has_campaign_id"] & df["_has_adgroup_id"])
+    
+    missing_id_count = df["_missing_ids"].sum()
+    if missing_id_count > 0:
+        issues.append({"row": -1, "code": "GEN001", "msg": f"{missing_id_count} rows missing Campaign/Ad Group IDs (moved to bottom)", "severity": "warning"})
+    
+    # Sort: rows with IDs first, missing IDs last
+    df = df.sort_values("_missing_ids", ascending=True).reset_index(drop=True)
+    df.drop(columns=["_has_campaign_id", "_has_adgroup_id", "_missing_ids"], inplace=True)
+    
+    # --- GEN002: No Dual IDs ---
+    for idx, row in df.iterrows():
+        has_kwid = not is_blank(row.get("Keyword Id"))
+        has_ptid = not is_blank(row.get("Product Targeting Id"))
+        
+        if has_kwid and has_ptid:
+            issues.append({"row": idx, "code": "GEN002", "msg": "Row has both Keyword Id and PT Id (auto-corrected)", "severity": "warning"})
+            # Keep the one matching the entity type
+            entity = str(row.get("Entity", "")).lower()
+            if "keyword" in entity:
+                df.at[idx, "Product Targeting Id"] = ""
+            else:
+                df.at[idx, "Keyword Id"] = ""
+    
+    # --- GEN003: Missing Entity-Specific IDs ---
+    missing_kwid_count = 0
+    missing_ptid_count = 0
+    for idx, row in df.iterrows():
+        entity = str(row.get("Entity", "")).lower()
+        
+        if "keyword" in entity:
+            if is_blank(row.get("Keyword Id")):
+                missing_kwid_count += 1
+        elif "product" in entity or "targeting" in entity:
+            if is_blank(row.get("Product Targeting Id")):
+                missing_ptid_count += 1
+    
+    if missing_kwid_count > 0:
+        issues.append({"row": -1, "code": "GEN003", "msg": f"{missing_kwid_count} Keyword rows missing Keyword Id", "severity": "warning"})
+    if missing_ptid_count > 0:
+        issues.append({"row": -1, "code": "GEN003", "msg": f"{missing_ptid_count} PT rows missing Product Targeting Id", "severity": "warning"})
+    
+    # --- NEG004: Duplicate Detection ---
+    # For KW: Campaign + AdGroup + Keyword Text
+    # For PT: Campaign + AdGroup + PT Expression
+    kw_mask = df["Entity"].str.contains("Keyword", case=False, na=False)
+    pt_mask = ~kw_mask
+    
+    if kw_mask.any():
+        kw_df = df[kw_mask]
+        dup_kw = kw_df.duplicated(subset=["Campaign Name", "Ad Group Name", "Keyword Text"], keep="first")
+        if dup_kw.any():
+            dup_count = dup_kw.sum()
+            issues.append({"row": -1, "code": "NEG004", "msg": f"Removed {dup_count} duplicate Keyword negatives (kept first)", "severity": "warning"})
+            # Mark duplicates for removal
+            df = df[~(kw_mask & df.duplicated(subset=["Campaign Name", "Ad Group Name", "Keyword Text"], keep="first"))]
+    
+    if pt_mask.any():
+        pt_df = df[pt_mask]
+        dup_pt = pt_df.duplicated(subset=["Campaign Name", "Ad Group Name", "Product Targeting Expression"], keep="first")
+        if dup_pt.any():
+            dup_count = dup_pt.sum()
+            issues.append({"row": -1, "code": "NEG004", "msg": f"Removed {dup_count} duplicate PT negatives (kept first)", "severity": "warning"})
+            df = df[~(pt_mask & df.duplicated(subset=["Campaign Name", "Ad Group Name", "Product Targeting Expression"], keep="first"))]
+    
+    # --- FINAL SORT: Complete rows first, problematic rows at bottom ---
+    # Complete = has Campaign Id + Ad Group Id + Entity-specific ID (Keyword Id OR PT Id)
+    df = df.reset_index(drop=True)
+    
+    has_campaign = df["Campaign Id"].notna() & (df["Campaign Id"].astype(str).str.strip() != "")
+    has_adgroup = df["Ad Group Id"].notna() & (df["Ad Group Id"].astype(str).str.strip() != "")
+    has_kwid = df["Keyword Id"].notna() & (df["Keyword Id"].astype(str).str.strip() != "")
+    has_ptid = df["Product Targeting Id"].notna() & (df["Product Targeting Id"].astype(str).str.strip() != "")
+    has_entity_id = has_kwid | has_ptid
+    
+    df["_is_complete"] = has_campaign & has_adgroup & has_entity_id
+    df = df.sort_values("_is_complete", ascending=False).reset_index(drop=True)
+    df.drop(columns=["_is_complete"], inplace=True)
+    
+    return df, issues
+
 
 
 # ==========================================
@@ -131,12 +300,17 @@ def generate_negatives_bulk(neg_kw: pd.DataFrame, neg_pt: pd.DataFrame) -> pd.Da
         df["Product Targeting Expression"] = neg_pt["Term"].apply(
             lambda x: f'asin="{strip_targeting_prefix(x)}"' if is_asin(strip_targeting_prefix(x)) else x
         )
-        df["Match Type"] = "negativeExact"
+        df["Match Type"] = ""  # PT should have blank match type per R2
         df["Product Targeting Id"] = neg_pt.get("TargetingId", "")
         df["State"] = "enabled"
         frames.append(df)
         
-    return pd.concat(frames) if frames else pd.DataFrame(columns=EXPORT_COLUMNS)
+    raw_df = pd.concat(frames) if frames else pd.DataFrame(columns=EXPORT_COLUMNS)
+    
+    # Validate and clean
+    validated_df, issues = validate_negatives_bulk(raw_df)
+    
+    return validated_df, issues
 
 
 def generate_bids_bulk(bids_df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
@@ -207,7 +381,28 @@ def generate_bids_bulk(bids_df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
     df["Keyword Id"] = changes.get("KeywordId", "")
     df["Product Targeting Id"] = changes.get("TargetingId", "")
     
-    return df, len(changes)
+    # Run bid validation
+    validated_df, result = validate_bulk_export(df, export_type="bids", currency="AED")
+    issues = result.to_dict_list()
+    
+    # Additional bid-specific validations
+    for idx, row in df.iterrows():
+        row_num = idx + 2
+        
+        # Check for missing IDs
+        entity = str(row.get("Entity", "")).lower()
+        if "keyword" in entity and is_blank(row.get("Keyword Id")):
+            issues.append({"row": row_num, "code": "BID004", "msg": "Keyword row missing Keyword Id", "severity": "warning"})
+        elif "targeting" in entity and is_blank(row.get("Product Targeting Id")):
+            issues.append({"row": row_num, "code": "BID004", "msg": "PT row missing Product Targeting Id", "severity": "warning"})
+        
+        # Check for dual IDs
+        has_kwid = not is_blank(row.get("Keyword Id"))
+        has_ptid = not is_blank(row.get("Product Targeting Id"))
+        if has_kwid and has_ptid:
+            issues.append({"row": row_num, "code": "BID005", "msg": "Row has both Keyword Id and PT Id", "severity": "error"})
+    
+    return df, issues
 
 
 def generate_harvest_bulk(harvest_df: pd.DataFrame, 
