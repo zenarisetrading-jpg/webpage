@@ -386,8 +386,9 @@ If Auto outperforms Manual: Discovery is working - harvest more aggressively
         wasted_spend = df[df['Orders'] == 0]['Spend'].sum()
         waste_ratio = wasted_spend / total_spend if total_spend > 0 else 0
         
-        # Health components
-        roas_score = min(100, (roas / 4.0) * 100)  # 4.0 ROAS = 100 score
+        # ROAS Score (Uses dynamic Target ROAS)
+        target_roas = st.session_state.get('opt_target_roas', 3.0)
+        roas_score = min(100, (roas / target_roas) * 100)
         waste_score = max(0, 100 - (waste_ratio * 200))  # 50% waste = 0 score
         
         # Harvest/Negative optimization potential
@@ -414,6 +415,7 @@ If Auto outperforms Manual: Discovery is working - harvest more aggressively
             "health_score": health_score,
             "status": f"{status_emoji} {status}",
             "roas_score": round(roas_score, 1),
+            "actual_roas": round(roas, 2),
             "waste_score": round(waste_score, 1),
             "wasted_spend": round(wasted_spend, 2),
             "waste_percentage": round(waste_ratio * 100, 1),
@@ -752,9 +754,10 @@ If Auto outperforms Manual: Discovery is working - harvest more aggressively
         term_agg['ROAS'] = term_agg['Sales'] / term_agg['Spend']
         term_agg['ROAS'] = term_agg['ROAS'].replace([np.inf, -np.inf], 0).fillna(0)
         
-        # High ROAS but low spend (bottom 50%)
+        # High ROAS vs Target (Top 20%) but low spend
+        target_roas = st.session_state.get('opt_target_roas', 3.0)
         spend_median = term_agg['Spend'].median()
-        scalers = term_agg[(term_agg['ROAS'] > 4) & (term_agg['Spend'] < spend_median) & (term_agg['Orders'] >= 2)]
+        scalers = term_agg[(term_agg['ROAS'] > target_roas * 1.2) & (term_agg['Spend'] < spend_median) & (term_agg['Orders'] >= 2)]
         
         if scalers.empty:
             return None
@@ -1551,23 +1554,27 @@ def get_dynamic_key_insights() -> list:
             waste_score = health.get('waste_score', 0)
             wasted_spend = health.get('wasted_spend', 0)
             
+            # Get target ROAS for fallback calculation
+            target_roas = st.session_state.get('opt_target_roas', 3.0)
+            actual_roas = health.get('actual_roas', roas_score * target_roas / 100)
+            
             # ROAS signal
-            if roas_score >= 75:
+            if roas_score >= 100:
                 signals.append({
                     "type": "positive", "category": "Growth", "strength": roas_score,
-                    "title": f"ROAS at {roas_score/25:.1f}x", "subtitle": "Strong profitability",
+                    "title": f"ROAS at {actual_roas:.1f}x", "subtitle": "Strong profitability",
                     "icon_type": "success"
                 })
-            elif roas_score >= 50:
+            elif roas_score >= 80:
                 signals.append({
                     "type": "positive", "category": "Growth", "strength": roas_score,
-                    "title": f"ROAS at {roas_score/25:.1f}x", "subtitle": "Healthy returns",
+                    "title": f"ROAS at {actual_roas:.1f}x", "subtitle": "Healthy returns",
                     "icon_type": "info"
                 })
             else:
                 signals.append({
                     "type": "watch", "category": "Risk", "strength": 100 - roas_score,
-                    "title": f"ROAS at {roas_score/25:.1f}x", "subtitle": "Below target",
+                    "title": f"ROAS at {actual_roas:.1f}x", "subtitle": "Below target",
                     "icon_type": "warning"
                 })
             
@@ -1682,6 +1689,18 @@ def get_dynamic_key_insights() -> list:
         
     except Exception as e:
         # Fail gracefully - cache default insights too
+        print(f"DEBUG: Error in get_dynamic_key_insights: {str(e)}")
+        # import traceback
+        # traceback.print_exc()
         st.session_state[cache_key] = {'has_data': has_opt_data if 'has_opt_data' in locals() else False, 'insights': default_insights}
         return default_insights
+
+def _get_insights_from_database() -> list:
+    """Fallback: Try to get last valid insights from DB or return defaults."""
+    default_insights = [
+        {"type": "positive", "title": "Ready to analyze", "subtitle": "Upload data to start", "icon_type": "info", "strength": 0},
+        {"type": "positive", "title": "Optimizer available", "subtitle": "Run to get recommendations", "icon_type": "info", "strength": 0},
+        {"type": "watch", "title": "Impact tracking", "subtitle": "Configure and run", "icon_type": "note", "strength": 0}
+    ]
+    return default_insights
 

@@ -1294,9 +1294,10 @@ def get_account_health_score() -> Optional[float]:
         
         spend_quality = (converting_spend / total_spend) * 100
         
-        # 1. ROAS Score (Target 4.0x -> 100%)
+        # 1. ROAS Score (Uses dynamic Target ROAS)
+        target_roas = st.session_state.get('opt_target_roas', 3.0)
         actual_roas = total_sales / total_spend
-        roas_score = min(100, (actual_roas / 4.0) * 100)
+        roas_score = min(100, (actual_roas / target_roas) * 100)
         
         # 2. Efficiency Score at TARGETING level - % of spend that converts
         targeting_col = next((c for c in df.columns if c.lower() in ['targeting', 'target_text']), None)
