@@ -14,33 +14,106 @@ from datetime import date, datetime, timedelta
 from contextlib import contextmanager
 import pandas as pd
 import uuid
+import time
+import functools
+
+# ==========================================
+# PERFORMANCE: Simple TTL Cache
+# ==========================================
+class TTLCache:
+    """Simple time-based cache for query results."""
+    def __init__(self, ttl_seconds: int = 60):
+        self._cache = {}
+        self._ttl = ttl_seconds
+    
+    def get(self, key: str) -> Optional[Any]:
+        if key in self._cache:
+            value, timestamp = self._cache[key]
+            if time.time() - timestamp < self._ttl:
+                return value
+            del self._cache[key]
+        return None
+    
+    def set(self, key: str, value: Any):
+        self._cache[key] = (value, time.time())
+    
+    def clear(self):
+        self._cache.clear()
+
+# Global cache instance
+_query_cache = TTLCache(ttl_seconds=60)
+
+def retry_on_connection_error(max_retries: int = 3, base_delay: float = 1.0):
+    """Decorator for retrying database operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)  # 1s, 2s, 4s
+                        print(f"Connection error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                        time.sleep(delay)
+                        # Reset connection pool on error
+                        if hasattr(args[0], '_reset_pool'):
+                            args[0]._reset_pool()
+            raise last_error
+        return wrapper
+    return decorator
 
 class PostgresManager:
     """
     PostgreSQL persistence for Supabase / Cloud Postgres.
-    Uses connection pooling for improved performance.
+    Uses connection pooling with retry logic and health checking.
     """
     
     _pool = None  # Class-level connection pool
+    _pool_lock = None  # For thread safety
     
     def __init__(self, db_url: str):
         """
-        Initialize Postgres manager with connection pooling.
+        Initialize Postgres manager with resilient connection pooling.
         
         Args:
             db_url: Postgres connection string (postgres://user:pass@host:port/db)
         """
         self.db_url = db_url
-        
-        # Initialize connection pool (reuse across instances)
-        if PostgresManager._pool is None:
-            PostgresManager._pool = ThreadedConnectionPool(
-                minconn=1,
-                maxconn=10,
-                dsn=db_url
-            )
-        
+        self._init_pool()
         self._init_schema()
+    
+    def _init_pool(self):
+        """Initialize or reinitialize connection pool with optimal settings."""
+        if PostgresManager._pool is not None:
+            return
+        
+        # Parse and add connection options for resilience
+        # Add timeout and keepalive settings
+        dsn = self.db_url
+        if '?' not in dsn:
+            dsn += '?'
+        else:
+            dsn += '&'
+        dsn += 'connect_timeout=10&keepalives=1&keepalives_idle=30&keepalives_interval=5&keepalives_count=3'
+        
+        PostgresManager._pool = ThreadedConnectionPool(
+            minconn=1,
+            maxconn=5,  # Reduced from 10 to prevent exhaustion
+            dsn=dsn
+        )
+    
+    def _reset_pool(self):
+        """Reset connection pool after errors."""
+        if PostgresManager._pool is not None:
+            try:
+                PostgresManager._pool.closeall()
+            except:
+                pass
+            PostgresManager._pool = None
+        self._init_pool()
     
     @property
     def placeholder(self) -> str:
@@ -49,17 +122,29 @@ class PostgresManager:
     
     @contextmanager
     def _get_connection(self):
-        """Context manager for safe database connections using pool."""
-        conn = PostgresManager._pool.getconn()
-        # Set cursor factory for this connection
+        """Context manager for safe database connections with health check."""
+        conn = None
         try:
+            conn = PostgresManager._pool.getconn()
+            
+            # Health check: test if connection is alive
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+            except:
+                # Connection is stale, get a fresh one
+                PostgresManager._pool.putconn(conn, close=True)
+                conn = PostgresManager._pool.getconn()
+            
             yield conn
             conn.commit()
         except Exception as e:
-            conn.rollback()
+            if conn:
+                conn.rollback()
             raise e
         finally:
-            PostgresManager._pool.putconn(conn)
+            if conn:
+                PostgresManager._pool.putconn(conn)
     
     def _init_schema(self):
         """Create tables if they don't exist."""
@@ -682,11 +767,21 @@ class PostgresManager:
         except psycopg2.IntegrityError:
             return False
 
+    @retry_on_connection_error()
     def get_all_accounts(self) -> List[tuple]:
+        """Get all accounts with caching."""
+        cache_key = 'all_accounts'
+        cached = _query_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        
         with self._get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("SELECT account_id, account_name, account_type FROM accounts ORDER BY account_name")
-                return [(row['account_id'], row['account_name'], row['account_type']) for row in cursor.fetchall()]
+                result = [(row['account_id'], row['account_name'], row['account_type']) for row in cursor.fetchall()]
+        
+        _query_cache.set(cache_key, result)
+        return result
 
     def get_account(self, account_id: str) -> Optional[Dict[str, Any]]:
         import json
@@ -766,8 +861,14 @@ class PostgresManager:
     # IMPACT DASHBOARD METHODS
     # ==========================================
     
+    @retry_on_connection_error()
     def get_available_dates(self, client_id: str) -> List[str]:
-        """Get list of unique action dates for a client."""
+        """Get list of unique action dates for a client with caching."""
+        cache_key = f'dates_{client_id}'
+        cached = _query_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        
         with self._get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("""
@@ -776,7 +877,10 @@ class PostgresManager:
                     WHERE client_id = %s 
                     ORDER BY start_date DESC
                 """, (client_id,))
-                return [str(row['start_date']) for row in cursor.fetchall()]
+                result = [str(row['start_date']) for row in cursor.fetchall()]
+        
+        _query_cache.set(cache_key, result)
+        return result
     
     def get_action_impact(self, client_id: str, window_days: int = 7) -> pd.DataFrame:
         """
