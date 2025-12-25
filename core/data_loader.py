@@ -142,8 +142,25 @@ def get_tokens(s: str) -> set:
     return set(normalize_text(s).split())
 
 def is_asin(s: str) -> bool:
-    """Check if string is an ASIN (10 chars, starts with B0)."""
-    clean = str(s).strip().upper()
+    """
+    Check if string is or contains an ASIN (10 chars, starts with B0).
+    Handles asin= and asin-expanded= prefixes commonly found in PT reports.
+    """
+    if not isinstance(s, str) or not s:
+        return False
+    clean = s.strip().upper()
+    
+    # Strip PT prefixes
+    for prefix in ['ASIN="', "ASIN='", 'ASIN-EXPANDED="', "ASIN-EXPANDED='"]:
+        if clean.startswith(prefix):
+            clean = clean[len(prefix):].rstrip("\"'")
+            break
+    # Also handle without quotes: asin=B0...
+    if clean.startswith('ASIN='):
+        clean = clean[5:].strip('"\'')
+    elif clean.startswith('ASIN-EXPANDED='):
+        clean = clean[14:].strip('"\'')
+    
     if len(clean) == 10 and clean.startswith("B0") and clean.isalnum():
         return True
     return False

@@ -188,10 +188,13 @@ def render_audit_tab(heatmap_df: Optional[pd.DataFrame]) -> None:
             if "Good" in val: return "color: #22c55e; font-weight: bold"
             return ""
 
+        from utils.formatters import get_account_currency
+        format_currency = get_account_currency()
+        
         styled = display_df.style.map(style_priority, subset=["Priority"]) \
                                  .background_gradient(subset=["ROAS"], cmap="RdYlGn") \
                                  .background_gradient(subset=["CVR"], cmap="YlGn") \
-                                 .format({"Spend": "${:,.2f}", "Sales": "${:,.2f}", "ROAS": "{:.2f}x", "CVR": "{:.2f}%"})
+                                 .format({"Spend": f"{format_currency}{{:,.2f}}", "Sales": f"{format_currency}{{:,.2f}}", "ROAS": "{:.2f}x", "CVR": "{:.2f}%"})
         
         st.dataframe(styled, use_container_width=True, height=500)
     else:

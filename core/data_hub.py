@@ -130,6 +130,8 @@ class DataHub:
         self._enrich_data()
         
         # SAVE TO DB (Persistence)
+        save_success = False
+        save_error = None
         try:
             db = get_db_manager(st.session_state.get('test_mode', False))
             
@@ -155,9 +157,6 @@ class DataHub:
                 st.error("❌ No Active Account Selected! Please select an account in the sidebar.")
                 return 0
             
-            # DEBUG: Show which account we're saving to
-            # st.toast(f"💾 Saving to account: {client_id}", icon="💾")
-            
             # Get the date from the first row
             start_date = None
             if date_col and not df_renamed.empty:
@@ -167,22 +166,46 @@ class DataHub:
             
             saved_count = db.save_target_stats_batch(df_renamed, client_id, start_date)
             
-            # Store client_id for Account Overview
-            if 'last_stats_save' not in st.session_state:
-                st.session_state.last_stats_save = {}
-            st.session_state.last_stats_save['client_id'] = client_id
-            st.session_state.last_stats_save['start_date'] = start_date
-            
-            # Update global timestamp to invalidate impact cache
-            st.session_state['data_upload_timestamp'] = datetime.now().timestamp()
-            
-            return True, f"Loaded & Saved {saved_count:,} rows to Account '{client_id}' ({len(col_map)} cols mapped)"
+            # VERIFY the save worked
+            if saved_count > 0:
+                save_success = True
+                
+                # Store client_id for Account Overview
+                if 'last_stats_save' not in st.session_state:
+                    st.session_state.last_stats_save = {}
+                st.session_state.last_stats_save['client_id'] = client_id
+                st.session_state.last_stats_save['start_date'] = start_date
+                st.session_state.last_stats_save['saved_count'] = saved_count
+                st.session_state.last_stats_save['timestamp'] = datetime.now()
+                st.session_state.last_stats_save['success'] = True
+                
+                # Update global timestamp to invalidate impact cache
+                st.session_state['data_upload_timestamp'] = datetime.now().timestamp()
+                
+                # Show success prominently
+                st.success(f"✅ Successfully saved {saved_count:,} rows to database!")
+                
+                return True, f"Loaded & Saved {saved_count:,} rows to Account '{client_id}' ({len(col_map)} cols mapped)"
+            else:
+                save_error = "save_target_stats_batch returned 0 rows"
+                raise Exception(save_error)
             
         except Exception as e:
-            # Fallback to just memory if DB fails, but warn
-            st.warning(f"Data saved to memory but DB save failed: {e}")
-            return True, f"Loaded {len(df_renamed):,} rows (Mem only), {len(col_map)} cols mapped"
+            save_error = str(e)
+            # Mark save as failed in session state
+            if 'last_stats_save' not in st.session_state:
+                st.session_state.last_stats_save = {}
+            st.session_state.last_stats_save['success'] = False
+            st.session_state.last_stats_save['error'] = save_error
+            st.session_state.last_stats_save['timestamp'] = datetime.now()
+            
+            # Show ERROR prominently - user MUST see this
+            st.error(f"⚠️ DATABASE SAVE FAILED! Data is in memory only and will be LOST on restart. Error: {e}")
+            st.warning("Please try uploading again or check database connection.")
+            
+            return True, f"Loaded {len(df_renamed):,} rows (⚠️ NOT SAVED TO DB - {save_error})"
     
+
     def _populate_asin_cache(self, df: pd.DataFrame):
         """Populate ASIN cache with user's own products to prevent API lookups."""
         if df is None:
@@ -499,11 +522,40 @@ class DataHub:
             
             df_renamed = df.rename(columns=column_mapping)
             
-            # If CST is missing or empty, fallback to Targeting for harvest
+            # ========================================================
+            # CRITICAL FIX: Create 'Customer Search Term' from Targeting
+            # For raw file uploads, CST contains clean ASINs like "B0DF472VMZ"
+            # For DB data, Targeting contains "asin=\"B0DF472VMZ\""
+            # Strip the prefix to match raw file behavior for consistent ASIN detection
+            # ========================================================
             if 'Customer Search Term' not in df_renamed.columns or df_renamed['Customer Search Term'].isna().all():
                 if 'Targeting' in df_renamed.columns:
-                    df_renamed['Customer Search Term'] = df_renamed['Targeting']
+                    import re
+                    
+                    def extract_clean_cst(targeting):
+                        """Extract clean Customer Search Term from targeting expression.
+                        Strips asin=, asin-expanded=, category= prefixes and quotes.
+                        """
+                        if pd.isna(targeting):
+                            return targeting
+                        t = str(targeting).strip()
+                        
+                        # Handle asin="..." or asin-expanded="..."
+                        asin_match = re.match(r'^asin(?:-expanded)?=["\']?([A-Z0-9]{10})["\']?$', t, re.IGNORECASE)
+                        if asin_match:
+                            return asin_match.group(1).upper()
+                        
+                        # Handle category="..." - extract category name
+                        cat_match = re.match(r'^category=["\']?(.+?)["\']?$', t, re.IGNORECASE)
+                        if cat_match:
+                            return cat_match.group(1)
+                        
+                        # Return as-is for keywords and other targeting
+                        return t
+                    
+                    df_renamed['Customer Search Term'] = df_renamed['Targeting'].apply(extract_clean_cst)
             
+
             st.session_state.unified_data['search_term_report'] = df_renamed
             st.session_state.unified_data['upload_status']['search_term_report'] = True
             st.session_state.unified_data['upload_timestamps']['search_term_report'] = datetime.now()

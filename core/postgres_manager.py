@@ -319,26 +319,26 @@ class PostgresManager:
             return 0
         
         # ==========================================
-        # CRITICAL: Auto campaign detection
+        # DUAL COLUMN STRATEGY
         # ==========================================
-        # For auto campaigns, use "Targeting" column (close-match, loose-match, etc.)
-        # NOT "Customer Search Term" (which has ASINs/search queries)
+        # target_text = Targeting expression (close-match, asin=, keyword) → FOR BIDS
+        # customer_search_term = Actual search query → FOR HARVEST/NEGATIVE
+        #
+        # We need BOTH columns:
+        # - Bids for auto campaigns must use targeting type (close-match, loose-match)
+        # - Harvest detection needs actual search queries
+        
+        # Column for BIDDING (targeting types, keywords, ASINs)
         target_col = None
+        for col in ['Targeting', 'Customer Search Term', 'Keyword Text']:
+            if col in df.columns and not df[col].isna().all():
+                target_col = col
+                break
         
-        # Check if we have auto campaigns
-        has_auto = False
-        if 'Match Type' in df.columns:
-            has_auto = df['Match Type'].astype(str).str.lower().isin(['auto', '-']).any()
-        
-        if has_auto and 'Targeting' in df.columns:
-            # For auto campaigns, prioritize Targeting column
-            target_col = 'Targeting'
-        else:
-            # For other campaigns, look for these columns in order
-            for col in ['Customer Search Term', 'Targeting', 'Keyword Text']:
-                if col in df.columns:
-                    target_col = col
-                    break
+        # Column for HARVEST/NEGATIVE (actual search queries)
+        cst_col = None
+        if 'Customer Search Term' in df.columns and not df['Customer Search Term'].isna().all():
+            cst_col = 'Customer Search Term'
         
         if target_col is None:
             return 0
@@ -369,18 +369,8 @@ class PostgresManager:
         # Create working copy
         df_copy = df.copy()
         
-        # ==========================================
-        # DUAL COLUMN HANDLING: Targeting + CST
-        # ==========================================
-        # Re-determine target_col with full logic
-        if 'Targeting' in df_copy.columns:
-            target_col = 'Targeting'
-        elif 'Customer Search Term' in df_copy.columns:
-            target_col = 'Customer Search Term'
-        elif 'Keyword Text' in df_copy.columns:
-            target_col = 'Keyword Text'
-        else:
-            return 0
+        
+        # Note: target_col is already determined above, prioritizing Customer Search Term
         
         # ==========================================
         # WEEKLY SPLITTING LOGIC
@@ -418,6 +408,12 @@ class PostgresManager:
         df_copy['_ag_norm'] = df_copy['Ad Group Name'].astype(str).str.lower().str.strip()
         df_copy['_target_norm'] = df_copy[target_col].astype(str).str.lower().str.strip()
         
+        # Add CST normalization for harvest/negative detection
+        if cst_col:
+            df_copy['_cst_norm'] = df_copy[cst_col].astype(str).str.lower().str.strip()
+        else:
+            df_copy['_cst_norm'] = df_copy['_target_norm']  # Fallback to target if no CST
+        
         total_saved = 0
         
         for week_start in weeks:
@@ -428,11 +424,12 @@ class PostgresManager:
             if week_data.empty:
                 continue
             
-            grouped = week_data.groupby(['_camp_norm', '_ag_norm', '_target_norm']).agg(agg_cols).reset_index()
+            # Group by Campaign/AdGroup/Target/CST to preserve search term granularity
+            grouped = week_data.groupby(['_camp_norm', '_ag_norm', '_target_norm', '_cst_norm']).agg(agg_cols).reset_index()
             
             week_start_str = week_start.isoformat() if isinstance(week_start, date) else str(week_start)[:10]
             
-            # Prepare records for bulk insert
+            # Prepare records for bulk insert (now includes CST)
             records = []
             for _, row in grouped.iterrows():
                 match_type_norm = str(row.get('Match Type', '')).lower().strip()
@@ -442,6 +439,7 @@ class PostgresManager:
                     row['_camp_norm'],
                     row['_ag_norm'],
                     row['_target_norm'],
+                    row['_cst_norm'],  # NEW: customer_search_term
                     match_type_norm,
                     float(row.get('Spend', 0) or 0),
                     float(row.get('Sales', 0) or 0),
@@ -456,9 +454,9 @@ class PostgresManager:
                         execute_values(cursor, """
                             INSERT INTO target_stats 
                             (client_id, start_date, campaign_name, ad_group_name, target_text, 
-                             match_type, spend, sales, orders, clicks, impressions)
+                             customer_search_term, match_type, spend, sales, orders, clicks, impressions)
                             VALUES %s
-                            ON CONFLICT (client_id, start_date, campaign_name, ad_group_name, target_text) 
+                            ON CONFLICT ON CONSTRAINT target_stats_unique_row 
                             DO UPDATE SET
                                 spend = EXCLUDED.spend,
                                 sales = EXCLUDED.sales,
@@ -490,7 +488,14 @@ class PostgresManager:
             query = "SELECT * FROM target_stats WHERE client_id = %s ORDER BY start_date DESC LIMIT %s"
             return pd.read_sql_query(query, conn, params=(account_id, limit))
 
+    @retry_on_connection_error()
     def get_target_stats_df(self, client_id: str = 'default_client') -> pd.DataFrame:
+        """Get large historical dataset with caching."""
+        cache_key = f'target_stats_df_{client_id}'
+        cached = _query_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         with self._get_connection() as conn:
             query = """
                 SELECT 
@@ -498,6 +503,7 @@ class PostgresManager:
                     campaign_name as "Campaign Name",
                     ad_group_name as "Ad Group Name",
                     target_text as "Targeting",
+                    customer_search_term as "Customer Search Term",
                     match_type as "Match Type",
                     spend as "Spend",
                     sales as "Sales",
@@ -511,7 +517,10 @@ class PostgresManager:
             df = pd.read_sql(query, conn, params=(client_id,))
             if not df.empty and 'Date' in df.columns:
                 df['Date'] = pd.to_datetime(df['Date'])
-            return df
+        
+        _query_cache.set(cache_key, df)
+        return df
+    
             
     def get_stats_by_date_range(self, start_date: date, end_date: date, client_id: Optional[str] = None) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
@@ -857,10 +866,6 @@ class PostgresManager:
                 row = cursor.fetchone()
                 return dict(row) if row else None
 
-    # ==========================================
-    # IMPACT DASHBOARD METHODS
-    # ==========================================
-    
     @retry_on_connection_error()
     def get_available_dates(self, client_id: str) -> List[str]:
         """Get list of unique action dates for a client with caching."""
@@ -882,21 +887,16 @@ class PostgresManager:
         _query_cache.set(cache_key, result)
         return result
     
+    @retry_on_connection_error()
     def get_action_impact(self, client_id: str, window_days: int = 7) -> pd.DataFrame:
         """
-        Calculate impact using rule-based expected outcomes.
-        
-        CLEAN FIXED-WINDOW APPROACH:
-        - AFTER window: Last 7 days of available data (e.g., Dec 10-16)
-        - BEFORE window: Previous 7 days (e.g., Dec 3-9)
-        - Eligible actions: Actions taken BEFORE the AFTER window starts
-        
-        Rules:
-        - NEGATIVE → After = $0 (blocked)
-        - HARVEST → Source After = $0, 10% lift
-        - BID_CHANGE → Use observed (can't predict)
-        - PAUSE → After = $0
+        Calculate impact using rule-based expected outcomes with caching.
         """
+        cache_key = f'impact_{client_id}_{window_days}'
+        cached = _query_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         # Calculate intervals based on window_days
         # W=7 -> after_start = latest-6, before_end = latest-7, before_start = latest-13
         w = window_days
@@ -921,7 +921,8 @@ class PostgresManager:
                     LOWER(target_text) as target_lower, 
                     LOWER(campaign_name) as campaign_lower,
                     SUM(spend) as spend, 
-                    SUM(sales) as sales
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks
                 FROM target_stats t
                 CROSS JOIN date_range dr
                 WHERE t.client_id = %(client_id)s 
@@ -935,7 +936,8 @@ class PostgresManager:
                     LOWER(target_text) as target_lower, 
                     LOWER(campaign_name) as campaign_lower,
                     SUM(spend) as spend, 
-                    SUM(sales) as sales
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks
                 FROM target_stats t
                 CROSS JOIN date_range dr
                 WHERE t.client_id = %(client_id)s 
@@ -974,7 +976,8 @@ class PostgresManager:
                 a.action_type, 
                 a.target_text, 
                 a.campaign_name,
-                a.ad_group_name, 
+                a.ad_group_name,
+                a.match_type,
                 a.old_value, 
                 a.new_value, 
                 a.reason,
@@ -984,8 +987,10 @@ class PostgresManager:
                 dr.latest_date as after_end_date,
                 COALESCE(bs.spend, bc.spend, 0) as before_spend,
                 COALESCE(bs.sales, bc.sales, 0) as before_sales,
+                COALESCE(bs.clicks, 0) as before_clicks,
                 COALESCE(afs.spend, ac.spend, 0) as observed_after_spend,
                 COALESCE(afs.sales, ac.sales, 0) as observed_after_sales,
+                COALESCE(afs.clicks, 0) as after_clicks,
                 CASE WHEN bs.spend IS NOT NULL THEN 'target' ELSE 'campaign' END as match_level
             FROM actions_log a
             CROSS JOIN date_range dr
@@ -1015,6 +1020,7 @@ class PostgresManager:
             })
         
         if df.empty:
+            _query_cache.set(cache_key, df)
             return df
         
         # Normalize action types
@@ -1142,46 +1148,86 @@ class PostgresManager:
             b_sales = df.at[idx, 'before_sales']
             a_spend = df.at[idx, 'observed_after_spend']
             a_sales = df.at[idx, 'observed_after_sales']
+            b_clicks = df.at[idx, 'before_clicks'] if 'before_clicks' in df.columns else 0
+            a_clicks = df.at[idx, 'after_clicks'] if 'after_clicks' in df.columns else 0
+            
+            # Calculate actual CPCs
+            before_cpc = b_spend / b_clicks if b_clicks > 0 else 0
+            after_cpc = a_spend / a_clicks if a_clicks > 0 else 0
+            
+            # Get suggested bid from new_value
+            new_value_str = str(df.at[idx, 'new_value']).strip()
+            try:
+                suggested_bid = float(new_value_str.replace('$', '').replace(',', ''))
+            except:
+                suggested_bid = 0
             
             r_before = b_sales / b_spend if b_spend > 0 else 0
             r_after = a_sales / a_spend if a_spend > 0 else 0
             
-            # Impact = incremental revenue at baseline spend
-            df.at[idx, 'impact_score'] = b_spend * (r_after - r_before)
+            # LAYER 1: CPC-based validation (primary check)
+            # Check if actual after_cpc matches suggested bid within tolerance (±20%)
+            cpc_validated = False
+            cpc_tolerance = 0.20  # 20% tolerance
             
-            # LAYER 2: Check directional match (using spend change as CPC proxy)
+            if suggested_bid > 0 and after_cpc > 0:
+                cpc_match_ratio = after_cpc / suggested_bid
+                if 1 - cpc_tolerance <= cpc_match_ratio <= 1 + cpc_tolerance:
+                    cpc_validated = True
+            
+            # LAYER 2: Fallback - directional check (using CPC change direction)
             bid_direction = parse_bid_direction(df.loc[idx])
-            spend_change = (a_spend / b_spend - 1) if b_spend > 0 else 0
-            
-            # Determine directional match only if we have direction info
-            if bid_direction == 'DOWN' and spend_change < 0:
-                directional_match = True
-            elif bid_direction == 'UP' and spend_change > 0:
-                directional_match = True
-            elif bid_direction == 'UNKNOWN':
-                directional_match = None  # Can't determine, fallback to Layer 3 only
+            if before_cpc > 0 and after_cpc > 0:
+                cpc_change_pct = (after_cpc - before_cpc) / before_cpc
+                if bid_direction == 'DOWN' and cpc_change_pct < -0.05:  # CPC dropped by >5%
+                    directional_match = True
+                elif bid_direction == 'UP' and cpc_change_pct > 0.05:  # CPC increased by >5%
+                    directional_match = True
+                elif bid_direction == 'UNKNOWN':
+                    directional_match = None
+                else:
+                    directional_match = False
             else:
-                directional_match = False
+                directional_match = None
             
             # LAYER 3: Normalized winner (beat account baseline)
             target_roas_change = (r_after / r_before - 1) if r_before > 0 else 0
             beat_baseline = target_roas_change > baseline_roas_change
             
+            # Calculate impact based on validation status
+            delta_sales = a_sales - b_sales
+            
+            # Require minimum clicks for reliable ROAS-based impact calculation
+            # Low clicks = unreliable CPC/ROAS, use delta_sales instead
+            min_clicks_for_roas = 5
+            has_enough_data = (b_clicks >= min_clicks_for_roas and a_clicks >= min_clicks_for_roas)
+            
+            if (cpc_validated or directional_match is True) and has_enough_data:
+                # Validated with sufficient data: Use ROAS-based impact, capped
+                roas_impact = b_spend * (r_after - r_before)
+                # Cap at 2x the actual delta_sales to prevent inflation
+                max_impact = abs(delta_sales) * 2 if delta_sales != 0 else abs(roas_impact)
+                impact_score = max(min(roas_impact, max_impact), -max_impact) if roas_impact != 0 else delta_sales
+                df.at[idx, 'impact_score'] = impact_score
+            else:
+                # Not validated OR insufficient data: Use actual delta_sales (conservative)
+                df.at[idx, 'impact_score'] = delta_sales
+            
             # Set validation status based on layers
-            if a_spend == 0:
+            if a_clicks == 0 or a_spend == 0:
                 df.at[idx, 'validation_status'] = '◐ No after data'
+            elif cpc_validated and beat_baseline:
+                df.at[idx, 'validation_status'] = '✓ CPC Match + Baseline'
+            elif cpc_validated:
+                df.at[idx, 'validation_status'] = '✓ CPC Validated'
             elif directional_match is True and beat_baseline:
-                df.at[idx, 'validation_status'] = '✓ Directional + Normalized'
+                df.at[idx, 'validation_status'] = '✓ Directional + Baseline'
             elif directional_match is True:
                 df.at[idx, 'validation_status'] = '✓ Directional match'
-            elif directional_match is None and beat_baseline:
-                # Fallback: No direction info but beat baseline
-                df.at[idx, 'validation_status'] = '✓ Beat baseline'
             elif beat_baseline:
                 df.at[idx, 'validation_status'] = '◐ Beat baseline only'
             else:
-                df.at[idx, 'validation_status'] = '⚠️ No validation match'
-                df.at[idx, 'validation_status'] = '⚠️ No validation match'
+                df.at[idx, 'validation_status'] = '⚠️ Not validated'
         
         # RULE 4: PAUSE → Incremental loss = -before_sales (minus what you saved in spend)
         pause_mask = df['action_type'].str.contains('PAUSE', na=False)
@@ -1219,7 +1265,6 @@ class PostgresManager:
         # Store original impact for display, then zero out for totals
         df['potential_impact'] = df['impact_score'].copy()  # What it WOULD have been
         df.loc[not_impl_mask, 'impact_score'] = 0  # Zero for not implemented
-
         
         # ==========================================
         # DEDUPLICATION: Prevent counting same impact multiple times
@@ -1244,6 +1289,7 @@ class PostgresManager:
         if before_count > after_count:
             print(f"Deduplicated: {before_count} → {after_count} actions (removed {before_count - after_count} duplicates)")
         
+        _query_cache.set(cache_key, df)
         return df
     
     def get_impact_summary(self, client_id: str, window_days: int = 7) -> Dict[str, Any]:
@@ -1268,32 +1314,37 @@ class PostgresManager:
         total_actions = len(impact_df)
         
         # ==========================================
-        # ROAS ANALYTICS (for BID_CHANGE actions with valid data)
+        # ROAS ANALYTICS (for VALIDATED BID_CHANGE actions only)
         # ==========================================
-        bid_df = impact_df[impact_df['action_type'].str.contains('BID', na=False)].copy()
-        bid_df = bid_df[(bid_df['before_spend'] > 0) & (bid_df['before_sales'] > 0)]
-        bid_df = bid_df[bid_df['observed_after_spend'] > 0]
+        # Only use validated actions for ROAS lift calculation
+        validated_mask = impact_df['validation_status'].str.contains('✓|CPC Validated|CPC Match|Directional|Confirmed', na=False, regex=True)
+        bid_mask = impact_df['action_type'].str.contains('BID', na=False)
         
-        if len(bid_df) > 5:
-            # Aggregate ROAS (weighted by spend)
-            total_before_spend = bid_df['before_spend'].sum()
-            total_after_spend = bid_df['observed_after_spend'].sum()
-            total_before_sales = bid_df['before_sales'].sum()
-            total_after_sales = bid_df['observed_after_sales'].sum()
+        validated_bid_df = impact_df[validated_mask & bid_mask].copy()
+        validated_bid_df = validated_bid_df[(validated_bid_df['before_spend'] > 0) & (validated_bid_df['before_sales'] > 0)]
+        validated_bid_df = validated_bid_df[validated_bid_df['observed_after_spend'] > 0]
+        
+        if len(validated_bid_df) > 5:
+            # Aggregate ROAS (weighted by spend) - VALIDATED ONLY
+            total_before_spend = validated_bid_df['before_spend'].sum()
+            total_after_spend = validated_bid_df['observed_after_spend'].sum()
+            total_before_sales = validated_bid_df['before_sales'].sum()
+            total_after_sales = validated_bid_df['observed_after_sales'].sum()
             
             roas_before = total_before_sales / total_before_spend if total_before_spend > 0 else 0
             roas_after = total_after_sales / total_after_spend if total_after_spend > 0 else 0
             roas_lift_pct = ((roas_after - roas_before) / roas_before * 100) if roas_before > 0 else 0
             
-            # Incremental revenue = what you'd gain at same spend with new efficiency
-            incremental_revenue = roas_lift_pct / 100 * total_before_spend * roas_before
+            # Incremental revenue = Before_Spend × (ROAS_After - ROAS_Before)
+            # This is the classic incrementality formula
+            incremental_revenue = total_before_spend * (roas_after - roas_before)
             
             # Statistical significance (t-test on per-action ROAS % change)
-            bid_df['roas_change_pct'] = (bid_df['observed_after_sales'] / bid_df['observed_after_spend'] - 
-                                         bid_df['before_sales'] / bid_df['before_spend']) / \
-                                        (bid_df['before_sales'] / bid_df['before_spend'])
+            validated_bid_df['roas_change_pct'] = (validated_bid_df['observed_after_sales'] / validated_bid_df['observed_after_spend'] - 
+                                         validated_bid_df['before_sales'] / validated_bid_df['before_spend']) / \
+                                        (validated_bid_df['before_sales'] / validated_bid_df['before_spend'])
             # Remove extreme outliers
-            valid = bid_df[(bid_df['roas_change_pct'] > -0.95) & (bid_df['roas_change_pct'] < 10)]['roas_change_pct']
+            valid = validated_bid_df[(validated_bid_df['roas_change_pct'] > -0.95) & (validated_bid_df['roas_change_pct'] < 10)]['roas_change_pct']
             
             if len(valid) > 2:
                 t_stat, p_value = scipy_stats.ttest_1samp(valid, 0)
@@ -1309,18 +1360,19 @@ class PostgresManager:
             p_value, is_significant, confidence_pct = 1.0, False, 0
         
         # ==========================================
-        # IMPLEMENTATION RATE
+        # IMPLEMENTATION RATE (confirmed / total_actions)
         # ==========================================
-        # Updated patterns to recognize new layered validation statuses
-        not_implemented = impact_df['validation_status'].str.contains('NOT IMPLEMENTED|Source still active|Still has spend|No validation match', na=False, regex=True)
-        confirmed = impact_df['validation_status'].str.contains('✓|Directional|Normalized|Observed', na=False, regex=True)
+        # Updated patterns to recognize new CPC-based validation statuses
+        not_implemented = impact_df['validation_status'].str.contains('NOT IMPLEMENTED|Source still active|Still has spend|Not validated', na=False, regex=True)
+        confirmed = impact_df['validation_status'].str.contains('✓|CPC Validated|CPC Match|Directional|Normalized|Confirmed', na=False, regex=True)
         pending = impact_df['validation_status'].str.contains('Unverified|Preventative|Beat baseline only|No after data', na=False, regex=True)
         
         confirmed_count = confirmed.sum()
         not_impl_count = not_implemented.sum()
         pending_count = pending.sum()
         
-        impl_rate = (confirmed_count / (confirmed_count + not_impl_count) * 100) if (confirmed_count + not_impl_count) > 0 else 0
+        # Implementation rate = confirmed / total actions (not just confirmed + not_impl)
+        impl_rate = (confirmed_count / total_actions * 100) if total_actions > 0 else 0
         
         # ==========================================
         # WIN RATE & BY ACTION TYPE
@@ -1353,7 +1405,7 @@ class PostgresManager:
             'roas_before': round(roas_before, 2),
             'roas_after': round(roas_after, 2),
             'roas_lift_pct': round(roas_lift_pct, 1), # Will be labeled "ROAS Change" in UI
-            'incremental_revenue': round(revenue_impact, 2), # Primary metric
+            'incremental_revenue': round(incremental_revenue, 2), # ROAS-based: Before_Spend × (ROAS_After - ROAS_Before)
             # Statistical Significance
             'p_value': round(p_value, 4),
             'is_significant': is_significant,

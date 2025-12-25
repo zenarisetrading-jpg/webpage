@@ -37,29 +37,6 @@ def render_downloads_tab(results: Dict, group_issues_fn=None) -> None:
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("""
-    <p style="color: #B6B4C2; font-size: 0.95rem; margin-bottom: 24px;">
-        Download formatted Amazon Bulk Files to apply these optimizations instantly. Only valid and actionable records are included.
-    </p>
-    """, unsafe_allow_html=True)
-    
-    # --- VALIDATION SUMMARY ---
-    all_recs = []
-    for df_name in ["neg_kw", "neg_pt", "bids_exact", "bids_pt", "bids_agg", "bids_auto"]:
-        df = results.get(df_name)
-        if df is not None and 'recommendation' in df.columns:
-            all_recs.extend(df['recommendation'].dropna().tolist())
-    
-    if all_recs:
-        valid_count = len([r for r in all_recs if r.is_valid and not r.warnings])
-        warning_count = len([r for r in all_recs if r.is_valid and r.warnings])
-        blocked_count = len([r for r in all_recs if not r.is_valid])
-        
-        c1, c2, c3 = st.columns(3)
-        with c1: st.metric("Valid (Ready)", valid_count)
-        with c2: st.metric("Review (Warnings)", warning_count)
-        with c3: st.metric("Blocked (Invalid)", blocked_count)
-        st.divider()
     
     # 1. Negative Keywords + PT (combined)
     neg_kw = results.get("neg_kw", pd.DataFrame())

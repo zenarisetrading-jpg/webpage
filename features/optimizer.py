@@ -383,11 +383,15 @@ def identify_harvest_candidates(
     # NOT Targeting (which contains targeting expressions like close-match, category=, etc.)
     harvest_column = "Customer Search Term" if "Customer Search Term" in discovery_df.columns else "Targeting"
     
+    # PT PREFIX STRIPPING: Strip asin= and asin-expanded= prefixes so clean ASINs can be harvested
+    from features.bulk_export import strip_targeting_prefix
+    discovery_df[harvest_column] = discovery_df[harvest_column].apply(strip_targeting_prefix)
+    
     # CRITICAL: Filter OUT targeting expressions that are NOT actual search queries
-    # These should NOT be harvested as keywords
+    # NOTE: asin= and asin-expanded= are now ALLOWED after prefix stripping
     targeting_expression_patterns = [
         r'^close-match$', r'^loose-match$', r'^substitutes$', r'^complements$', r'^auto$',
-        r'^asin=', r'^asin-expanded=', r'^category=', r'^keyword-group=',
+        r'^category=', r'^keyword-group=',  # PT (asin=) now allowed
     ]
     
     # Create mask for rows that are actual search queries (not targeting expressions)
@@ -718,26 +722,30 @@ def identify_negative_candidates(
             harvest_df["Customer Search Term"].astype(str).str.strip().str.lower()
         )
         
+        # Strip PT prefixes from main df for accurate matching
+        from features.bulk_export import strip_targeting_prefix
+        df_cst_clean = df["Customer Search Term"].apply(strip_targeting_prefix).astype(str).str.strip().str.lower()
+        
         # Find all occurrences in non-exact campaigns
         isolation_mask = (
-            df["Customer Search Term"].astype(str).str.strip().str.lower().isin(harvested_terms) &
+            df_cst_clean.isin(harvested_terms) &
             (~df["Match Type"].str.contains("exact", case=False, na=False))
         )
         
         isolation_df = df[isolation_mask].copy()
+        # Store the cleaned term for grouping
+        isolation_df["_cst_clean"] = df_cst_clean[isolation_mask]
         
         # Aggregate logic for Isolation Negatives (Fix for "metrics broken down by date")
         if not isolation_df.empty:
-            # Group by lowercased term to avoid case-based duplicates
-            isolation_df['_term_norm_group'] = isolation_df['Customer Search Term'].astype(str).str.strip().str.lower()
-            
+            # Group by CLEANED term to match harvest (prefixes already stripped)
             agg_cols = {"Clicks": "sum", "Spend": "sum"}
             meta_cols = {c: "first" for c in ["CampaignId", "AdGroupId", "KeywordId", "TargetingId", "Campaign Targeting Type"] if c in isolation_df.columns}
             
             isolation_agg = isolation_df.groupby(
-                ["Campaign Name", "Ad Group Name", "_term_norm_group"], as_index=False
+                ["Campaign Name", "Ad Group Name", "_cst_clean"], as_index=False
             ).agg({**agg_cols, **meta_cols})
-            isolation_agg = isolation_agg.rename(columns={"_term_norm_group": "Customer Search Term"})
+            isolation_agg = isolation_agg.rename(columns={"_cst_clean": "Customer Search Term"})
             
             # Get winner campaign for each term (to exclude from negation)
             winner_camps = dict(zip(

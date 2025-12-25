@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from typing import Optional, Dict, Any
 from ui.components import metric_card
+from utils.formatters import get_account_currency
 
 from features._base import BaseFeature
 
@@ -113,13 +114,14 @@ class SimulatorModule(BaseFeature):
 
         # Row 2: Spend & Sales (4 columns)
         c1, c2, c3, c4 = st.columns(4)
-        with c1: metric_card("Monthly Spend", f"AED {current_monthly['spend']:,.0f}", "shield")
-        with c2: metric_card("Monthly Sales", f"AED {current_monthly['sales']:,.0f}", "trending_up")
+        currency = get_account_currency()
+        with c1: metric_card("Monthly Spend", f"{currency} {current_monthly['spend']:,.0f}", "shield")
+        with c2: metric_card("Monthly Sales", f"{currency} {current_monthly['sales']:,.0f}", "trending_up")
         
         spend_chg = pct_change(expected_monthly["spend"], current_monthly["spend"])
         sales_chg = pct_change(expected_monthly["sales"], current_monthly["sales"])
-        with c3: metric_card("Monthly Spend", f"AED {expected_monthly['spend']:,.0f}", "shield", delta=f"{spend_chg:+.1f}%")
-        with c4: metric_card("Monthly Sales", f"AED {expected_monthly['sales']:,.0f}", "trending_up", delta=f"{sales_chg:+.1f}%")
+        with c3: metric_card("Monthly Spend", f"{currency} {expected_monthly['spend']:,.0f}", "shield", delta=f"{spend_chg:+.1f}%")
+        with c4: metric_card("Monthly Sales", f"{currency} {expected_monthly['sales']:,.0f}", "trending_up", delta=f"{sales_chg:+.1f}%")
 
         # Row 3: ROAS & Orders (4 columns)
         m1, m2, m3, m4 = st.columns(4)
@@ -169,13 +171,13 @@ class SimulatorModule(BaseFeature):
         
         scenario_df = pd.DataFrame({
             "Scenario": ["Current", "Conservative (15%)", "Expected (70%)", "Aggressive (15%)"],
-            "Spend (AED)": [
+            f"Spend ({currency})": [
                 current.get("spend", 0) * weekly_to_monthly,
                 conservative.get("spend", 0) * weekly_to_monthly,
                 expected.get("spend", 0) * weekly_to_monthly,
                 aggressive.get("spend", 0) * weekly_to_monthly
             ],
-            "Sales (AED)": [
+            f"Sales ({currency})": [
                 current.get("sales", 0) * weekly_to_monthly,
                 conservative.get("sales", 0) * weekly_to_monthly,
                 expected.get("sales", 0) * weekly_to_monthly,
@@ -193,8 +195,8 @@ class SimulatorModule(BaseFeature):
         
         st.dataframe(
             scenario_df.style.format({
-                "Spend (AED)": "{:,.0f}",
-                "Sales (AED)": "{:,.0f}",
+                f"Spend ({currency})": "{:,.0f}",
+                f"Sales ({currency})": "{:,.0f}",
                 "ROAS": "{:.2f}x",
                 "Orders": "{:.0f}",
                 "ACoS": "{:.1f}%"
@@ -226,7 +228,7 @@ class SimulatorModule(BaseFeature):
                 line=dict(color="#7C3AED", width=3),
                 marker=dict(size=8, color="#5B556F", line=dict(width=2, color="white")),
                 text=sensitivity_df["Bid_Adjustment"],
-                hovertemplate="<b>%{text}</b><br>Projected Spend: AED %{x:,.0f}<br>Projected Sales: AED %{y:,.0f}<extra></extra>"
+                hovertemplate=f"<b>%{{text}}</b><br>Projected Spend: {currency} %{{x:,.0f}}<br>Projected Sales: {currency} %{{y:,.0f}}<extra></extra>"
             ))
             
             fig.update_layout(
@@ -235,13 +237,13 @@ class SimulatorModule(BaseFeature):
                 margin=dict(l=0, r=0, t=10, b=0),
                 height=400,
                 xaxis=dict(
-                    title="Avg Weekly Spend (AED)",
+                    title=f"Avg Weekly Spend ({currency})",
                     gridcolor='rgba(143, 140, 163, 0.1)',
                     zerolinecolor='rgba(143, 140, 163, 0.2)',
                     tickfont=dict(color='#8F8CA3')
                 ),
                 yaxis=dict(
-                    title="Avg Weekly Sales (AED)",
+                    title=f"Avg Weekly Sales ({currency})",
                     gridcolor='rgba(143, 140, 163, 0.1)',
                     zerolinecolor='rgba(143, 140, 163, 0.2)',
                     tickfont=dict(color='#8F8CA3')

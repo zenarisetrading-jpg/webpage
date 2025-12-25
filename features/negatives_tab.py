@@ -42,7 +42,7 @@ def render_negatives_tab(neg_kw: pd.DataFrame, neg_pt: pd.DataFrame, extract_val
     if 'active_neg_tab' not in st.session_state:
         st.session_state['active_neg_tab'] = "Keyword Negatives"
     
-    # Use horizontal radio for clean tertiary navigation
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
     active_neg = st.radio(
         "Select Negative Type",
         options=["🛑 Keyword Negatives", "🎯 Product Targeting Negatives"],
@@ -50,6 +50,7 @@ def render_negatives_tab(neg_kw: pd.DataFrame, neg_pt: pd.DataFrame, extract_val
         horizontal=True,
         key="neg_radio_nav"
     )
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
     st.session_state['active_neg_tab'] = active_neg.split(" ", 1)[1]  # Strip emoji
 
 

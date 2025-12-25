@@ -115,11 +115,17 @@ def render_data_hub():
                     if confirm:
                         with st.spinner("Processing..."):
                             success, message = hub.upload_search_term_report(str_file)
+                            # Store result in session state so it persists across rerun
+                            st.session_state['last_upload_result'] = {'success': success, 'message': message, 'time': datetime.now()}
                             if success:
                                 st.success(f"✅ {message}")
+                                # Add small delay so user sees the message before rerun
+                                import time
+                                time.sleep(1.5)
                                 st.rerun()
                             else:
                                 st.error(f"❌ {message}")
+
     
     with row1_col2:
         adv_metric = f"{summary.get('unique_asins', 0):,} ASINs" if status['advertised_product_report'] else "—"

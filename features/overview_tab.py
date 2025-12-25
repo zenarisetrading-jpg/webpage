@@ -78,17 +78,20 @@ def render_overview_tab(results: Dict) -> None:
         """, unsafe_allow_html=True)
         
         # Display forecast metrics
+        from utils.formatters import get_account_currency
+        currency = get_account_currency()
+        
         c1, c2, c3, c4 = st.columns(4)
         
         with c1:
             spend_change = summary.get('spend_change_pct', 0)
             st.metric("Spend Change", f"{spend_change:+.1f}%", 
-                     delta=f"${summary.get('spend_change_abs', 0):,.2f}")
+                     delta=f"{currency}{summary.get('spend_change_abs', 0):,.2f}")
         
         with c2:
             sales_change = summary.get('sales_change_pct', 0)
             st.metric("Sales Change", f"{sales_change:+.1f}%",
-                     delta=f"${summary.get('sales_change_abs', 0):,.2f}")
+                     delta=f"{currency}{summary.get('sales_change_abs', 0):,.2f}")
         
         with c3:
             roas_new = summary.get('roas_new', 0)
@@ -99,7 +102,7 @@ def render_overview_tab(results: Dict) -> None:
         
         with c4:
             profit_impact = summary.get('profit_impact', 0)
-            st.metric("Profit Impact", f"${profit_impact:,.2f}",
+            st.metric("Profit Impact", f"{currency}{profit_impact:,.2f}",
                      delta="Estimated" if profit_impact > 0 else None)
         
         st.divider()

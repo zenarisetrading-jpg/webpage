@@ -335,8 +335,10 @@ class AIInsightsModule(BaseFeature):
         display_df = cluster_df.copy()
         display_df['top_terms'] = display_df['top_terms'].apply(lambda x: ', '.join(x[:3]))  # Show top 3
         display_df['products'] = display_df['advertised_products'].apply(lambda x: ', '.join(x[:3]))  # Show top 3
-        display_df['spend'] = display_df['spend'].apply(lambda x: f"AED {x:,.2f}")
-        display_df['wasted_spend'] = display_df['wasted_spend'].apply(lambda x: f"AED {x:,.2f}")
+        from utils.formatters import get_account_currency
+        currency = get_account_currency()
+        display_df['spend'] = display_df['spend'].apply(lambda x: f"{currency} {x:,.2f}")
+        display_df['wasted_spend'] = display_df['wasted_spend'].apply(lambda x: f"{currency} {x:,.2f}")
         display_df['waste_pct'] = display_df['waste_pct'].apply(lambda x: f"{x:.1f}%")
         display_df['cvr'] = display_df['cvr'].apply(lambda x: f"{x:.2f}%")
         

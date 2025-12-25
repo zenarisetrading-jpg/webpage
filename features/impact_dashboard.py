@@ -275,9 +275,66 @@ def render_impact_dashboard():
              active_summary = full_summary
     
     # ==========================================
-    # HERO TILES (Using full_summary for ROAS metrics)
+    # UNIVERSAL VALIDATION TOGGLE
     # ==========================================
-    _render_hero_tiles(full_summary, active_count, dormant_count)
+    toggle_col1, toggle_col2 = st.columns([1, 5])
+    with toggle_col1:
+        show_validated_only = st.toggle(
+            "Validated Only", 
+            value=True, 
+            help="Show only CPC-validated actions with confirmed implementation"
+        )
+    with toggle_col2:
+        if show_validated_only:
+            st.caption("✓ Showing **validated actions only** — CPC matched suggested bid")
+        else:
+            st.caption("📊 Showing **all actions** - includes unvalidated and pending")
+    
+    # Filter based on toggle
+    validated_mask = impact_df['validation_status'].str.contains('✓|CPC Validated|CPC Match|Directional|Confirmed', na=False, regex=True)
+    display_df = impact_df[validated_mask] if show_validated_only else impact_df
+    
+    # ==========================================
+    # RECALCULATE SUMMARY FOR DISPLAY DATA
+    # ==========================================
+    if show_validated_only and not display_df.empty:
+        # Recalculate metrics for validated-only view
+        bid_df = display_df[display_df['action_type'].str.contains('BID', na=False)].copy()
+        bid_df = bid_df[(bid_df['before_spend'] > 0) & (bid_df['observed_after_spend'] > 0)]
+        
+        if len(bid_df) > 2:
+            total_before_spend = bid_df['before_spend'].sum()
+            total_after_spend = bid_df['observed_after_spend'].sum()
+            total_before_sales = bid_df['before_sales'].sum()
+            total_after_sales = bid_df['observed_after_sales'].sum()
+            
+            roas_before = total_before_sales / total_before_spend if total_before_spend > 0 else 0
+            roas_after = total_after_sales / total_after_spend if total_after_spend > 0 else 0
+            roas_lift_pct = ((roas_after - roas_before) / roas_before * 100) if roas_before > 0 else 0
+            incremental_revenue = total_before_spend * (roas_after - roas_before)
+            
+            display_summary = {
+                **full_summary,
+                'total_actions': len(display_df),
+                'roas_before': round(roas_before, 2),
+                'roas_after': round(roas_after, 2),
+                'roas_lift_pct': round(roas_lift_pct, 1),
+                'incremental_revenue': round(incremental_revenue, 2),
+                'confirmed_impact': len(display_df),
+                'implementation_rate': 100.0,
+                'before_sales': total_before_sales,
+                'after_sales': total_after_sales,
+                'before_spend': total_before_spend
+            }
+        else:
+            display_summary = {**full_summary, 'total_actions': len(display_df)}
+    else:
+        display_summary = full_summary
+    
+    # ==========================================
+    # HERO TILES (Using display_summary which respects toggle)
+    # ==========================================
+    _render_hero_tiles(display_summary, len(display_df), dormant_count)
     
     st.divider()
 
@@ -291,22 +348,19 @@ def render_impact_dashboard():
         ])
         
         with tab_measured:
-            if active_df.empty:
-                st.info("No measured impact data (all actions have $0 spend)")
+            # Filter active_df based on the universal toggle
+            active_display = display_df[(display_df['before_spend'].fillna(0) + display_df['after_spend'].fillna(0)) > 0] if not display_df.empty else display_df
+            
+            if active_display.empty:
+                st.info("No measured impact data for the selected filter")
             else:
-                # IMPACT ANALYTICS ROW 1: Waterfall + ROAS Shift
-                _render_impact_analytics(active_summary, active_df)
-                
-                st.divider()
-                
-                # IMPACT ANALYTICS ROW 2: Top Contributors
-                _render_winners_losers_chart(active_df)
-
+                # IMPACT ANALYTICS: Attribution Waterfall + Stacked Revenue Bar
+                _render_new_impact_analytics(display_summary, active_display, show_validated_only)
                 
                 st.divider()
                 
                 # Drill-down table with migration badges
-                _render_drill_down_table(active_df, show_migration_badge=True)
+                _render_drill_down_table(active_display, show_migration_badge=True)
         
         with tab_pending:
             if dormant_df.empty:
@@ -457,19 +511,21 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
         sig_icon = sig_positive if is_sig else sig_negative
         st.markdown(f"""
         <div class="hero-card">
-            <div class="hero-label">{roas_icon} ROAS Change</div>
+            <div class="hero-label">{roas_icon} ROAS Lift</div>
             <div class="hero-value" style="color: {roas_color};">{prefix}{roas_lift:.1f}%</div>
             <div class="hero-sub">{sig_icon} {'significant' if is_sig else 'not significant'}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
+        from utils.formatters import get_account_currency
+        currency = get_account_currency()
         rev_color = positive_text if incr_revenue > 0 else negative_text if incr_revenue < 0 else neutral_text
         prefix = '+' if incr_revenue > 0 else ''
         st.markdown(f"""
         <div class="hero-card">
             <div class="hero-label">{revenue_icon} Revenue Impact</div>
-            <div class="hero-value" style="color: {rev_color};">{prefix}${incr_revenue:,.0f}</div>
+            <div class="hero-value" style="color: {rev_color};">{prefix}{currency}{incr_revenue:,.0f}</div>
             <div class="hero-sub">incremental change</div>
         </div>
         """, unsafe_allow_html=True)
@@ -485,33 +541,28 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
         </div>
         """, unsafe_allow_html=True)
     
-    # Attribution callout row
-    # Find biggest contributor/drag based on INCREMENTAL impact
-    components = [
-        ('Cost Saved', cost_saved, 'NEGATIVE'),
-        ('Harvest Gains', harvest_gains, 'HARVEST'),
-        ('Bid Adjustments', bid_changes, 'BID')
-    ]
+    # Insightful callout row based on ROAS metrics
+    roas_lift = summary.get('roas_lift_pct', 0)
+    is_significant = summary.get('is_significant', False)
+    before_roas = summary.get('roas_before', 0)
+    after_roas = summary.get('roas_after', 0)
     
-    if incr_revenue >= 0:
-        biggest = max(components, key=lambda x: x[1])
-        callout_text = f"{biggest[0]} contributed <strong>${biggest[1]:,.0f}</strong> to revenue impact"
+    if incr_revenue > 0 and roas_lift > 0:
+        if is_significant:
+            callout_text = f"<strong>{roas_lift:+.1f}%</strong> ROAS improvement is statistically significant — validated across {total_actions} optimizations"
+        else:
+            callout_text = f"ROAS improved from <strong>{before_roas:.2f}x → {after_roas:.2f}x</strong> ({roas_lift:+.1f}%) on validated bid changes"
         callout_color = positive_text
-        callout_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
-    else:
-        # Find biggest drag (the most negative value)
-        drag = min(components, key=lambda x: x[1])
-        callout_text = f"{drag[0]} dragged down revenue impact by <strong>${abs(drag[1]):,.0f}</strong>"
+    elif incr_revenue < 0:
+        callout_text = f"ROAS declined <strong>{roas_lift:.1f}%</strong> — review bid strategies or wait for more data"
         callout_color = negative_text
-        callout_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'
+    else:
+        callout_text = f"Impact is break-even — continue monitoring validated actions"
+        callout_color = neutral_text
     
     win_rate = summary.get('win_rate', 0)
     confirmed = summary.get('confirmed_impact', 0)
     pending = summary.get('pending', 0)
-    
-    # Activity icon for measured/pending
-    activity_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>'
-    target_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'
     
     wr_color = positive_text if win_rate >= 60 else negative_text if win_rate < 40 else neutral_text
     
@@ -519,17 +570,243 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
     <div style="background: rgba(143, 140, 163, 0.05); border: 1px solid rgba(143, 140, 163, 0.1); border-radius: 8px; 
                 padding: 12px 20px; margin-top: 16px; display: flex; align-items: center; justify-content: space-between;">
         <div style="display: flex; align-items: center; gap: 10px;">
-            {callout_icon}
-            <span style="color: {callout_color}; font-weight: 600;">{callout_text}</span>
+            <span style="color: {callout_color}; font-weight: 500;">{callout_text}</span>
         </div>
         <div style="display: flex; gap: 24px; color: #8F8CA3; font-size: 0.85rem;">
-            <span style="display: flex; align-items: center; gap: 4px;">{target_icon} Win Rate: <strong style="color: {wr_color};">{win_rate:.0f}%</strong></span>
-            <span style="display: flex; align-items: center; gap: 4px;">{activity_icon} Measured: <strong>{confirmed}</strong> | Pending: <strong>{pending}</strong></span>
+            <span>Win Rate: <strong style="color: {wr_color};">{win_rate:.0f}%</strong></span>
+            <span>Measured: <strong>{confirmed}</strong> | Pending: <strong>{pending}</strong></span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 
+
+
+def _render_new_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFrame, validated_only: bool = True):
+    """Render new impact analytics: Attribution Waterfall + Stacked Revenue Bar."""
+    
+    from utils.formatters import get_account_currency
+    currency = get_account_currency()
+    
+    col1, col2 = st.columns([1.2, 0.8])
+    
+    with col1:
+        _render_attribution_waterfall(summary, impact_df, currency, validated_only)
+    
+    with col2:
+        _render_stacked_revenue_bar(summary, currency)
+
+
+def _render_attribution_waterfall(summary: Dict[str, Any], impact_df: pd.DataFrame, currency: str, validated_only: bool):
+    """Render attribution-based waterfall showing ROAS contribution by action type."""
+    
+    label = "📊 ROAS Contribution by Type" if validated_only else "📊 Sales Change by Type"
+    st.markdown(f"#### {label}")
+    
+    if impact_df.empty:
+        st.info("No data to display")
+        return
+    
+    # Break down by MATCH TYPE for more granular attribution (instead of action type)
+    # This shows AUTO, BROAD, EXACT, etc. contributions like the Account Overview donut
+    match_type_col = 'match_type' if 'match_type' in impact_df.columns else None
+    
+    contributions = {}
+    
+    if match_type_col and impact_df[match_type_col].notna().any():
+        # Group by match type for richer breakdown
+        for match_type in impact_df[match_type_col].dropna().unique():
+            type_df = impact_df[impact_df[match_type_col] == match_type]
+            type_df = type_df[(type_df['before_spend'] > 0) & (type_df['observed_after_spend'] > 0)]
+            
+            if len(type_df) == 0:
+                continue
+            
+            # Calculate this type's ROAS contribution
+            before_spend = type_df['before_spend'].sum()
+            before_sales = type_df['before_sales'].sum()
+            after_spend = type_df['observed_after_spend'].sum()
+            after_sales = type_df['observed_after_sales'].sum()
+            
+            roas_before = before_sales / before_spend if before_spend > 0 else 0
+            roas_after = after_sales / after_spend if after_spend > 0 else 0
+            
+            contribution = before_spend * (roas_after - roas_before)
+            
+            # Clean match type name
+            name = str(match_type).upper() if match_type else 'OTHER'
+            contributions[name] = contributions.get(name, 0) + contribution
+    else:
+        # Fallback to action type if no match type
+        display_names = {
+            'BID_CHANGE': 'Bid Optim.',
+            'NEGATIVE': 'Cost Saved',
+            'HARVEST': 'Harvest Gains',
+            'BID_ADJUSTMENT': 'Bid Optim.'
+        }
+        
+        for action_type in impact_df['action_type'].unique():
+            type_df = impact_df[impact_df['action_type'] == action_type]
+            type_df = type_df[(type_df['before_spend'] > 0) & (type_df['observed_after_spend'] > 0)]
+            
+            if len(type_df) == 0:
+                continue
+            
+            before_spend = type_df['before_spend'].sum()
+            before_sales = type_df['before_sales'].sum()
+            after_spend = type_df['observed_after_spend'].sum()
+            after_sales = type_df['observed_after_sales'].sum()
+            
+            roas_before = before_sales / before_spend if before_spend > 0 else 0
+            roas_after = after_sales / after_spend if after_spend > 0 else 0
+            
+            contribution = before_spend * (roas_after - roas_before)
+            
+            name = display_names.get(action_type, action_type.replace('_', ' ').title())
+            contributions[name] = contributions.get(name, 0) + contribution
+    
+    if not contributions:
+        st.info("Insufficient data for attribution")
+        return
+    
+    # Get the authoritative total from summary (must match hero tile)
+    target_total = summary.get('incremental_revenue', 0)
+    calculated_total = sum(contributions.values())
+    
+    # Scale contributions proportionally so they sum to the hero tile's incremental_revenue
+    if calculated_total != 0 and target_total != 0:
+        scale_factor = target_total / calculated_total
+        contributions = {k: v * scale_factor for k, v in contributions.items()}
+    
+    # Sort and create chart
+    sorted_data = sorted(contributions.items(), key=lambda x: x[1], reverse=True)
+    names = [x[0] for x in sorted_data]
+    impacts = [x[1] for x in sorted_data]
+    
+    # Color palette matching donut chart (purple-slate-gray scale, cyan only for total)
+    bar_colors = ['#5B556F', '#8F8CA3', '#475569', '#334155', '#64748b']  # Purple to slate
+    colors = [bar_colors[i % len(bar_colors)] for i in range(len(impacts))]
+    colors.append('#22d3ee')  # Cyan for total only
+    
+    # Total must match hero tile exactly
+    final_total = target_total if target_total != 0 else sum(impacts)
+    
+    # Brand colors from Account Overview: Purple (#5B556F), Cyan (#22d3ee)
+    fig = go.Figure(go.Waterfall(
+        name="Contribution",
+        orientation="v",
+        measure=["relative"] * len(impacts) + ["total"],
+        x=names + ['Total'],
+        y=impacts + [final_total],
+        connector={"line": {"color": "rgba(143, 140, 163, 0.3)"}},  # #8F8CA3
+        decreasing={"marker": {"color": "#8F8CA3"}},   # Neutral slate (for negatives)
+        increasing={"marker": {"color": "#5B556F"}},   # Brand Purple (for positives)
+        totals={"marker": {"color": "#22d3ee"}},       # Accent Cyan
+        textposition="outside",
+        textfont=dict(size=14, color="#e2e8f0"),
+        text=[f"{currency}{v:+,.0f}" for v in impacts] + [f"{currency}{final_total:+,.0f}"]
+    ))
+    
+    fig.update_layout(
+        showlegend=False,
+        height=380,
+        margin=dict(t=60, b=40, l=30, r=30),  # Much more space for labels
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        yaxis=dict(showgrid=True, gridcolor='rgba(128,128,128,0.15)', tickformat=',.0f', tickfont=dict(color='#94a3b8', size=12)),
+        xaxis=dict(showgrid=False, tickfont=dict(color='#cbd5e1', size=12))
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _render_stacked_revenue_bar(summary: Dict[str, Any], currency: str):
+    """Render stacked bar showing Before Revenue vs After (Baseline + Incremental)."""
+    
+    st.markdown("#### 📈 Revenue Comparison")
+    
+    # Get actual values from summary
+    before_sales = summary.get('before_sales', 0)
+    after_sales = summary.get('after_sales', 0)
+    incremental = summary.get('incremental_revenue', 0)
+    roas_before = summary.get('roas_before', 0)
+    roas_after = summary.get('roas_after', 0)
+    
+    # If we have actual sales values, use them
+    if before_sales > 0 and after_sales > 0:
+        fig = go.Figure()
+        
+        # Before bar - Brand Purple
+        fig.add_trace(go.Bar(
+            name='Before',
+            x=['Before'],
+            y=[before_sales],
+            marker_color='#5B556F',  # Brand Purple
+            text=[f"{currency}{before_sales:,.0f}"],
+            textposition='auto',
+            textfont=dict(color='#e2e8f0', size=13),
+        ))
+        
+        # After bar with incremental highlight
+        fig.add_trace(go.Bar(
+            name='Baseline',
+            x=['After'],
+            y=[before_sales],  # Same as before (baseline)
+            marker_color='#5B556F',  # Brand Purple
+            showlegend=True,
+        ))
+        
+        # Use ROAS-based incremental from summary (matches waterfall and hero tile)
+        # This is: before_spend × (roas_after - roas_before)
+        lift = incremental  # Use the calculated incremental, not raw sales delta
+        lift_color = '#22d3ee'  # Accent Cyan for incremental
+        fig.add_trace(go.Bar(
+            name='Incremental (ROAS-based)',
+            x=['After'],
+            y=[lift],
+            marker_color=lift_color,
+            text=[f"{'+' if lift >= 0 else ''}{currency}{lift:,.0f}"],
+            textposition='outside',
+            textfont=dict(color='#e2e8f0', size=14),
+        ))
+        
+        fig.update_layout(
+            barmode='stack',
+            showlegend=True,
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='center', x=0.5, font=dict(color='#94a3b8', size=11)),
+            height=380,
+            margin=dict(t=60, b=40, l=30, r=30),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            yaxis=dict(showgrid=True, gridcolor='rgba(128,128,128,0.15)', tickfont=dict(color='#94a3b8', size=12)),
+            xaxis=dict(showgrid=False, tickfont=dict(color='#cbd5e1', size=12))
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+    elif roas_before > 0 or roas_after > 0:
+        # Fallback: Show ROAS comparison bars with brand colors
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=['Before', 'After'],
+            y=[roas_before, roas_after],
+            marker_color=['#5B556F', '#22d3ee'],  # Brand Purple to Cyan
+            text=[f"{roas_before:.2f}x", f"{roas_after:.2f}x"],
+            textposition='auto',
+            textfont=dict(color='#e2e8f0', size=14),
+        ))
+        fig.update_layout(
+            showlegend=False,
+            height=380,
+            margin=dict(t=40, b=40, l=30, r=30),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            yaxis=dict(showgrid=True, gridcolor='rgba(128,128,128,0.1)', title="ROAS", tickfont=dict(color='#94a3b8', size=12)),
+            xaxis=dict(showgrid=False)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No comparative data")
 
 
 def _render_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFrame):
@@ -576,6 +853,9 @@ def _render_waterfall_chart(summary: Dict[str, Any]):
     names = [x[0] for x in sorted_data]
     impacts = [x[1] for x in sorted_data]
     
+    from utils.formatters import get_account_currency
+    chart_currency = get_account_currency()
+    
     fig = go.Figure(go.Waterfall(
         name="Impact",
         orientation="v",
@@ -587,7 +867,7 @@ def _render_waterfall_chart(summary: Dict[str, Any]):
         increasing={"marker": {"color": "rgba(74, 222, 128, 0.6)"}}, 
         totals={"marker": {"color": "rgba(143, 140, 163, 0.6)"}},
         textposition="outside",
-        text=[f"${v:+,.0f}" for v in impacts] + [f"${sum(impacts):+,.0f}"]
+        text=[f"{chart_currency}{v:+,.0f}" for v in impacts] + [f"{chart_currency}{sum(impacts):+,.0f}"]
     ))
     
     fig.update_layout(
@@ -596,7 +876,7 @@ def _render_waterfall_chart(summary: Dict[str, Any]):
         margin=dict(t=10, b=10, l=10, r=10),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        yaxis=dict(showgrid=True, gridcolor='rgba(128,128,128,0.1)', tickformat='$,.0f'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(128,128,128,0.1)', tickformat=',.0f'),
         xaxis=dict(showgrid=False)
     )
     
@@ -711,6 +991,9 @@ def _render_winners_losers_chart(impact_df: pd.DataFrame):
         lambda x: "rgba(91, 85, 111, 0.6)" if x > 0 else "rgba(136, 19, 55, 0.5)"
     )
     
+    from utils.formatters import get_account_currency
+    bar_currency = get_account_currency()
+    
     fig = go.Figure()
     
     fig.add_trace(go.Bar(
@@ -718,7 +1001,7 @@ def _render_winners_losers_chart(impact_df: pd.DataFrame):
         x=chart_df['raw_perf'],
         orientation='h',
         marker_color=chart_df['color'],
-        text=[f"${v:+,.0f}" for v in chart_df['raw_perf']],
+        text=[f"{bar_currency}{v:+,.0f}" for v in chart_df['raw_perf']],
         textposition='outside',
         hovertext=chart_df['full_context'],
         hoverinfo='text+x'
@@ -794,10 +1077,12 @@ def _render_drill_down_table(impact_df: pd.DataFrame, show_migration_badge: bool
         display_df = display_df.rename(columns=final_rename)
         
         # Format currency columns
+        from utils.formatters import get_account_currency
+        df_currency = get_account_currency()
         currency_cols = ['Before Spend', 'After Spend', 'Spend Change', 'Before Sales', 'After Sales', 'Sales Change', 'Revenue Impact']
         for col in currency_cols:
             if col in display_df.columns:
-                display_df[col] = display_df[col].apply(lambda x: f"${x:,.2f}" if pd.notna(x) else "-")
+                display_df[col] = display_df[col].apply(lambda x: f"{df_currency}{x:,.2f}" if pd.notna(x) else "-")
         
         # Show migration legend if applicable
         if show_migration_badge and 'is_migration' in impact_df.columns and impact_df['is_migration'].any():

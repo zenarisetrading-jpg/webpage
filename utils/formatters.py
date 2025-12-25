@@ -48,17 +48,59 @@ def dict_to_excel(data_dict: Dict[str, pd.DataFrame], filename_prefix: str = "da
     
     return output.getvalue()
 
-def format_currency(value: float, currency: str = "AED") -> str:
+def get_account_currency() -> str:
+    """
+    Get the active account's currency from session state.
+    
+    Returns:
+        Currency code (e.g., "AED", "USD", "EUR"). Defaults to "$" if not set.
+    """
+    try:
+        import streamlit as st
+        import json
+        
+        # First, try to get from active account's metadata
+        db = st.session_state.get('db_manager')
+        account_id = st.session_state.get('active_account_id')
+        
+        if db and account_id:
+            # Use get_account() which returns full record including metadata
+            account = db.get_account(account_id)
+            if account and account.get('metadata'):
+                try:
+                    metadata = account['metadata']
+                    if isinstance(metadata, str):
+                        metadata = json.loads(metadata)
+                    if metadata and metadata.get('currency'):
+                        return metadata['currency']
+                except:
+                    pass
+        
+        # Fallback to session state config
+        config = st.session_state.get('optimizer_config', {})
+        if config.get('currency'):
+            return config['currency']
+        
+    except Exception:
+        pass
+    
+    # Default fallback to $ symbol
+    return "$"
+
+
+def format_currency(value: float, currency: str = None) -> str:
     """
     Format number as currency.
     
     Args:
         value: Numeric value
-        currency: Currency code
+        currency: Currency code (if None, uses account's currency or defaults to USD)
         
     Returns:
-        Formatted string like "AED 1,234.56"
+        Formatted string like "USD 1,234.56"
     """
+    if currency is None:
+        currency = get_account_currency()
     return f"{currency} {value:,.2f}"
 
 def format_percentage(value: float, decimals: int = 2) -> str:

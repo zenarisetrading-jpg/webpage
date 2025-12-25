@@ -263,8 +263,10 @@ def render_home():
             top_action = impact_data.get('top_action_type', None)
             
             # Center main content
+            from utils.formatters import get_account_currency
+            home_currency = get_account_currency()
             st.markdown('<div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center;">', unsafe_allow_html=True)
-            st.markdown(f'<div class="cockpit-value" style="text-align:center;">{f"+AED {impact:,.0f}" if impact >= 0 else f"-AED {abs(impact):,.0f}"}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="cockpit-value" style="text-align:center;">{f"+{home_currency}{impact:,.0f}" if impact >= 0 else f"-{home_currency}{abs(impact):,.0f}"}</div>', unsafe_allow_html=True)
             st.markdown('<div class="cockpit-subtext" style="text-align:center;">Net Change Last 30 Days</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
             

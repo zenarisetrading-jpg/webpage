@@ -1,64 +1,34 @@
-"""
-Saddle AdPulse - V4 (Consolidated)
-Main Application Entry Point
-
-Features:
-- Optimizer now acts as the central hub.
-- ASIN Intent Mapper and AI Insights (Clusters) are integrated as tabs within Optimizer.
-- Clean Home Page.
-- Consolidated navigation.
-"""
-
 import streamlit as st
-import pandas as pd
-from datetime import datetime
-import os
-
-# BRIDGE: Load Streamlit Secrets into OS Environment for Core Modules
-# This allows db_manager to find 'DATABASE_URL' without importing streamlit directly
-try:
-    if "DATABASE_URL" in st.secrets:
-        os.environ["DATABASE_URL"] = st.secrets["DATABASE_URL"]
-except FileNotFoundError:
-    pass # No secrets file found, rely on standard env vars or local DB
-
-
-# Import Core Modules
-from ui.layout import setup_page, render_sidebar, render_home
-from core.data_hub import DataHub
-from features.optimizer import (
-    OptimizerModule, 
-    prepare_data, 
-    identify_harvest_candidates, 
-    identify_negative_candidates, 
-    calculate_bid_optimizations, 
-    create_heatmap, 
-    run_simulation,
-    calculate_account_benchmarks,
-    DEFAULT_CONFIG
-)
-from features.creator import CreatorModule
-from features.asin_mapper import ASINMapperModule
-from features.kw_cluster import AIInsightsModule
-from features.simulator import SimulatorModule
-from features.assistant import AssistantModule
-from features.performance_snapshot import PerformanceSnapshotModule
-from features.report_card import ReportCardModule
-from utils.matchers import ExactMatcher
-from utils.formatters import format_currency
-from core.data_loader import safe_numeric
-from core.db_manager import DatabaseManager, get_db_manager
-from features.impact_dashboard import render_impact_dashboard, render_reference_data_badge
-from pathlib import Path
 
 # ==========================================
-# PAGE CONFIGURATION
+# PAGE CONFIGURATION (Must be very first ST command)
 # ==========================================
 st.set_page_config(
     page_title="Saddle AdPulse", 
     layout="wide", 
     page_icon="🚀"
 )
+
+import pandas as pd
+from datetime import datetime
+import os
+
+# BRIDGE: Load Streamlit Secrets into OS Environment for Core Modules
+try:
+    if "DATABASE_URL" in st.secrets:
+        os.environ["DATABASE_URL"] = st.secrets["DATABASE_URL"]
+except FileNotFoundError:
+    pass 
+
+
+# Delay heavy feature imports by moving them into routing/main logic
+from ui.layout import setup_page, render_sidebar, render_home
+from core.data_hub import DataHub
+from core.db_manager import DatabaseManager, get_db_manager
+from utils.matchers import ExactMatcher
+from utils.formatters import format_currency
+from core.data_loader import safe_numeric
+from pathlib import Path
 
 # Global dark theme CSS for sidebar buttons
 st.markdown("""
@@ -181,8 +151,10 @@ def run_performance_hub():
     st.markdown("<br>", unsafe_allow_html=True)
     
     if st.session_state['active_perf_tab'] == "Account Health":
+        from features.report_card import ReportCardModule
         ReportCardModule().run()
     else:
+        from features.performance_snapshot import PerformanceSnapshotModule
         PerformanceSnapshotModule().run()
 
 # ==========================================
@@ -190,6 +162,18 @@ def run_performance_hub():
 # ==========================================
 def run_consolidated_optimizer():
     """Execution logic: Optimizer + ASIN Mapper + AI Insights all in one view."""
+    # Lazy imports for Optimizer
+    from features.optimizer import (
+        OptimizerModule, 
+        prepare_data, 
+        identify_harvest_candidates, 
+        identify_negative_candidates, 
+        calculate_bid_optimizations, 
+        create_heatmap, 
+        run_simulation,
+        calculate_account_benchmarks
+    )
+    from utils.matchers import ExactMatcher
     
     # Theme-aware optimization icon (sliders/tune icon)
     theme_mode = st.session_state.get('theme_mode', 'dark')
@@ -635,24 +619,104 @@ def run_consolidated_optimizer():
     logged_count = _log_optimization_events(r, active_client, action_log_date)
 
     # === POST-OPTIMIZATION INSIGHT LAYER ===
-    st.markdown("<br>", unsafe_allow_html=True)
+    @st.fragment
+    def render_optimizer_results(
+        bids_exact, bids_pt, bids_agg, bids_auto, 
+        neg_kw, neg_pt, harvest_df, simulation, 
+        heatmap_df, df_prep, r, date_info
+    ):
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 1. Metric Calculations
+        total_touched = len(set(
+            (bids_exact['Ad Group Name'].tolist() if not bids_exact.empty else []) +
+            (bids_pt['Ad Group Name'].tolist() if not bids_pt.empty else []) +
+            (bids_agg['Ad Group Name'].tolist() if not bids_agg.empty else []) +
+            (bids_auto['Ad Group Name'].tolist() if not bids_auto.empty else []) +
+            (pd.concat([neg_kw, neg_pt])['Ad Group Name'].tolist() if not pd.concat([neg_kw, neg_pt]).empty else []) +
+            (harvest_df['Ad Group Name'].tolist() if not harvest_df.empty else [])
+        ))
+
+        total_bid_changes = len(bids_exact) + len(bids_pt) + len(bids_agg) + len(bids_auto)
+        total_negatives = len(neg_kw) + len(neg_pt)
+        total_harvests = len(harvest_df)
+        
+        # Icons & Styles
+        icon_color = "#8F8CA3"
+        layers_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>'
+        sliders_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>'
+        shield_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>'
+        leaf_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a8 8 0 0 1-8 8Z"></path><path d="M11 20c0-2.5 2-5.5 2-5.5"></path></svg>'
+        search_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
+
+        sim_badge = ""
+        if simulation:
+            sim_badge = '<span style="background: rgba(154, 219, 232, 0.08); color: #9ADBE8; padding: 4px 12px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(154, 219, 232, 0.2); letter-spacing: 0.5px; text-transform: uppercase; float: right;">Simulation included</span>'
+
+        st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h3 style="margin: 0; font-weight: 700;">Optimization Summary</h3>
+            {sim_badge}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Summary Tiles
+        c1, c2, c3, c4 = st.columns(4)
+        tile_style = "background: linear-gradient(135deg, rgba(91, 85, 111, 0.15) 0%, rgba(91, 85, 111, 0.08) 100%); border: 1px solid rgba(91, 85, 111, 0.3); border-radius: 12px; padding: 18px; text-align: center; backdrop-filter: blur(10px); box-shadow: 0 4px 24px rgba(0,0,0,0.06); transition: all 0.3s ease;"
+        label_style = "color: #8F8CA3; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.7px; margin-bottom: 8px;"
+        value_style = "color: #F5F5F7; font-size: 1.25rem; font-weight: 700;"
+
+        with c1: st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{layers_icon}Touched</div><div style="{value_style}">{total_touched}</div></div>', unsafe_allow_html=True)
+        with c2: st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{sliders_icon}Bids</div><div style="{value_style}">{total_bid_changes}</div></div>', unsafe_allow_html=True)
+        with c3: st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{shield_icon}Negatives</div><div style="{value_style}">{total_negatives}</div></div>', unsafe_allow_html=True)
+        with c4: st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{leaf_icon}Harvest</div><div style="{value_style}">{total_harvests}</div></div>', unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-bottom: 40px;'></div>", unsafe_allow_html=True)
+
+        # Tab Navigation
+        tabs_list = [
+            {"name": "Overview", "icon": layers_icon},
+            {"name": "Defence", "icon": shield_icon},
+            {"name": "Bids", "icon": sliders_icon},
+            {"name": "Harvest", "icon": leaf_icon},
+            {"name": "Audit", "icon": search_icon},
+            {"name": "Bulk Export", "icon": search_icon}
+        ]
+        active_tab = st.session_state.get('active_opt_tab', 'Overview')
+        tab_cols = st.columns(len(tabs_list))
+        
+        for i, tab in enumerate(tabs_list):
+            if tab_cols[i].button(tab["name"], key=f"tab_{tab['name']}", use_container_width=True, type="primary" if active_tab == tab["name"] else "secondary"):
+                st.session_state['active_opt_tab'] = tab["name"]
+                st.rerun()
+
+        st.markdown("<div style='margin-bottom: 32px;'></div>", unsafe_allow_html=True)
+        active_tab = st.session_state.get('active_opt_tab', 'Overview')
+        
+        if active_tab == "Overview":
+            opt._display_dashboard_v2({"direct_bids": direct_bids, "agg_bids": agg_bids, "harvest": harvest_df, "simulation": simulation, "df": df_prep, "neg_kw": neg_kw})
+        elif active_tab == "Defence":
+            opt._display_negatives(neg_kw, neg_pt)
+        elif active_tab == "Bids":
+            opt._display_bids(bids_exact=bids_exact, bids_pt=bids_pt, bids_agg=bids_agg, bids_auto=bids_auto)
+        elif active_tab == "Harvest":
+            opt._display_harvest(harvest_df)
+        elif active_tab == "Audit":
+            opt._display_heatmap(heatmap_df)
+        elif active_tab == "Bulk Export":
+            opt._display_downloads(r)
+
+    # Invoke Fragment
+    render_optimizer_results(
+        bids_exact, bids_pt, bids_agg, bids_auto, 
+        neg_kw, neg_pt, harvest_df, simulation, 
+        heatmap_df, df_prep, r, date_info
+    )
+
+    # Original logic followed here - we can delete the redundant parts below
     
-    # 1. Metric Calculations
-    # Ad Groups Touched
-    touched_exact = bids_exact['Ad Group Name'].nunique() if not bids_exact.empty else 0
-    touched_pt = bids_pt['Ad Group Name'].nunique() if not bids_pt.empty else 0
-    touched_agg = bids_agg['Ad Group Name'].nunique() if not bids_agg.empty else 0
-    touched_auto = bids_auto['Ad Group Name'].nunique() if not bids_auto.empty else 0
-    neg_touched = pd.concat([neg_kw, neg_pt])['Ad Group Name'].nunique() if not pd.concat([neg_kw, neg_pt]).empty else 0
-    harv_touched = harvest_df['Ad Group Name'].nunique() if not harvest_df.empty else 0
-    total_touched = len(set(
-        (bids_exact['Ad Group Name'].tolist() if not bids_exact.empty else []) +
-        (bids_pt['Ad Group Name'].tolist() if not bids_pt.empty else []) +
-        (bids_agg['Ad Group Name'].tolist() if not bids_agg.empty else []) +
-        (bids_auto['Ad Group Name'].tolist() if not bids_auto.empty else []) +
-        (pd.concat([neg_kw, neg_pt])['Ad Group Name'].tolist() if not pd.concat([neg_kw, neg_pt]).empty else []) +
-        (harvest_df['Ad Group Name'].tolist() if not harvest_df.empty else [])
-    ))
+
+
 
     # Bid Adjustments
     total_bid_changes = len(bids_exact) + len(bids_pt) + len(bids_agg) + len(bids_auto)
@@ -675,182 +739,13 @@ def run_consolidated_optimizer():
     if simulation:
         sim_badge = '<span style="background: rgba(154, 219, 232, 0.08); color: #9ADBE8; padding: 4px 12px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(154, 219, 232, 0.2); letter-spacing: 0.5px; text-transform: uppercase; float: right;">Simulation included</span>'
 
-    st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <h3 style="margin: 0; font-weight: 700;">Optimization Summary</h3>
-        {sim_badge}
-    </div>
-    <div style="margin-bottom: 24px;">
-        <p style="color: #8F8CA3; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.8px; margin: 0; opacity: 0.8;">
-            Actions generated from the selected dataset and configuration
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
-    # Optimization Summary Layout - Reduced to 4 columns (Terms Reviewed removed)
-    c1, c2, c3, c4 = st.columns(4)
-    # Action Icons
-    layers_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8F8CA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>'
-    sliders_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8F8CA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>'
-    shield_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8F8CA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>'
-    leaf_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8F8CA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a8 8 0 0 1-8 8Z"></path><path d="M11 20c0-2.5 2-5.5 2-5.5"></path></svg>'
-    
-    tile_style = """
-        background: linear-gradient(135deg, rgba(91, 85, 111, 0.15) 0%, rgba(91, 85, 111, 0.08) 100%);
-        border: 1px solid rgba(91, 85, 111, 0.3);
-        border-radius: 12px;
-        padding: 18px;
-        text-align: center;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-        transition: all 0.3s ease;
-    """
-    label_style = "color: #8F8CA3; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.7px; margin-bottom: 8px;"
-    value_style = "color: #F5F5F7; font-size: 1.25rem; font-weight: 700;"
 
-    with c1:
-        st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{layers_icon}Ad Groups Touched</div><div style="{value_style}">{total_touched}</div></div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{sliders_icon}Bid Adjustments</div><div style="{value_style}">{total_bid_changes}</div></div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{shield_icon}Negatives Identified</div><div style="{value_style}">{total_negatives}</div></div>', unsafe_allow_html=True)
-    with c4:
-        st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{leaf_icon}Harvest Ops</div><div style="{value_style}">{total_harvests}</div></div>', unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div style="margin-top: 16px; margin-bottom: 32px;">
-        <div style="color: #B6B4C2; font-size: 0.8rem; opacity: 0.85; line-height: 1.5;">
-            This optimization generated bid adjustments, exclusions, and harvest candidates based on current performance benchmarks.
-        </div>
-        <div style="color: #8F8CA3; font-size: 0.8rem; margin-top: 6px; opacity: 0.7;">
-            Detailed breakdowns are available in the sections below.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
-    # === TAB NAVIGATION (Premium Button Style) ===
-    st.markdown("""
-    <style>
-    /* Table Styling - Brand Cohesion */
-    div[data-testid="stDataFrame"] {
-        border: 1px solid rgba(91, 85, 111, 0.15) !important;
-        border-radius: 12px !important;
-        overflow: hidden !important;
-    }
-    div[data-testid="stDataFrame"] [data-testid="stTable"] {
-        background: rgba(26, 26, 38, 0.4) !important;
-    }
-    
-    /* Premium Tab Buttons */
-    .stButton > button {
-        background: rgba(91, 85, 111, 0.05) !important;
-        border: 1px solid rgba(91, 85, 111, 0.15) !important;
-        color: #8F8CA3 !important;
-        border-radius: 8px !important;
-        font-weight: 500 !important;
-        transition: all 0.2s ease !important;
-    }
-    .stButton > button:hover {
-        background: rgba(91, 85, 111, 0.1) !important;
-        border-color: rgba(91, 85, 111, 0.3) !important;
-        color: #F5F5F7 !important;
-    }
-    /* Premium Buttons (Primary & Download) */
-    div.stButton > button[kind="primary"], 
-    div.stDownloadButton > button {
-        background: linear-gradient(135deg, #5B556F 0%, #464156 100%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        color: #F5F5F7 !important;
-        font-weight: 700 !important;
-        padding: 0.5rem 1rem !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-        transition: all 0.2s ease !important;
-        width: 100% !important;
-    }
-    div.stButton > button[kind="primary"]:hover, 
-    div.stDownloadButton > button:hover {
-        opacity: 0.9 !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
-    tabs_list = [
-        {"name": "Overview", "icon": layers_icon},
-        {"name": "Defence", "icon": shield_icon},
-        {"name": "Bids", "icon": sliders_icon},
-        {"name": "Harvest", "icon": leaf_icon},
-        {"name": "Audit", "icon": search_icon},
-        {"name": "Bulk Export", "icon": f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8F8CA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>'}
-    ]
-    
-    if 'active_opt_tab' not in st.session_state:
-        st.session_state['active_opt_tab'] = "Overview"
-    
-    # Render Buttons Spread Evenly
-    tab_cols = st.columns(len(tabs_list))
-    for i, tab in enumerate(tabs_list):
-        is_active = st.session_state['active_opt_tab'] == tab["name"]
-        btn_key = f"tab_nav_{tab['name']}"
-        with tab_cols[i]:
-            # We use a trick with markdown to inject class names if needed, or just follow the brand color pattern
-            # For simplicity and robustness in Streamlit, we'll use type="primary" for active
-            if st.button(tab["name"], key=btn_key, use_container_width=True, type="primary" if is_active else "secondary"):
-                st.session_state['active_opt_tab'] = tab["name"]
-                st.rerun()
 
-    # Active Tab Content Router
-    active_tab = st.session_state['active_opt_tab']
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    if active_tab == "Overview":
-        opt._display_dashboard_v2({
-             "direct_bids": direct_bids, "agg_bids": agg_bids,
-             "harvest": harvest_df, "simulation": simulation,
-             "df": df_prep, "neg_kw": neg_kw
-        })
-        
-    elif active_tab == "Defence":
-        # USE CUSTOM BUTTONS FOR SECONDARY NAV TO ENSURE BOLDNESS
-        def_tabs = [
-            {"name": "Keyword Defence", "icon": "🛡️ "},
-            {"name": "ASIN Defence", "icon": "🎯 "}
-        ]
-        if 'active_def_sub_tab' not in st.session_state:
-            st.session_state['active_def_sub_tab'] = "Keyword Defence"
-            
-        def_sub_cols = st.columns(len(def_tabs))
-        for i, dtab in enumerate(def_tabs):
-            is_active = st.session_state['active_def_sub_tab'] == dtab["name"]
-            with def_sub_cols[i]:
-                if st.button(f"{dtab['icon']}{dtab['name']}", key=f"btn_def_sub_{dtab['name']}", use_container_width=True, type="primary" if is_active else "secondary"):
-                    st.session_state['active_def_sub_tab'] = dtab["name"]
-                    st.rerun()
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        active_sub = st.session_state['active_def_sub_tab']
-        
-        if active_sub == "Keyword Defence":
-            opt._display_negatives(neg_kw, neg_pt)
-        else:
-            from features.asin_mapper import ASINMapperModule
-            asin_module = ASINMapperModule()
-            asin_module.data = df_prep
-            asin_module.render_ui()
-        
-    elif active_tab == "Bids":
-        opt._display_bids(bids_exact=bids_exact, bids_pt=bids_pt, bids_agg=bids_agg, bids_auto=bids_auto)
-        
-    elif active_tab == "Harvest":
-        opt._display_harvest(harvest_df)
-        
-    elif active_tab == "Audit":
-        opt._display_heatmap(heatmap_df)
-        
-    elif active_tab == "Bulk Export":
-        opt._display_downloads(r)
 
 
 # ==========================================
@@ -1071,28 +966,35 @@ def main():
         run_consolidated_optimizer()
         
     elif current == 'simulator':
+        from features.simulator import SimulatorModule
         SimulatorModule().run()
         
     elif current == 'performance':
         run_performance_hub()
     
     elif current == 'creator':
+        from features.creator import CreatorModule
         creator = CreatorModule()
         creator.run()
     
     elif current == 'assistant':
+        from features.assistant import AssistantModule
         AssistantModule().render_interface()
         
     # ASIN/AI modules are now inside Optimizer, but we keep routing valid just in case
     elif current == 'asin_mapper':
+        from features.asin_mapper import ASINMapperModule
         ASINMapperModule().run()
     elif current == 'ai_insights':
+        from features.kw_cluster import AIInsightsModule
         AIInsightsModule().run()
     elif current == 'impact':
+        from features.impact_dashboard import render_impact_dashboard
         render_impact_dashboard()
 
     # Render Floating Chat Bubble (unless already on assistant page)
     if current != 'assistant':
+        from features.assistant import AssistantModule
         assistant = AssistantModule()
         assistant.render_floating_interface()
         assistant.render_interface()
