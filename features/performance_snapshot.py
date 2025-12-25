@@ -325,20 +325,13 @@ class PerformanceSnapshotModule(BaseFeature):
                     if not dates.empty:
                         min_d, max_d = dates.min().date(), dates.max().date()
                         
-                        # --- Unified Control Bar ---
-                        c1, c2, c3 = st.columns([2, 5, 3])
+                        # --- Unified Control Bar (Fixed 7-Day Comparison) ---
+                        comp_days = 7  # Fixed to 7-day comparison
+                        
+                        c1, c2 = st.columns([5, 3])
                         with c1:
-                            comp_days = st.radio(
-                                "Compare",
-                                options=[7, 14],
-                                index=0,
-                                horizontal=True,
-                                key="overview_comp_radio",
-                                label_visibility="collapsed"
-                            )
+                            st.markdown(f'<div style="margin-top: 8px; color: #8F8CA3; font-size: 0.9rem;">Showing <b>Last 7 Days</b> vs. <b>Previous 7 Days</b></div>', unsafe_allow_html=True)
                         with c2:
-                            st.markdown(f'<div style="margin-top: 8px; color: #8F8CA3; font-size: 0.9rem;">Showing comparison for Last <b>{comp_days}</b> Days vs. Previous <b>{comp_days}</b> Days</div>', unsafe_allow_html=True)
-                        with c3:
                             self.date_filter = st.date_input(
                                 "Date Range",
                                 value=(min_d, max_d),
@@ -474,9 +467,11 @@ class PerformanceSnapshotModule(BaseFeature):
             spend = data_df['Spend'].sum()
             sales = data_df['Sales'].sum()
             orders = data_df['Orders'].sum()
+            clicks = data_df['Clicks'].sum() if 'Clicks' in data_df.columns else 0
             roas = sales / spend if spend > 0 else 0
             acos = (spend / sales * 100) if sales > 0 else 0
-            return {'spend': spend, 'sales': sales, 'orders': orders, 'roas': roas, 'acos': acos}
+            cvr = (orders / clicks * 100) if clicks > 0 else 0
+            return {'spend': spend, 'sales': sales, 'orders': orders, 'roas': roas, 'acos': acos, 'cvr': cvr}
 
         curr_stats = get_kpis(curr_df)
         prev_stats = get_kpis(prev_df)
@@ -529,19 +524,21 @@ class PerformanceSnapshotModule(BaseFeature):
         from utils.formatters import get_account_currency
         currency = get_account_currency()
         
-        c1, c2, c3, c4, c5 = st.columns(5)
+        # === PRIMARY METRICS (4 cards with 7-day deltas) ===
+        c1, c2, c3, c4 = st.columns(4)
         with c1: metric_card("Spend", f"{currency} {total_spend:,.0f}", icon_name="spend", delta=deltas.get('spend'))
         with c2: metric_card("Revenue", f"{currency} {total_sales:,.0f}", icon_name="revenue", delta=deltas.get('sales'))
-        with c3: metric_card("ACOS", f"{total_acos:.2f}%", icon_name="acos", delta=deltas.get('acos'))
-        with c4: metric_card("ROAS", f"{total_roas:.2f}x", icon_name="roas", delta=deltas.get('roas'))
-        with c5: metric_card("Orders", f"{total_orders:,.0f}", icon_name="orders", delta=deltas.get('orders'))
+        with c3: metric_card("ROAS", f"{total_roas:.2f}x", icon_name="roas", delta=deltas.get('roas'))
+        with c4: metric_card("CVR", f"{total_cvr:.2f}%", icon_name="roas", delta=deltas.get('cvr') if 'cvr' in deltas else None)
         
-        c6, c7, c8, c9, c10 = st.columns(5)
-        with c6: metric_card("Impressions", f"{total_impr:,.0f}", icon_name="impressions")
-        with c7: metric_card("Clicks", f"{total_clicks:,.0f}", icon_name="clicks")
-        with c8: metric_card("CTR", f"{total_ctr:.2f}%", icon_name="acos")
-        with c9: metric_card("CPC", f"{currency} {total_cpc:.2f}", icon_name="spend")
-        with c10: metric_card("CVR", f"{total_cvr:.2f}%", icon_name="roas")
+        # === SECONDARY METRICS (Expandable Section) ===
+        with st.expander("View More Metrics", expanded=False):
+            sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+            with sc1: metric_card("Orders", f"{total_orders:,.0f}", icon_name="orders", delta=deltas.get('orders'))
+            with sc2: metric_card("ACOS", f"{total_acos:.2f}%", icon_name="acos", delta=deltas.get('acos'))
+            with sc3: metric_card("Impressions", f"{total_impr:,.0f}", icon_name="impressions")
+            with sc4: metric_card("Clicks", f"{total_clicks:,.0f}", icon_name="clicks")
+            with sc5: metric_card("CPC", f"{currency} {total_cpc:.2f}", icon_name="spend")
         
         st.markdown("---")
 

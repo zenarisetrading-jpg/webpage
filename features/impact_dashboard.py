@@ -428,7 +428,6 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
             <div class="hero-label">{roas_icon} ROAS Lift</div>
             <div class="hero-value" style="color: {roas_color};">{prefix}{roas_lift:.1f}%</div>
             <div class="hero-sub">{sig_icon} {'significant' if is_sig else 'not significant'} (N={active_count})</div>
-            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px; line-height: 1.1;">Comparing performance before vs after optimization</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -1092,12 +1091,16 @@ def render_reference_data_badge():
 def get_recent_impact_summary() -> Optional[dict]:
     """
     Helper for Home Page cockpit.
-    Returns the EXACT same metrics as Impact tab's 30D view.
-    Reuses identical calculation logic - no separate path.
+    Returns impact summary metrics from DB for the last 30 days.
+    Simple and reliable - matches get_account_health_score pattern.
     """
-    from datetime import timedelta
+    from core.db_manager import get_db_manager
     
-    db_manager = st.session_state.get('db_manager')
+    # Check for test mode
+    test_mode = st.session_state.get('test_mode', False)
+    db_manager = get_db_manager(test_mode)
+    
+    # Fallback chain for account ID (same as health score)
     selected_client = (
         st.session_state.get('active_account_id') or 
         st.session_state.get('active_account_name') or 
@@ -1108,68 +1111,36 @@ def get_recent_impact_summary() -> Optional[dict]:
         return None
         
     try:
-        # USE CACHED DATA FETCHER
-        test_mode = st.session_state.get('test_mode', False)
-        # Use data upload timestamp as cache version
-        # Use 1-day window to CAPTURE even the most recent actions (SQL restriction),
-        # then scale to 30 days to estimate full monthly impact.
-        # This prevents blank tiles for fresh data.
-        impact_df, _ = _fetch_impact_data(selected_client, test_mode, window_days=1, cache_version=cv)
+        # Direct DB query - simple and reliable
+        summary = db_manager.get_impact_summary(selected_client, window_days=30)
         
-        if impact_df.empty:
-            return None
-            
-        # Determine latest date directly from data to avoid cache mis-syncs with db_manager.get_available_dates
-        impact_df['action_date_dt'] = pd.to_datetime(impact_df['action_date'], errors='coerce')
-        
-        valid_dates = impact_df['action_date_dt'].dropna()
-        if valid_dates.empty:
-            return None
-            
-        latest_data_date = valid_dates.max()
-        cutoff_date = latest_data_date - timedelta(days=30)
-        
-        # Ensure we only include actions that occurred AT OR BEFORE the latest data date (and within 30 days)
-        impact_df = impact_df[(impact_df['action_date_dt'] >= cutoff_date) & 
-                             (impact_df['action_date_dt'] <= latest_data_date)].copy()
-        
-        if impact_df.empty:
+        if not summary:
             return None
         
-        # Active filter (same as Impact tab lines 172-174)
-        active_mask = (impact_df['before_spend'].fillna(0) + impact_df['after_spend'].fillna(0)) > 0
-        active_df = impact_df[active_mask].copy()
+        # Handle dual-summary structure (all/validated)
+        active_summary = summary.get('validated', summary.get('all', summary))
         
-        if active_df.empty:
+        if active_summary.get('total_actions', 0) == 0:
             return None
         
-        # Calculate exactly like Impact tab using impact_score (rule-based)
-        impact_col = 'impact_score' if 'impact_score' in active_df.columns else 'delta_sales'
-        spend_col = 'delta_spend' if 'delta_spend' in active_df.columns else 'delta_spend'
+        # Extract key metrics
+        incremental_revenue = active_summary.get('incremental_revenue', 0)
+        win_rate = active_summary.get('win_rate', 0)
         
-        # SCALE 1-DAY IMPACT TO 30 DAYS
-        # Since we measure over 1 day, we project the 30-day run rate
-        scale_factor = 30 / 1
-        impact_scores = active_df[impact_col].fillna(0) * scale_factor
-        delta_spend = active_df[spend_col].fillna(0) * scale_factor
-        is_winner = active_df['is_winner'].fillna(False)
-        active_count = len(active_df)
-        
-        # Find top action type by net impact
+        # Get top action type
+        by_type = active_summary.get('by_action_type', {})
         top_action_type = None
-        if 'action_type' in active_df.columns:
-            by_type = active_df.groupby('action_type')[impact_col].sum()
-            if not by_type.empty:
-                top_action_type = by_type.idxmax()
+        if by_type:
+            top_action_type = max(by_type, key=lambda k: by_type[k].get('count', 0))
         
         return {
-            'sales': impact_scores.sum(),  # Use impact_score, not delta_sales
-            'roi': impact_scores.sum() / abs(delta_spend.sum()) if delta_spend.sum() != 0 else 0,
-            'win_rate': (is_winner.sum() / active_count * 100) if active_count > 0 else 0,
-            'top_action_type': top_action_type
+            'sales': incremental_revenue,
+            'win_rate': win_rate,
+            'top_action_type': top_action_type,
+            'roi': active_summary.get('roas_lift_pct', 0)
         }
-    except:
-        pass
         
-    return None
+    except Exception as e:
+        print(f"[Impact Summary] Error: {e}")
+        return None
 

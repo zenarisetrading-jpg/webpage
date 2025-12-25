@@ -1383,7 +1383,7 @@ class PostgresManager:
             else:
                 p_value = 1.0
                 
-            is_significant = (p_value <= 0.30) and (roas_lift_pct > 0)
+            is_significant = (p_value <= 0.10) and (roas_lift_pct > 0)  # 90% confidence - marketing standard
             confidence_pct = (1 - p_value) * 100
         else:
             roas_before, roas_after, roas_lift_pct, incremental_revenue = 0, 0, 0, 0

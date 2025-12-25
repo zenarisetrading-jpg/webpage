@@ -475,7 +475,7 @@ class ReportCardModule(BaseFeature):
             delta = delta_config,
             domain = {'x': [0, 1], 'y': [0, 1]},
             number = {'suffix': suffix, 'font': {'size': 20}},
-            title = {'text': title, 'font': {'size': 14, 'color': "gray"}},
+            title = {'text': ' ', 'font': {'size': 1}},  # Hidden - title shown via micro-label below
             gauge = {
                 'axis': {'range': [min_val, max_val], 'tickwidth': 1, 'tickcolor': "darkblue"},
                 'bar': {'color': "rgba(0,0,0,0)"}, # Transparent bar, rely on background steps or needle
@@ -525,28 +525,27 @@ class ReportCardModule(BaseFeature):
                 fig = self._create_gauge(value, title, min_v, max_v, suffix, target_val=target)
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
                 
-                # Micro-label
+                # Micro-label (centered below gauge)
                 st.markdown(
                     f"<div style='text-align: center; font-size: 13px; font-weight: 600; color: #cbd5e1; margin-top: -10px;'>{micro_label}</div>",
-                    unsafe_allow_html=True,
-                    help=tooltip_text
+                    unsafe_allow_html=True
                 )
 
         render_gauge_block(
             c1, metrics['roas'], "ROAS vs Target", 0, metrics['target_roas']*2, "x",
-            "Actual ROAS compared to target threshold",
+            "ROAS vs Target",
             f"Target: {metrics['target_roas']}x. Return on Ad Spend (ROAS) compared to your strategic target."
         )
         
         render_gauge_block(
             c2, metrics['spend_quality'], "Spend Efficiency", 0, 100, "%",
-            "% of spend on high-efficiency targets",
+            "Spend Efficiency",
             "Percentage of total spend allocated to search terms that have generated at least 1 order."
         )
         
         render_gauge_block(
             c3, 100 - metrics['spend_quality'], "Spend Risk", 0, 100, "%",
-            "% of spend below efficiency threshold",
+            "Spend at Risk",
             "Percentage of spend going to terms with 0 orders (Bleeders)."
         )
     
@@ -686,11 +685,10 @@ class ReportCardModule(BaseFeature):
         details = metrics.get('details', {'removed': [], 'added': []})
         fin = metrics['financials']
         
-        # Helper to format string with premium badge
+        # Helper to format stat with premium badge (simplified - just the count)
         def fmt_stat(val, total, context):
-            pct = (val / total * 100) if total > 0 else 0
-            # Stripping newlines to prevent Streamlit markdown parsing issues
-            return f"<span style='background:rgba(143,140,163,0.15);padding:2px 10px;border-radius:12px;font-weight:800;font-size:15px;color:#F5F5F7;border:1px solid rgba(143,140,163,0.2);margin-right:8px;'>{val}</span><span style='color:#94a3b8;font-weight:400;font-size:13px;'>({pct:.1f}% of {context})</span>"
+            # Just show the value in a premium badge - no percentages
+            return f"<span style='background:rgba(143,140,163,0.15);padding:2px 10px;border-radius:12px;font-weight:800;font-size:15px;color:#F5F5F7;border:1px solid rgba(143,140,163,0.2);'>{val}</span>"
             
         # Icon Definitions
         icon_color = "#8F8CA3"

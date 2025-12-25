@@ -9,54 +9,69 @@ from auth.service import AuthService
 # SIGN UP FORM
 # =============================================================================
 def render_signup_form() -> None:
-    """Render a premium signup form."""
-    st.markdown("""
-        <style>
-        .auth-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        .auth-title {
-            color: #E9EAF0;
-            font-size: 1.8rem;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-        .auth-subtitle {
-            color: #9A9AAA;
-            text-align: center;
-            margin-bottom: 2rem;
-            font-size: 0.95rem;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    """Render a premium signup form with logo header."""
+    import base64
+    from pathlib import Path
     
-    st.markdown('<p class="auth-title">Create Account</p>', unsafe_allow_html=True)
-    st.markdown('<p class="auth-subtitle">Join SADDLE to optimize your PPC</p>', unsafe_allow_html=True)
+    # Create centered layout
+    col1, col2, col3 = st.columns([1, 2, 1])
     
-    with st.form("signup_form", clear_on_submit=False):
-        email = st.text_input("Email", placeholder="you@company.com")
-        password = st.text_input("Password", type="password", placeholder="Minimum 8 characters")
-        confirm = st.text_input("Confirm Password", type="password", placeholder="Confirm your password")
+    with col2:
+        # Embossed Logo Header (same as login)
+        logo_path = Path(__file__).parent.parent / "static" / "saddle_logo.png"
+        if logo_path.exists():
+            with open(logo_path, "rb") as f:
+                logo_data = base64.b64encode(f.read()).decode()
+            st.markdown(f"""
+                <div style="
+                    text-align: center;
+                    margin-top: -2rem;
+                    margin-bottom: 1.5rem;
+                ">
+                    <div style="
+                        display: inline-block;
+                        padding: 20px 32px 16px 32px;
+                        background: linear-gradient(145deg, rgba(91, 86, 112, 0.15) 0%, rgba(11, 11, 13, 0.4) 100%);
+                        border-radius: 20px;
+                        border: 1px solid rgba(91, 86, 112, 0.3);
+                        box-shadow: 
+                            inset 0 2px 4px rgba(255, 255, 255, 0.05),
+                            inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+                            0 8px 32px rgba(0, 0, 0, 0.4);
+                    ">
+                        <img src="data:image/png;base64,{logo_data}" style="height: 120px;" />
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
         
-        submitted = st.form_submit_button("Create Account", type="primary", use_container_width=True)
+        st.markdown('<p style="color: #E9EAF0; font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 1rem;">Create Account</p>', unsafe_allow_html=True)
         
-        if submitted:
-            if not email or not password:
-                st.error("Please fill in all fields")
-            elif password != confirm:
-                st.error("Passwords do not match")
-            elif len(password) < 8:
-                st.error("Password must be at least 8 characters")
-            else:
-                auth = AuthService()
-                result = auth.sign_up(email, password)
-                if result["success"]:
-                    st.success(result.get("message", "Account created! Check your email."))
+        with st.form("signup_form", clear_on_submit=False):
+            email = st.text_input("Email", placeholder="you@company.com")
+            password = st.text_input("Password", type="password", placeholder="Minimum 8 characters")
+            confirm = st.text_input("Confirm Password", type="password", placeholder="Confirm your password")
+            
+            submitted = st.form_submit_button("Create Account", type="primary", use_container_width=True)
+            
+            if submitted:
+                if not email or not password:
+                    st.error("Please fill in all fields")
+                elif password != confirm:
+                    st.error("Passwords do not match")
+                elif len(password) < 8:
+                    st.error("Password must be at least 8 characters")
                 else:
-                    st.error(result.get("error", "Signup failed"))
+                    auth = AuthService()
+                    result = auth.sign_up(email, password)
+                    if result["success"]:
+                        st.success(result.get("message", "Account created! Check your email."))
+                    else:
+                        st.error(result.get("error", "Signup failed"))
+        
+        # Back to Login - SAME SIZE as Create Account (inside col2)
+        if st.button("← Back to Login", key="back_to_login", type="primary", use_container_width=True):
+            st.session_state['auth_view'] = 'login'
+            st.rerun()
 
 
 # =============================================================================
@@ -179,7 +194,7 @@ def render_login_form() -> dict:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Logo - BIGGER (120px)
+        # Logo - 2x SIZE (240px) with EMBOSSED CONTAINER
         import base64
         from pathlib import Path
         logo_path = Path(__file__).parent.parent / "static" / "saddle_logo.png"
@@ -187,24 +202,45 @@ def render_login_form() -> dict:
             with open(logo_path, "rb") as f:
                 logo_data = base64.b64encode(f.read()).decode()
             st.markdown(f"""
-                <div class="login-logo">
-                    <img src="data:image/png;base64,{logo_data}" style="height: 120px;" />
+                <div style="
+                    text-align: center;
+                    margin-top: -2rem;
+                    margin-bottom: 1.5rem;
+                ">
+                    <div style="
+                        display: inline-block;
+                        padding: 24px 40px 20px 40px;
+                        background: linear-gradient(145deg, rgba(91, 86, 112, 0.15) 0%, rgba(11, 11, 13, 0.4) 100%);
+                        border-radius: 24px;
+                        border: 1px solid rgba(91, 86, 112, 0.3);
+                        box-shadow: 
+                            inset 0 2px 4px rgba(255, 255, 255, 0.05),
+                            inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+                            0 8px 32px rgba(0, 0, 0, 0.4);
+                    ">
+                        <img src="data:image/png;base64,{logo_data}" style="height: 200px;" />
+                        <p style="
+                            color: #8FC9D6;
+                            font-size: 0.9rem;
+                            font-weight: 500;
+                            letter-spacing: 0.05em;
+                            margin-top: 8px;
+                            margin-bottom: 0;
+                        ">Amazon advertising, simplified</p>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
         
-        st.markdown('<p class="login-title">Welcome Back</p>', unsafe_allow_html=True)
-        st.markdown('<p class="login-subtitle">Sign in to your account</p>', unsafe_allow_html=True)
+        st.markdown('<p class="login-title" style="margin-bottom: 4px;">Welcome Back</p>', unsafe_allow_html=True)
+        st.markdown('<p class="login-subtitle" style="margin-bottom: 1rem;">Sign in to your account</p>', unsafe_allow_html=True)
         
-        # Login form
+        # Login form - COMPACT: Email & Password on same row
         with st.form("login_form", clear_on_submit=False):
-            email = st.text_input("Email", placeholder="you@company.com", key="login_email")
-            password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
-            
-            col_a, col_b = st.columns(2)
-            with col_a:
-                remember = st.checkbox("Remember me", value=True)
-            with col_b:
-                st.markdown('<div style="text-align: right; padding-top: 5px;"><a href="#" style="color: #2A8EC9; font-size: 0.85rem;">Forgot password?</a></div>', unsafe_allow_html=True)
+            col_email, col_pwd = st.columns(2)
+            with col_email:
+                email = st.text_input("Email", placeholder="you@company.com", key="login_email", label_visibility="collapsed")
+            with col_pwd:
+                password = st.text_input("Password", type="password", placeholder="Password", key="login_password", label_visibility="collapsed")
             
             submitted = st.form_submit_button("Sign In", type="primary", use_container_width=True)
             
@@ -220,13 +256,16 @@ def render_login_form() -> dict:
                 else:
                     st.error(result.get("error", "Login failed"))
         
-        # Sign up link
-        st.markdown("""
-            <div style="text-align: center; margin-top: 1.5rem; color: #9A9AAA; font-size: 0.9rem;">
-                Don't have an account? 
-                <a href="#" style="color: #2A8EC9; font-weight: 500;">Sign up</a>
-            </div>
-        """, unsafe_allow_html=True)
+        # Forgot Password / Sign up Links
+        col_fp, col_su = st.columns(2)
+        with col_fp:
+            if st.button("Forgot password?", key="forgot_pwd_btn", type="tertiary", use_container_width=True):
+                st.session_state['auth_view'] = 'reset'
+                st.rerun()
+        with col_su:
+            if st.button("Sign up", key="signup_btn", type="tertiary", use_container_width=True):
+                st.session_state['auth_view'] = 'signup'
+                st.rerun()
     
     return {"authenticated": auth.is_authenticated()}
 
@@ -373,7 +412,24 @@ def render_user_menu() -> None:
 def render_auth_page() -> None:
     """
     Render the authentication page for unauthenticated users.
-    Shows login form (which already includes sign up link).
+    Routes between login, signup, and password reset based on auth_view state.
     """
-    render_login_form()
+    # Initialize auth_view if not set
+    if 'auth_view' not in st.session_state:
+        st.session_state['auth_view'] = 'login'
+    
+    view = st.session_state.get('auth_view', 'login')
+    
+    if view == 'signup':
+        render_signup_form()
+        # Back to Login button is now inside render_signup_form()
+    elif view == 'reset':
+        render_password_reset()
+        # Back to login - LARGE BUTTON
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("← Back to Login", key="back_to_login_reset", type="secondary", use_container_width=True):
+            st.session_state['auth_view'] = 'login'
+            st.rerun()
+    else:
+        render_login_form()
 
