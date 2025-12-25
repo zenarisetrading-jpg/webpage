@@ -1196,7 +1196,8 @@ def get_recent_impact_summary() -> Optional[dict]:
         test_mode = st.session_state.get('test_mode', False)
         # Use data upload timestamp as cache version
         cv = str(st.session_state.get('data_upload_timestamp', 'v1'))
-        impact_df, _ = _fetch_impact_data(selected_client, test_mode, window_days=7, cache_version=cv)
+        # Use 30-day window for measurement to align with "Net Change Last 30 Days" label
+        impact_df, _ = _fetch_impact_data(selected_client, test_mode, window_days=30, cache_version=cv)
         
         if impact_df.empty:
             return None
