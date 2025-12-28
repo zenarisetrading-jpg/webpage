@@ -952,20 +952,24 @@ class PostgresManager:
         return result
     
     @retry_on_connection_error()
-    def get_action_impact(self, client_id: str, window_days: int = 7) -> pd.DataFrame:
+    def get_action_impact(self, client_id: str, before_days: int = 14, after_days: int = 14) -> pd.DataFrame:
         """
         Calculate impact using rule-based expected outcomes with caching.
+        
+        Uses multi-horizon measurement:
+        - before_days: Fixed at 14 days (baseline period)
+        - after_days: 14, 30, or 60 days (measurement horizon)
         """
-        cache_key = f'impact_{client_id}_{window_days}'
+        cache_key = f'impact_{client_id}_{before_days}_{after_days}'
         cached = _query_cache.get(cache_key)
         if cached is not None:
             return cached
 
-        # Calculate intervals based on window_days
-        # W=7 -> after_start = latest-6, before_end = latest-7, before_start = latest-13
-        w = window_days
-        w_minus_1 = w - 1
-        w2 = 2 * w - 1 # This is the 13 for W=7
+        # Calculate intervals based on before_days and after_days
+        # before_window: latest - before_days to latest (e.g., 14 days before latest)
+        # after_window: latest - after_days + 1 to latest (e.g., last 14 days)
+        after_minus_1 = after_days - 1
+        before_plus_after = before_days + after_days - 1
         
         # Single batch query with dynamic fixed windows and weekly action aggregation
         query = """
@@ -973,12 +977,12 @@ class PostgresManager:
                 -- Get latest data date and calculate windows
                 SELECT 
                     MAX(start_date) as latest_date,
-                    MAX(start_date) - INTERVAL '%(w_minus_1)s days' as after_start,  
-                    MAX(start_date) - INTERVAL '%(w)s days' as before_end,   
-                    MAX(start_date) - INTERVAL '%(w2)s days' as before_start,
+                    MAX(start_date) - INTERVAL '%(after_minus_1)s days' as after_start,  
+                    MAX(start_date) - INTERVAL '%(after_days)s days' as before_end,   
+                    MAX(start_date) - INTERVAL '%(before_plus_after)s days' as before_start,
                     -- Count actual days with data in each window for normalization
-                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(w_minus_1)s days' AND start_date <= MAX(t2.start_date)) as actual_after_days,
-                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(w2)s days' AND start_date <= MAX(t2.start_date) - INTERVAL '%(w)s days') as actual_before_days
+                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(after_minus_1)s days' AND start_date <= MAX(t2.start_date)) as actual_after_days,
+                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(before_plus_after)s days' AND start_date <= MAX(t2.start_date) - INTERVAL '%(after_days)s days') as actual_before_days
                 FROM target_stats t2
                 WHERE client_id = %(client_id)s
             ),
@@ -1121,9 +1125,9 @@ class PostgresManager:
         with self._get_connection() as conn:
             df = pd.read_sql(query, conn, params={
                 'client_id': client_id,
-                'w_minus_1': w_minus_1,
-                'w': w,
-                'w2': w2
+                'after_minus_1': after_minus_1,
+                'after_days': after_days,
+                'before_plus_after': before_plus_after
             })
         
         if df.empty:
@@ -1743,12 +1747,16 @@ class PostgresManager:
             }
         }
     
-    def get_impact_summary(self, client_id: str, window_days: int = 7) -> Dict[str, Any]:
+    def get_impact_summary(self, client_id: str, before_days: int = 14, after_days: int = 14) -> Dict[str, Any]:
         """
         Aggregate statistical summary of impact across all actions.
         Returns both 'all' and 'validated' summaries for synchronized UI.
+        
+        Uses multi-horizon measurement:
+        - before_days: Fixed at 14 days (baseline period)
+        - after_days: 14, 30, or 60 days (measurement horizon)
         """
-        impact_df = self.get_action_impact(client_id, window_days=window_days)
+        impact_df = self.get_action_impact(client_id, before_days=before_days, after_days=after_days)
         if impact_df.empty:
             return {
                 'all': self._empty_summary(),
@@ -1756,13 +1764,13 @@ class PostgresManager:
             }
             
         # Summary 1: ALL ACTIONS
-        summary_all = self._calculate_metrics_from_df(impact_df, window_days, label="ALL ACTIONS")
+        summary_all = self._calculate_metrics_from_df(impact_df, after_days, label="ALL ACTIONS")
         
         # Summary 2: VALIDATED ACTIONS ONLY
         # Pattern matches: ✓, CPC Validated, CPC Match, Directional, Confirmed, Normalized
         validated_mask = impact_df['validation_status'].str.contains('✓|CPC Validated|CPC Match|Directional|Confirmed|Normalized|Volume', na=False, regex=True)
         validated_df = impact_df[validated_mask].copy()
-        summary_validated = self._calculate_metrics_from_df(validated_df, window_days, label="VALIDATED ONLY")
+        summary_validated = self._calculate_metrics_from_df(validated_df, after_days, label="VALIDATED ONLY")
         
         return {
             'all': summary_all,

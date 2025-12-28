@@ -18,29 +18,58 @@ from datetime import datetime, timedelta
 from core.db_manager import get_db_manager
 
 # ==========================================
-# IMPACT MATURITY CONFIGURATION
+# MULTI-HORIZON IMPACT MEASUREMENT CONFIG
 # ==========================================
-IMPACT_CONFIG = {
-    "maturity_buffer_days": 3,      # Days after window to wait for attribution
-    "default_after_window_days": 7  # Default after measurement window
+IMPACT_WINDOWS = {
+    "before_window_days": 14,       # Fixed 14-day baseline for all horizons
+    "maturity_buffer_days": 3,      # Days after window for attribution to settle
+    
+    "horizons": {
+        "14D": {
+            "days": 14,
+            "maturity": 17,  # 14 + 3
+            "label": "14-Day Impact",
+            "description": "Early signal — did the action have an effect?",
+        },
+        "30D": {
+            "days": 30,
+            "maturity": 33,  # 30 + 3
+            "label": "30-Day Impact",
+            "description": "Confirmed — is the impact sustained?",
+        },
+        "60D": {
+            "days": 60,
+            "maturity": 63,  # 60 + 3
+            "label": "60-Day Impact",
+            "description": "Long-term — did the gains hold?",
+        },
+    },
+    
+    "default_horizon": "14D",
+    "available_horizons": ["14D", "30D", "60D"],
 }
 
-def get_maturity_status(action_date, latest_data_date, after_window_days: int = 7, maturity_buffer_days: int = 3) -> dict:
+def get_maturity_status(action_date, latest_data_date, horizon: str = "14D") -> dict:
     """
-    Check if action has matured enough for impact calculation.
+    Check if action has matured enough for impact calculation at a specific horizon.
     
-    Maturity is based on whether the AVAILABLE DATA covers enough time after the action
-    for the after-window + attribution buffer to have settled.
+    Maturity formula: action_date + horizon_days + buffer_days ≤ latest_data_date
     
     Args:
         action_date: Date the action was logged (T0)
         latest_data_date: The most recent date in the data (from DB)
-        after_window_days: Length of after measurement window
-        maturity_buffer_days: Additional days for Amazon attribution to settle
+        horizon: Measurement horizon - "14D", "30D", or "60D"
         
     Returns:
-        dict with is_mature, maturity_date, days_until_mature, status
+        dict with is_mature, maturity_date, days_until_mature, status, horizon
     """
+    # Get horizon config
+    if horizon not in IMPACT_WINDOWS["horizons"]:
+        horizon = IMPACT_WINDOWS["default_horizon"]
+    horizon_config = IMPACT_WINDOWS["horizons"][horizon]
+    after_window_days = horizon_config["days"]
+    maturity_buffer_days = IMPACT_WINDOWS["maturity_buffer_days"]
+    
     # Parse action_date to date object
     if isinstance(action_date, str):
         action_date = datetime.strptime(action_date[:10], "%Y-%m-%d").date()
@@ -77,11 +106,13 @@ def get_maturity_status(action_date, latest_data_date, after_window_days: int = 
         "is_mature": is_mature,
         "maturity_date": maturity_date,
         "days_until_mature": max(0, days_until_mature),
-        "status": status
+        "status": status,
+        "horizon": horizon,
+        "horizon_config": horizon_config,
     }
 
 @st.cache_data(ttl=3600, show_spinner=False)  # Restored production TTL
-def _fetch_impact_data(client_id: str, test_mode: bool, window_days: int = 7, cache_version: str = "v4_dedup") -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def _fetch_impact_data(client_id: str, test_mode: bool, before_days: int = 14, after_days: int = 14, cache_version: str = "v4_dedup") -> Tuple[pd.DataFrame, Dict[str, Any]]:
 
     """
     Cached data fetcher for impact analysis.
@@ -90,13 +121,14 @@ def _fetch_impact_data(client_id: str, test_mode: bool, window_days: int = 7, ca
     Args:
         client_id: Account ID
         test_mode: Whether using test database
-        window_days: Number of days for before/after comparison window
+        before_days: Number of days for before comparison window (fixed at 14)
+        after_days: Number of days for after comparison window (14, 30, or 60)
         cache_version: Version string that changes when data is uploaded (invalidates cache)
     """
     try:
         db = get_db_manager(test_mode)
-        impact_df = db.get_action_impact(client_id, window_days=window_days)
-        full_summary = db.get_impact_summary(client_id, window_days=window_days)
+        impact_df = db.get_action_impact(client_id, before_days=before_days, after_days=after_days)
+        full_summary = db.get_impact_summary(client_id, before_days=before_days, after_days=after_days)
         return impact_df, full_summary
     except Exception as e:
         # Return empty structures on failure to prevent UI crash
