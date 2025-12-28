@@ -30,6 +30,23 @@ BID_VALIDATION_CONFIG = {
 }
 
 # ==========================================
+# HARVEST VALIDATION CONFIGURATION
+# ==========================================
+HARVEST_VALIDATION_CONFIG = {
+    # Tier thresholds (source spend drop %)
+    "complete_block_threshold": 0,        # $0 spend = complete
+    "near_complete_threshold": 0.90,      # 90%+ drop = near complete
+    "strong_migration_threshold": 0.75,   # 75%+ drop with growth = strong
+    "partial_migration_threshold": 0.50,  # 50%+ drop with 25%+ growth = partial
+    
+    # Exact match growth requirement for lower tiers
+    "exact_growth_required_for_partial": 0.25,  # 25% growth
+    
+    # Minimum source spend to validate (avoid noise)
+    "min_source_before_spend": 5.0,
+}
+
+# ==========================================
 # PERFORMANCE: Simple TTL Cache
 # ==========================================
 class TTLCache:
@@ -1213,7 +1230,7 @@ class PostgresManager:
         df.loc[iso_mask, 'impact_score'] = 0
         df.loc[iso_mask, 'validation_status'] = 'Part of harvest consolidation'
         
-        # RULE 2: HARVEST → Source After = $0, 10% lift assumption
+        # RULE 2: HARVEST → Tiered migration validation
         harv_mask = df['action_type'] == 'HARVEST'
         df.loc[harv_mask, 'after_spend'] = 0.0
         df.loc[harv_mask, 'after_sales'] = 0.0
@@ -1222,10 +1239,65 @@ class PostgresManager:
         df.loc[harv_mask, 'impact_score'] = df.loc[harv_mask, 'delta_sales']
         df.loc[harv_mask, 'attribution'] = 'harvest'
         
-        harv_not_impl = harv_mask & (df['observed_after_spend'] > 0)
-        df.loc[harv_not_impl, 'validation_status'] = '⚠️ Source still active'
-        harv_impl = harv_mask & (df['observed_after_spend'] == 0)
-        df.loc[harv_impl, 'validation_status'] = '✓ Harvested to exact'
+        # Tiered harvest validation based on source drop % and exact match growth
+        min_spend = HARVEST_VALIDATION_CONFIG['min_source_before_spend']
+        near_complete = HARVEST_VALIDATION_CONFIG['near_complete_threshold']
+        strong_thresh = HARVEST_VALIDATION_CONFIG['strong_migration_threshold']
+        partial_thresh = HARVEST_VALIDATION_CONFIG['partial_migration_threshold']
+        exact_growth_req = HARVEST_VALIDATION_CONFIG['exact_growth_required_for_partial']
+        
+        for idx in df[harv_mask].index:
+            source_before = df.at[idx, 'before_spend']
+            source_after = df.at[idx, 'observed_after_spend']
+            target_text = str(df.at[idx, 'target_text']).lower().strip()
+            
+            # Check minimum source spend threshold
+            if source_before < min_spend:
+                df.at[idx, 'validation_status'] = '◐ Unverified (low baseline)'
+                continue
+            
+            # Calculate source drop percentage
+            source_drop_pct = (source_before - source_after) / source_before
+            
+            # Look up exact match spend for this term (from same data)
+            exact_matches = df[
+                (df['target_text'].str.lower().str.strip() == target_text) &
+                (df['match_type'].str.lower() == 'exact')
+            ]
+            exact_after_spend = exact_matches['observed_after_spend'].sum() if len(exact_matches) > 0 else 0
+            exact_before_spend = exact_matches['before_spend'].sum() if len(exact_matches) > 0 else 0
+            exact_growth = exact_after_spend - exact_before_spend
+            exact_growth_pct = exact_growth / max(exact_before_spend, 1) if exact_before_spend > 0 else (1.0 if exact_after_spend > 0 else 0)
+            
+            # Store metrics for transparency
+            df.at[idx, 'source_drop_pct'] = round(source_drop_pct * 100, 1)
+            df.at[idx, 'exact_growth'] = round(exact_growth, 2)
+            
+            # TIER 1: Complete block ($0)
+            if source_after == 0:
+                df.at[idx, 'validation_status'] = '✓ Harvested (complete)'
+                continue
+            
+            # TIER 2: Near-complete (≥90% drop)
+            if source_drop_pct >= near_complete:
+                df.at[idx, 'validation_status'] = '✓ Harvested (90%+ blocked)'
+                continue
+            
+            # TIER 3: Strong migration (≥75% drop)
+            if source_drop_pct >= strong_thresh:
+                df.at[idx, 'validation_status'] = '✓ Harvested (migrated)'
+                continue
+            
+            # TIER 4: Partial migration (≥50% drop)
+            if source_drop_pct >= partial_thresh:
+                df.at[idx, 'validation_status'] = '✓ Harvested (partial)'
+                continue
+            
+            # TIER 5: Incomplete
+            if source_drop_pct > 0:
+                df.at[idx, 'validation_status'] = f'⚠️ Migration {source_drop_pct*100:.0f}%'
+            else:
+                df.at[idx, 'validation_status'] = '⚠️ Source still active'
         
         # RULE 3: BID_CHANGE → Incremental Revenue = before_spend * (roas_after - roas_before)
         bid_mask = df['action_type'].str.contains('BID', na=False)
