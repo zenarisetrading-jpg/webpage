@@ -1076,9 +1076,11 @@ class PostgresManager:
                 COALESCE(bs.spend, bc.spend, 0) as before_spend,
                 COALESCE(bs.sales, bc.sales, 0) as before_sales,
                 COALESCE(bs.clicks, 0) as before_clicks,
+                COALESCE(bs.impressions, 0) as before_impressions,
                 COALESCE(afs.spend, ac.spend, 0) as observed_after_spend,
                 COALESCE(afs.sales, ac.sales, 0) as observed_after_sales,
                 COALESCE(afs.clicks, 0) as after_clicks,
+                COALESCE(afs.impressions, 0) as after_impressions,
                 CASE WHEN bs.spend IS NOT NULL THEN 'target' ELSE 'campaign' END as match_level,
                 r30.rolling_spc as rolling_30d_spc
             FROM aggregated_actions a
