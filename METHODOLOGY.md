@@ -110,13 +110,32 @@ We don't just "guess" impact. We confirm it:
 - **Source Isolated**: For harvests, we confirm the source campaign stopped bidding on the term.
 - **Observed Data**: For bids, we use actual spend/sales shifts from the Ads Console.
 
-### 5. Data Maturity Gate
-Amazon's attribution window is 7-14 days. To ensure accurate impact measurement:
+### 5. Multi-Horizon Impact Measurement
+
+We measure impact at three horizons to balance speed vs accuracy:
+
+| Horizon | After Window | Maturity | Purpose |
+|---------|--------------|----------|---------|
+| **14D** | 14 days | 17 days | Early signal — did the action have an effect? |
+| **30D** | 30 days | 33 days | Confirmed — is the impact sustained? |
+| **60D** | 60 days | 63 days | Long-term — did the gains hold? |
+
+**Why not 7 days?**
+Amazon's attribution window is 7-14 days. Measuring at 7 days produces incomplete data and false negatives. Bid increases especially need 10-14 days to show effect.
+
+### Maturity Formula
 
 ```
-is_mature = (action_date + 7 + 3) ≤ latest_data_date
+is_mature(horizon) = (action_date + horizon_days + 3) ≤ latest_data_date
+
+Where horizon_days = {
+    "14D": 14,
+    "30D": 30,
+    "60D": 60
+}
 ```
 
-- **7 days**: After-window for post-action performance
-- **3 days**: Buffer for attribution settlement
-- Actions not yet mature are shown as "Pending"
+- **Before window**: Always 14 days (fixed baseline)
+- **After window**: 14, 30, or 60 days (per horizon)
+- **Buffer**: 3 days for attribution to settle
+- Actions not yet mature are shown as "Pending" for that horizon

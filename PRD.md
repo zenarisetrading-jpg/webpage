@@ -546,29 +546,39 @@ SPC_Baseline = COALESCE(Rolling_30D_SPC, Window_SPC)
 | **Zero** | Performance matched expectations |
 | **Negative** | Bid decision generated LESS sales than counterfactual |
 
-### 4.8 Data Maturity Gate
+### 4.8 Multi-Horizon Impact Measurement
 
 #### 4.8.1 Purpose
-Amazon's attribution window is 7-14 days. Calculating impact immediately after the after-window closes results in under-reported sales. The maturity gate ensures we wait for attribution to settle before showing impact metrics.
+Amazon's attribution window is 7-14 days. Measuring at 7 days produces incomplete data and false negatives. We use a principled multi-horizon approach for accurate impact measurement.
 
-#### 4.8.2 Maturity Formula
+#### 4.8.2 Measurement Horizons
+
+| Horizon | Before Window | After Window | Maturity | Purpose |
+|---------|---------------|--------------|----------|---------|
+| **14D** | 14 days | 14 days | 17 days | Early signal — did the action have an effect? |
+| **30D** | 14 days | 30 days | 33 days | Confirmed — is the impact sustained? |
+| **60D** | 14 days | 60 days | 63 days | Long-term — did the gains hold? |
+
+#### 4.8.3 Maturity Formula
 ```
-is_mature = (action_date + 7 + 3) ≤ latest_data_date
+is_mature(horizon) = (action_date + horizon_days + 3) ≤ latest_data_date
 ```
 
-| Component | Days | Description |
-|-----------|------|-------------|
-| After Window | 7 | Days to measure post-action performance |
-| Buffer | 3 | Days for Amazon attribution to settle |
-| **Total** | 10 | Days after action for impact calculation |
+- **Before window**: Always 14 days (fixed baseline)
+- **After window**: 14, 30, or 60 days (per selected horizon)
+- **Buffer**: 3 days for attribution to settle
 
-#### 4.8.3 Example
-- Data through Dec 16 → Actions from Dec 6 or earlier are "Measured"
-- Actions from Dec 7-16 are "Pending" (need data through Dec 17-26)
+#### 4.8.4 Example (data through Dec 28)
+| Action Date | 14D Mature? | 30D Mature? | 60D Mature? |
+|-------------|-------------|-------------|-------------|
+| Dec 11 | ✅ (Dec 28) | ❌ (Jan 13) | ❌ (Feb 12) |
+| Nov 25 | ✅ | ✅ (Dec 28) | ❌ (Jan 27) |
+| Oct 1 | ✅ | ✅ | ✅ |
 
-#### 4.8.4 Dashboard Display
-- **Measured**: Impact calculated, shown in aggregate metrics
-- **Pending**: Awaiting data, shown in separate tab with expected maturity date
+#### 4.8.5 Dashboard Display
+- User selects horizon (14D/30D/60D radio toggle)
+- Only horizon-mature actions shown in aggregates
+- Pending actions shown with days until maturity
 
 ---
 

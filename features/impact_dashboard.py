@@ -261,6 +261,21 @@ def render_impact_dashboard():
             maturity_days = after_days + buffer_days
             cutoff_date = pd.to_datetime(latest_data_date) - pd.Timedelta(days=maturity_days)
             print(f"Maturity cutoff ({horizon}): Actions from {cutoff_date.strftime('%b %d')} or earlier are mature (data through {pd.to_datetime(latest_data_date).strftime('%b %d')})")
+            
+            # === EMPTY HORIZON CALLOUT ===
+            # If no actions are mature for this horizon, show a helpful message
+            if mature_count == 0 and len(impact_df) > 0:
+                st.warning(f"""
+                    **No actions mature for {horizon} measurement yet.**
+                    
+                    The {horizon_config['label']} requires {maturity_days} days of data after each action.
+                    Your most recent data is from {pd.to_datetime(latest_data_date).strftime('%b %d')}.
+                    
+                    **Options:**
+                    - Select **14D** horizon for earlier insights
+                    - Wait for more data to accumulate
+                    - {pending_attr_count} actions pending for this horizon
+                """)
         else:
             # Fallback if no action_date column or no latest date
             impact_df['is_mature'] = True
