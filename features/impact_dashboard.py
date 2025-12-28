@@ -159,17 +159,18 @@ def render_impact_dashboard():
 
     with col_toggle:
         st.write("") # Spacer
-        # Use radio buttons with horizontal layout for time frame selection
-        time_frame = st.radio(
-            "Time Frame",
-            options=["7D", "14D", "30D", "60D", "90D"],
-            index=2,  # Default to 30D (index 2)
+        # Horizon selector - measurement period after action
+        horizon = st.radio(
+            "Measurement Horizon",
+            options=IMPACT_WINDOWS["available_horizons"],  # ["14D", "30D", "60D"]
+            index=0,  # Default to 14D
             horizontal=True,
             label_visibility="collapsed",
-            key="impact_time_frame"
+            key="impact_horizon",
+            help="How long after the action to measure impact"
         )
-        if time_frame is None:
-            time_frame = "30D"
+        if horizon is None:
+            horizon = IMPACT_WINDOWS["default_horizon"]
 
     
     # Dark theme compatible CSS
@@ -226,18 +227,20 @@ def render_impact_dashboard():
         # Use cached fetcher
         test_mode = st.session_state.get('test_mode', False)
         # Force cache bust with version + timestamp
-        cache_version = "v8_decision_impact_" + str(st.session_state.get('data_upload_timestamp', 'init'))
-        # Parse time frame to days for the before/after comparison window
-        time_frame_days = {"7D": 7, "14D": 14, "30D": 30, "60D": 60, "90D": 90}
-        window_days = time_frame_days.get(time_frame, 7)
-        impact_df, full_summary = _fetch_impact_data(selected_client, test_mode, window_days, cache_version)
+        cache_version = "v9_multi_horizon_" + str(st.session_state.get('data_upload_timestamp', 'init'))
+        
+        # Get horizon config
+        horizon_config = IMPACT_WINDOWS["horizons"].get(horizon, IMPACT_WINDOWS["horizons"]["14D"])
+        before_days = IMPACT_WINDOWS["before_window_days"]  # Fixed 14 days
+        after_days = horizon_config["days"]  # 14, 30, or 60 based on selection
+        buffer_days = IMPACT_WINDOWS["maturity_buffer_days"]  # 3 days
+        
+        impact_df, full_summary = _fetch_impact_data(selected_client, test_mode, before_days, after_days, cache_version)
         
         # === MATURITY GATE ===
         # Add maturity status to each action - determines if impact can be calculated
         # Maturity is based on whether the DATA covers enough time after the action
         # for the after-window + attribution buffer to have settled
-        actual_after_window = IMPACT_CONFIG['default_after_window_days']  # 7 days
-        buffer_days = IMPACT_CONFIG['maturity_buffer_days']  # 3 days
         
         # Get the latest date in the data from full_summary
         period_info = full_summary.get('period_info', {})
@@ -245,18 +248,19 @@ def render_impact_dashboard():
         
         if not impact_df.empty and 'action_date' in impact_df.columns and latest_data_date:
             impact_df['is_mature'] = impact_df['action_date'].apply(
-                lambda d: get_maturity_status(d, latest_data_date, actual_after_window, buffer_days)['is_mature']
+                lambda d: get_maturity_status(d, latest_data_date, horizon)['is_mature']
             )
             impact_df['maturity_status'] = impact_df['action_date'].apply(
-                lambda d: get_maturity_status(d, latest_data_date, actual_after_window, buffer_days)['status']
+                lambda d: get_maturity_status(d, latest_data_date, horizon)['status']
             )
             
             mature_count = int(impact_df['is_mature'].sum())
             pending_attr_count = len(impact_df) - mature_count
             
             # Debug: Show the cutoff date
-            cutoff_date = pd.to_datetime(latest_data_date) - pd.Timedelta(days=actual_after_window + buffer_days)
-            print(f"Maturity cutoff: Actions from {cutoff_date.strftime('%b %d')} or earlier are mature (data through {pd.to_datetime(latest_data_date).strftime('%b %d')})")
+            maturity_days = after_days + buffer_days
+            cutoff_date = pd.to_datetime(latest_data_date) - pd.Timedelta(days=maturity_days)
+            print(f"Maturity cutoff ({horizon}): Actions from {cutoff_date.strftime('%b %d')} or earlier are mature (data through {pd.to_datetime(latest_data_date).strftime('%b %d')})")
         else:
             # Fallback if no action_date column or no latest date
             impact_df['is_mature'] = True
@@ -304,17 +308,10 @@ def render_impact_dashboard():
             print(f"Header date error: {e}")
         
     
-    # Time frame (7D, 14D, 30D) now controls the before/after comparison window in the SQL query
+    
+    # Horizon-based measurement: 14D before (fixed) vs horizon after window
     # No need to filter actions here - all actions with measurable impact are returned
-    time_frame_days = {
-        "7D": 7,
-        "14D": 14,
-        "30D": 30,
-        "60D": 60,
-        "90D": 90
-    }
-    days = time_frame_days.get(time_frame, 30)
-    filter_label = f"{days}-Day Window"
+    filter_label = f"{horizon} Impact Window"
     
     # Get latest available date for reference
     available_dates = db_manager.get_available_dates(selected_client)
@@ -350,7 +347,7 @@ def render_impact_dashboard():
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <div style="display: flex; align-items: center;">
                     {calendar_icon}
-                    <span style="font-weight: 600; font-size: 1.1rem; color: #60a5fa; margin-right: 12px;">{time_frame} Impact Summary</span>
+                    <span style="font-weight: 600; font-size: 1.1rem; color: #60a5fa; margin-right: 12px;">{horizon_config['label']}</span>
                     <span style="color: #94a3b8; font-size: 0.95rem;">{compare_text}</span>
                 </div>
                 <div style="color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center;">
