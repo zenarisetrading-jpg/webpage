@@ -408,9 +408,9 @@ def render_impact_dashboard():
     # Use pre-calculated summary from backend for the tiles
     display_summary = full_summary.get('validated' if show_validated_only else 'all', {})
     
-    # HERO TILES (Now synchronized with maturity counts)
-    # Note: We need mature_count from the maturity gate section - use len(mature_df) for display consistency
-    _render_hero_tiles(display_summary, len(active_df), len(dormant_df), len(mature_df), len(pending_attr_df))
+    # HERO TILES (Now synchronized with maturity counts from header)
+    # Use mature_count and pending_attr_count to match header display
+    _render_hero_tiles(display_summary, len(active_df), len(dormant_df), mature_count, pending_attr_count)
     
     st.divider()
 
@@ -1475,13 +1475,12 @@ def _render_drill_down_table(impact_df: pd.DataFrame, show_migration_badge: bool
             if col not in display_df.columns:
                 display_df[col] = np.nan
         
-        # Market Tag logic
+        # Market Tag logic - uses backend-calculated market_downshift
         def get_market_tag(row):
-            if row['before_clicks'] == 0:
+            if row.get('before_clicks', 0) == 0:
                 return "Low Data"
-            if pd.notna(row['cpc_after']) and pd.notna(row['cpc_before']) and row['cpc_before'] > 0:
-                if row['cpc_after'] <= 0.75 * row['cpc_before']:
-                    return "Market Downshift"
+            if row.get('market_downshift', False) == True:
+                return "Market Downshift"
             return "Normal"
         display_df['market_tag'] = display_df.apply(get_market_tag, axis=1)
         

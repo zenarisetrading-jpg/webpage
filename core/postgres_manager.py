@@ -21,12 +21,12 @@ import functools
 # BID VALIDATION CONFIGURATION
 # ==========================================
 BID_VALIDATION_CONFIG = {
-    "cpc_match_threshold": 0.15,              # 15% tolerance (tightened from 20%)
-    "cpc_directional_threshold": 0.05,        # >5% CPC movement
-    "impressions_increase_threshold": 0.20,   # +20% for bid ups
-    "impressions_decrease_threshold": 0.15,   # -15% for bid downs
-    "combined_impressions_threshold": 0.10,   # +10% for combined signal
-    "min_impressions_before": 50,             # Minimum baseline impressions
+    "cpc_match_threshold": 0.20,              # 20% tolerance (per PRD 4.5.4)
+    "cpc_directional_threshold": 0.03,        # >3% CPC change (more sensitive)
+    "min_impressions_before": 20,             # Lowered for long-tail (was 50)
+    "impressions_increase_threshold": 0.15,   # +15% for bid ups (was 20%)
+    "impressions_decrease_threshold": 0.10,   # -10% for bid downs (was 15%)
+    "combined_impressions_threshold": 0.08,   # For combined validation (was 10%)
 }
 
 # ==========================================
@@ -1323,8 +1323,9 @@ class PostgresManager:
         df.loc[neg_mask, 'attribution'] = 'cost_avoidance'
         
         # Check if negative was actually implemented
-        # Only use observed_after_spend if we have target-level match (not campaign fallback)
-        has_target_match = df['match_level'] == 'target'
+        # Include all levels where we have actual search term data (target, cst, cst_account)
+        # Only 'campaign' level means no search term match
+        has_target_match = df['match_level'].isin(['target', 'cst', 'cst_account'])
         
         # Clear case: Target found in after window with spend = keyword still active
         neg_not_impl = neg_mask & has_target_match & (df['observed_after_spend'] > 0)
