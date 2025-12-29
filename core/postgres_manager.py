@@ -1109,6 +1109,40 @@ class PostgresManager:
                   AND t.start_date <= dr.latest_date
                 GROUP BY LOWER(campaign_name)
             ),
+            before_cst_account AS (
+                -- Account-level CST fallback (no campaign restriction)
+                SELECT 
+                    LOWER(customer_search_term) as cst_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.before_start 
+                  AND t.start_date <= dr.before_end
+                  AND customer_search_term IS NOT NULL
+                  AND customer_search_term != ''
+                GROUP BY LOWER(customer_search_term)
+            ),
+            after_cst_account AS (
+                -- Account-level CST fallback (no campaign restriction)
+                SELECT 
+                    LOWER(customer_search_term) as cst_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.after_start 
+                  AND t.start_date <= dr.latest_date
+                  AND customer_search_term IS NOT NULL
+                  AND customer_search_term != ''
+                GROUP BY LOWER(customer_search_term)
+            ),
             rolling_30d_stats AS (
                 -- 30-day rolling stats by target_text (for baseline comparison)
                 SELECT 
@@ -1145,39 +1179,40 @@ class PostgresManager:
                 -- NEGATIVE/HARVEST: use customer_search_term match (bcs/afcs)
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.spend, bc.spend, 0)
-                    ELSE COALESCE(bcs.spend, bc.spend, 0)
+                    ELSE COALESCE(bcs.spend, bcsa.spend, bc.spend, 0)
                 END as before_spend,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.sales, bc.sales, 0)
-                    ELSE COALESCE(bcs.sales, bc.sales, 0)
+                    ELSE COALESCE(bcs.sales, bcsa.sales, bc.sales, 0)
                 END as before_sales,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.clicks, bc.clicks, 0)
-                    ELSE COALESCE(bcs.clicks, bc.clicks, 0)
+                    ELSE COALESCE(bcs.clicks, bcsa.clicks, bc.clicks, 0)
                 END as before_clicks,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.impressions, bc.impressions, 0)
-                    ELSE COALESCE(bcs.impressions, bc.impressions, 0)
+                    ELSE COALESCE(bcs.impressions, bcsa.impressions, bc.impressions, 0)
                 END as before_impressions,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.spend, ac.spend, 0)
-                    ELSE COALESCE(afcs.spend, ac.spend, 0)
+                    ELSE COALESCE(afcs.spend, afcsa.spend, ac.spend, 0)
                 END as observed_after_spend,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.sales, ac.sales, 0)
-                    ELSE COALESCE(afcs.sales, ac.sales, 0)
+                    ELSE COALESCE(afcs.sales, afcsa.sales, ac.sales, 0)
                 END as observed_after_sales,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.clicks, ac.clicks, 0)
-                    ELSE COALESCE(afcs.clicks, ac.clicks, 0)
+                    ELSE COALESCE(afcs.clicks, afcsa.clicks, ac.clicks, 0)
                 END as after_clicks,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.impressions, ac.impressions, 0)
-                    ELSE COALESCE(afcs.impressions, ac.impressions, 0)
+                    ELSE COALESCE(afcs.impressions, afcsa.impressions, ac.impressions, 0)
                 END as after_impressions,
                 CASE 
                     WHEN a.action_type = 'BID_CHANGE' AND bs.spend IS NOT NULL THEN 'target'
                     WHEN a.action_type != 'BID_CHANGE' AND bcs.spend IS NOT NULL THEN 'cst'
+                    WHEN a.action_type != 'BID_CHANGE' AND bcsa.spend IS NOT NULL THEN 'cst_account'
                     ELSE 'campaign' 
                 END as match_level,
                 r30.rolling_spc as rolling_30d_spc
@@ -1197,6 +1232,11 @@ class PostgresManager:
             LEFT JOIN after_cst_stats afcs 
                 ON a.normalized_target_lower = afcs.cst_lower 
                 AND a.campaign_lower = afcs.campaign_lower
+            -- Account-level CST fallback (no campaign restriction)
+            LEFT JOIN before_cst_account bcsa 
+                ON a.normalized_target_lower = bcsa.cst_lower
+            LEFT JOIN after_cst_account afcsa 
+                ON a.normalized_target_lower = afcsa.cst_lower
             -- Campaign-level fallback
             LEFT JOIN before_campaign bc 
                 ON a.campaign_lower = bc.campaign_lower
@@ -1267,6 +1307,7 @@ class PostgresManager:
         df['impact_score'] = 0.0
         df['attribution'] = 'direct_causation'
         df['validation_status'] = ''
+        df['spend_avoided'] = 0.0
         
         # RULE 1: NEGATIVE → After = $0, impact = cost saved
         neg_mask = df['action_type'].isin(['NEGATIVE', 'NEGATIVE_ADD'])
@@ -1532,9 +1573,29 @@ class PostgresManager:
                 df.at[idx, 'impact_score'] = delta_sales
             
             # Set validation status based on layers (order matters - first match wins)
-            if a_clicks == 0 or a_spend == 0:
-                df.at[idx, 'validation_status'] = '◐ No after data'
-            elif cpc_validated and beat_baseline:
+            # FIRST: Handle zero after-spend based on action intent
+            if a_spend == 0:
+                if b_spend > 0:
+                    # Had spend before, now $0 - check if this was intended
+                    if bid_direction == 'DOWN':
+                        # BID_DOWN with $0 after = SUCCESS (spend eliminated)
+                        df.at[idx, 'validation_status'] = '✓ Spend Eliminated'
+                        df.at[idx, 'spend_avoided'] = b_spend
+                        continue  # Skip rest of validation
+                    else:
+                        # BID_UP with $0 after = likely not implemented or target died
+                        df.at[idx, 'validation_status'] = '◐ No after data'
+                        continue
+                else:
+                    # No spend before AND after = dormant target
+                    df.at[idx, 'validation_status'] = '◐ Dormant target'
+                    continue
+            elif a_clicks == 0:
+                # Has spend but no clicks = data anomaly, mark but continue validation
+                df.at[idx, 'validation_status'] = '◐ Low click volume'
+                # Don't continue - let other validation layers try
+            
+            if cpc_validated and beat_baseline:
                 df.at[idx, 'validation_status'] = '✓ CPC Match + Baseline'
             elif cpc_validated:
                 df.at[idx, 'validation_status'] = '✓ CPC Validated'
@@ -1607,6 +1668,59 @@ class PostgresManager:
         # For weekly buckets, we also deduplicate within the bucket implicitly here.
         df = df.drop_duplicates(subset='_dedup_key', keep='first')
         df = df.drop(columns=['_dedup_key'])
+        
+        # ==========================================
+        # ADD PER-ROW DECISION METRICS TO DATAFRAME
+        # (Single source of truth - frontend displays, doesn't recalculate)
+        # ==========================================
+        import numpy as np
+        
+        # Calculate decision metrics for ALL action types (not just BID)
+        # This ensures HARVEST/NEGATIVE actions also have CPC, decision_impact for display
+        
+        # SPC Baseline: 30D rolling with window fallback (per PRD 4.7.3)
+        df['spc_window'] = (
+            df['before_sales'] / 
+            df['before_clicks'].replace(0, np.nan)
+        )
+        df['spc_before'] = df['rolling_30d_spc'].fillna(df['spc_window'])
+        
+        # CPC calculations
+        df['cpc_before'] = (
+            df['before_spend'] / 
+            df['before_clicks'].replace(0, np.nan)
+        )
+        df['cpc_after'] = (
+            df['observed_after_spend'] / 
+            df['after_clicks'].replace(0, np.nan)
+        )
+        
+        # CPC Change %
+        df['cpc_change_pct'] = (
+            (df['cpc_after'] - df['cpc_before']) / 
+            df['cpc_before']
+        ).fillna(0) * 100
+        
+        # Decision Impact Formula (PRD 4.7.2)
+        df['expected_clicks'] = (
+            df['observed_after_spend'] / df['cpc_before']
+        )
+        df['expected_sales'] = (
+            df['expected_clicks'] * df['spc_before']
+        )
+        df['decision_impact'] = (
+            df['observed_after_sales'] - df['expected_sales']
+        )
+        
+        # Spend Avoided (for defensive actions) - preserve any existing value
+        df['spend_avoided'] = df['spend_avoided'].fillna(
+            (df['before_spend'] - df['observed_after_spend']).clip(lower=0)
+        )
+        
+        # Market Downshift flag
+        df['market_downshift'] = (
+            df['cpc_after'] <= 0.75 * df['cpc_before']
+        )
         
         _query_cache.set(cache_key, df)
         return df

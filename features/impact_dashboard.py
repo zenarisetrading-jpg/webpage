@@ -1464,30 +1464,16 @@ def _render_drill_down_table(impact_df: pd.DataFrame, show_migration_badge: bool
             display_df['action_display'] = display_df['action_type']
         
         # ==========================================
-        # CALCULATE DECISION-ADJUSTED METRICS
+        # USE BACKEND-CALCULATED METRICS (Single Source of Truth)
+        # All decision metrics are pre-calculated in get_action_impact()
+        # Frontend only displays - no recalculation
         # ==========================================
         
-        # Spend Avoided = max(0, Before_Spend - After_Spend)
-        display_df['spend_avoided'] = (display_df['before_spend'] - display_df['observed_after_spend']).clip(lower=0)
-        
-        # CPC Before = Before_Spend / Before_Clicks (NULL if clicks=0)
-        display_df['before_clicks'] = display_df.get('before_clicks', 0)
-        display_df['after_clicks'] = display_df.get('after_clicks', 0)
-        display_df['cpc_before'] = display_df['before_spend'] / display_df['before_clicks'].replace(0, np.nan)
-        display_df['cpc_after'] = display_df['observed_after_spend'] / display_df['after_clicks'].replace(0, np.nan)
-        
-        # CPC Change % = (CPC_After - CPC_Before) / CPC_Before
-        display_df['cpc_change_pct'] = ((display_df['cpc_after'] - display_df['cpc_before']) / display_df['cpc_before'] * 100).fillna(0)
-        
-        # Sales Per Click (proxy for CVR × AOV)
-        display_df['spc_before'] = display_df['before_sales'] / display_df['before_clicks'].replace(0, np.nan)
-        
-        # Expected Sales = (After_Spend / CPC_Before) × SPC_Before
-        display_df['expected_clicks'] = display_df['observed_after_spend'] / display_df['cpc_before']
-        display_df['expected_sales'] = display_df['expected_clicks'] * display_df['spc_before']
-        
-        # Decision Impact = After_Sales - Expected_Sales
-        display_df['decision_impact'] = display_df['observed_after_sales'] - display_df['expected_sales']
+        # Ensure columns exist (defensive - backend should provide these)
+        for col in ['decision_impact', 'spend_avoided', 'cpc_before', 'cpc_after', 
+                    'cpc_change_pct', 'expected_sales', 'spc_before', 'market_downshift']:
+            if col not in display_df.columns:
+                display_df[col] = np.nan
         
         # Market Tag logic
         def get_market_tag(row):
