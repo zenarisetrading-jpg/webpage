@@ -112,7 +112,7 @@ def get_maturity_status(action_date, latest_data_date, horizon: str = "14D") -> 
     }
 
 @st.cache_data(ttl=3600, show_spinner=False)  # Restored production TTL
-def _fetch_impact_data(client_id: str, test_mode: bool, before_days: int = 14, after_days: int = 14, cache_version: str = "v5_validation_fix") -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def _fetch_impact_data(client_id: str, test_mode: bool, before_days: int = 14, after_days: int = 14, cache_version: str = "v6_data_filter") -> Tuple[pd.DataFrame, Dict[str, Any]]:
 
     """
     Cached data fetcher for impact analysis.

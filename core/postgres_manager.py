@@ -1009,6 +1009,9 @@ class PostgresManager:
                 FROM actions_log
                 WHERE client_id = %(client_id)s
                   AND LOWER(action_type) NOT IN ('hold', 'monitor', 'flagged')
+                  -- Only include actions where we have data to measure
+                  -- Action must be at least after_days before the latest data
+                  AND action_date <= (SELECT MAX(start_date) FROM target_stats WHERE client_id = %(client_id)s)
                 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
             ),
             before_stats AS (
