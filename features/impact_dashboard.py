@@ -408,9 +408,9 @@ def render_impact_dashboard():
     # Use pre-calculated summary from backend for the tiles
     display_summary = full_summary.get('validated' if show_validated_only else 'all', {})
     
-    # HERO TILES (Now synchronized with maturity counts from header)
-    # Use mature_count and pending_attr_count to match header display
-    _render_hero_tiles(display_summary, len(active_df), len(dormant_df), mature_count, pending_attr_count)
+    # HERO TILES (Now synchronized with FILTERED maturity counts)
+    # Use len(mature_df) and len(pending_attr_df) which respect the Validated Only toggle
+    _render_hero_tiles(display_summary, len(active_df), len(dormant_df), len(mature_df), len(pending_attr_df))
     
     st.divider()
 
