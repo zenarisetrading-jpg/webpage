@@ -751,6 +751,10 @@ def run_consolidated_optimizer():
     if st.session_state.get("should_log_actions", False):
         logged_count = _log_optimization_events(r, active_client, action_log_date)
         st.session_state["should_log_actions"] = False  # Clear flag to prevent re-logging
+    
+    # CRITICAL: Reset run_optimizer to False after execution completes
+    # This prevents auto-run on slider changes / page reruns
+    st.session_state["run_optimizer"] = False
 
     # === POST-OPTIMIZATION INSIGHT LAYER ===
     @st.fragment

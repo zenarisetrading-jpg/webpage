@@ -78,9 +78,9 @@ DEFAULT_CONFIG = {
     "HARVEST_CLICKS": 10,
     "HARVEST_ORDERS": 3,           # Will be dynamic based on CVR
     # HARVEST_SALES removed - currency threshold doesn't work across geos
-    "HARVEST_ROAS_MULT": 0.8,      # vs BUCKET median (80% = less strict)
-    "MAX_BID_CHANGE": 0.20,      # Max % change per run
-    "DEDUPE_SIMILARITY": 0.85,    # ExactMatcher threshold
+    "HARVEST_ROAS_MULT": 0.90,     # vs BUCKET median (90% = moderately strict)
+    "MAX_BID_CHANGE": 0.25,        # Max 25% change per run
+    "DEDUPE_SIMILARITY": 0.85,     # ExactMatcher threshold
     "TARGET_ROAS": 2.5,
     
     # Negative thresholds (now CVR-based, no currency dependency)
@@ -88,17 +88,17 @@ DEFAULT_CONFIG = {
     # NEGATIVE_SPEND_THRESHOLD removed - currency threshold doesn't work across geos
     
     # Bid optimization
-    "ALPHA_EXACT": 0.25,
-    "ALPHA_BROAD": 0.20,
+    "ALPHA_EXACT": 0.25,           # 25% step size for exact
+    "ALPHA_BROAD": 0.20,           # 20% step size for broad
     "ALPHA": 0.20,
-    "MAX_BID_CHANGE": 0.20,
+    "MAX_BID_CHANGE": 0.25,        # 25% safety cap
     "TARGET_ROAS": 2.50,
     
     # Min clicks thresholds per bucket (user-configurable)
     "MIN_CLICKS_EXACT": 5,
     "MIN_CLICKS_PT": 5,
-    "MIN_CLICKS_BROAD": 10,
-    "MIN_CLICKS_AUTO": 10,
+    "MIN_CLICKS_BROAD": 8,
+    "MIN_CLICKS_AUTO": 8,
     
     # Harvest forecast
     "HARVEST_EFFICIENCY_MULTIPLIER": 1.30,  # 30% efficiency gain from exact match
