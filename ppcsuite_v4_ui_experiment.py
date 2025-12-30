@@ -288,29 +288,33 @@ def run_consolidated_optimizer():
                             db_max = db_df['Date'].max()
                             
                             upload_is_subset = (upload_min >= db_min) and (upload_max <= db_max)
-                        
-                        if upload_is_subset:
-                            # Upload is redundant - use DB data which is complete
-                            st.info(f"✅ Upload file ({upload_min.date()} to {upload_max.date()}) is already in database. Using complete DB data ({len(db_df)} rows).")
-                            df = db_df.copy()
+                            
+                            if upload_is_subset:
+                                # Upload is redundant - use DB data which is complete
+                                st.info(f"✅ Upload file ({upload_min.date()} to {upload_max.date()}) is already in database. Using complete DB data ({len(db_df)} rows).")
+                                df = db_df.copy()
+                            else:
+                                # Upload has new data - proceed with merge
+                                combined = pd.concat([df, db_df], ignore_index=True)
+                                st.write(f"🔍 DEBUG: After concat: {len(combined)} rows")
+                                
+                                # Fix types for deduplication
+                                combined['Date'] = pd.to_datetime(combined['Date'])
+                                
+                                combined['Campaign Name'] = combined['Campaign Name'].astype(str).str.strip()
+                                combined['Ad Group Name'] = combined['Ad Group Name'].astype(str).str.strip()
+                                combined['Targeting'] = combined['Targeting'].astype(str).str.strip()
+                                
+                                # Drop duplicates (keep newest/session data which might have more recent metrics)
+                                df = combined.drop_duplicates(subset=['Date', 'Campaign Name', 'Ad Group Name', 'Targeting'], keep='first')
+                                st.write(f"🔍 DEBUG: After deduplication: {len(df)} rows")
+                                
+                                # DEBUG: Final merged range
+                                st.info(f"✅ Merged history. Data now spans {df['Date'].min().date()} to {df['Date'].max().date()} ({len(df)} rows)")
                         else:
-                            # Upload has new data - proceed with merge
-                            combined = pd.concat([df, db_df], ignore_index=True)
-                            st.write(f"🔍 DEBUG: After concat: {len(combined)} rows")
-                            
-                            # Fix types for deduplication
-                            combined['Date'] = pd.to_datetime(combined['Date'])
-                            
-                            combined['Campaign Name'] = combined['Campaign Name'].astype(str).str.strip()
-                            combined['Ad Group Name'] = combined['Ad Group Name'].astype(str).str.strip()
-                            combined['Targeting'] = combined['Targeting'].astype(str).str.strip()
-                            
-                            # Drop duplicates (keep newest/session data which might have more recent metrics)
-                            df = combined.drop_duplicates(subset=['Date', 'Campaign Name', 'Ad Group Name', 'Targeting'], keep='first')
-                            st.write(f"🔍 DEBUG: After deduplication: {len(df)} rows")
-                            
-                            # DEBUG: Final merged range
-                            st.info(f"✅ Merged history. Data now spans {df['Date'].min().date()} to {df['Date'].max().date()} ({len(df)} rows)")
+                            # No date column found in upload, just use DB data to be safe
+                            st.warning("⚠️ Could not detect date column in upload. Using complete DB data.")
+                            df = db_df.copy()
     
     # =====================================================
     # DATE RANGE FILTER: Default to last 30 days
