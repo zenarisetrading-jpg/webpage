@@ -1227,8 +1227,10 @@ def _process_bucket(segment_df: pd.DataFrame, config: dict, min_clicks: int, buc
         alpha = config.get("ALPHA_BROAD", alpha * 0.8)
     
     # VISIBILITY BOOST CONFIG
+    # Targets with LOW/NO impressions over 2+ weeks = bid not competitive
+    # (High impressions + low clicks = CTR problem, not a bid problem)
     VISIBILITY_BOOST_MIN_DAYS = 14  # Need at least 2 weeks of data
-    VISIBILITY_BOOST_MAX_CLICKS = 10  # Below this = low visibility
+    VISIBILITY_BOOST_MAX_IMPRESSIONS = 100  # Below this = not winning auctions
     VISIBILITY_BOOST_PCT = 0.30  # 30% boost
     
     def apply_optimization(r):
@@ -1245,11 +1247,11 @@ def _process_bucket(segment_df: pd.DataFrame, config: dict, min_clicks: int, buc
         if base_bid <= 0:
             return 0.0, "Hold: No Bid/CPC Data", "Hold (No Data)"
         
-        # VISIBILITY BOOST: 2+ weeks data, <10 clicks, impressions > 0
-        # These targets are running but not competitive - need a boost
-        if data_days >= VISIBILITY_BOOST_MIN_DAYS and clicks < VISIBILITY_BOOST_MAX_CLICKS and impressions > 0:
+        # VISIBILITY BOOST: 2+ weeks data, <100 impressions = bid not competitive
+        # These targets can't even enter auctions - need a bid boost to compete
+        if data_days >= VISIBILITY_BOOST_MIN_DAYS and impressions < VISIBILITY_BOOST_MAX_IMPRESSIONS and impressions > 0:
             new_bid = round(base_bid * (1 + VISIBILITY_BOOST_PCT), 2)
-            return new_bid, f"Visibility Boost: {clicks} clicks in {data_days} days", "Visibility Boost (+30%)"
+            return new_bid, f"Visibility Boost: Only {impressions} impressions in {data_days} days", "Visibility Boost (+30%)"
         
         if clicks >= min_clicks and roas > 0:
             return _classify_and_bid(roas, baseline_roas, base_bid, alpha, f"targeting|{bucket_name}", config)
