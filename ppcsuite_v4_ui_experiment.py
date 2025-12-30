@@ -228,7 +228,11 @@ def run_consolidated_optimizer():
     # =====================================================
     # DB INTEGRATION: Allow extending window with historical data
     # =====================================================
-    client_id = st.session_state.get('active_account', {}).get('account_id')
+    # Retrieve client ID (support both new primitive key and old dict legacy)
+    client_id = st.session_state.get('active_account_id')
+    if not client_id:
+        # Fallback to legacy dictionary if present
+        client_id = st.session_state.get('active_account', {}).get('account_id')
     db_manager = st.session_state.get('db_manager')
     
     # DEBUG: Check why DB merge is skipped
