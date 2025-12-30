@@ -256,13 +256,20 @@ def run_consolidated_optimizer():
                         
                         # Fix types for deduplication
                         combined['Date'] = pd.to_datetime(combined['Date'])
+                        
+                        # DEBUG: Check DB data range
+                        # st.write(f"DEBUG: DB Data Range: {db_df['Date'].min()} to {db_df['Date'].max()} ({len(db_df)} rows)")
+                        # st.write(f"DEBUG: Combined Min Date: {combined['Date'].min()}")
+
                         combined['Campaign Name'] = combined['Campaign Name'].astype(str).str.strip()
                         combined['Ad Group Name'] = combined['Ad Group Name'].astype(str).str.strip()
                         combined['Targeting'] = combined['Targeting'].astype(str).str.strip()
                         
                         # Drop duplicates (keep newest/session data which might have more recent metrics)
                         df = combined.drop_duplicates(subset=['Date', 'Campaign Name', 'Ad Group Name', 'Targeting'], keep='first')
-                        st.success(f"✅ Merged {len(db_df)} historical records from database.")
+                        
+                        # DEBUG: Final merged range
+                        st.info(f"✅ Merged history. Data now spans {df['Date'].min().date()} to {df['Date'].max().date()} ({len(df)} rows)")
     
     # =====================================================
     # DATE RANGE FILTER: Default to last 30 days
@@ -592,6 +599,12 @@ def run_consolidated_optimizer():
         return  # Exit early, don't render results yet
     
     # === POST-RUN STATE: Settings move to sidebar ===
+    with st.sidebar:
+        st.divider()
+        if st.button("← Stop / Edit Settings", use_container_width=True):
+            st.session_state["run_optimizer"] = False
+            st.rerun()
+    
     opt._render_sidebar()
     
     # 2. Main Logic Trigger
