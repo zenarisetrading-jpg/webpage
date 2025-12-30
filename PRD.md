@@ -504,6 +504,7 @@ Action Logged (T0)
 | NEGATIVE_PERFORMANCE | Bleeder term blocked | Direct cost savings |
 | BID_INCREASE | Bid increased for performer | More traffic, higher sales |
 | BID_DECREASE | Bid decreased for underperformer | Cost savings, improved efficiency |
+| **VISIBILITY_BOOST** | Bid +30% for low-impression keywords | More auction wins, increased traffic |
 | HARVEST_NEW | New exact match keyword created | Higher conversion on proven terms |
 
 ### 4.5 Dashboard Components

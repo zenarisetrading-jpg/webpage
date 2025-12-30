@@ -1434,8 +1434,9 @@ class PostgresManager:
             else:
                 df.at[idx, 'validation_status'] = '⚠️ Source still active'
         
-        # RULE 3: BID_CHANGE → Incremental Revenue = before_spend * (roas_after - roas_before)
-        bid_mask = df['action_type'].str.contains('BID', na=False)
+        # RULE 3: BID_CHANGE + VISIBILITY_BOOST → Incremental Revenue = before_spend * (roas_after - roas_before)
+        # VISIBILITY_BOOST is treated same as BID_UP for impact calculation
+        bid_mask = df['action_type'].str.contains('BID|VISIBILITY_BOOST', na=False, regex=True)
         df.loc[bid_mask, 'after_spend'] = df.loc[bid_mask, 'observed_after_spend']
         df.loc[bid_mask, 'after_sales'] = df.loc[bid_mask, 'observed_after_sales']
         df.loc[bid_mask, 'delta_spend'] = df.loc[bid_mask, 'observed_after_spend'] - df.loc[bid_mask, 'before_spend']
@@ -1752,9 +1753,9 @@ class PostgresManager:
         total_actions = len(df)
         
         # ==========================================
-        # 1. ROAS ANALYTICS + DECISION IMPACT (BID_CHANGE ONLY)
+        # 1. ROAS ANALYTICS + DECISION IMPACT (BID_CHANGE + VISIBILITY_BOOST)
         # ==========================================
-        bid_mask = df['action_type'].str.contains('BID', na=False)
+        bid_mask = df['action_type'].str.contains('BID|VISIBILITY_BOOST', na=False, regex=True)
         bid_df = df[bid_mask].copy()
         
         # We also want to include targets that had 0 spend in one period to avoid 'missing' impact

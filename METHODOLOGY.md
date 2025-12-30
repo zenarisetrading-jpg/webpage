@@ -125,6 +125,7 @@ Impact is not based on total account fluctuations, but on the specific delta cre
 | **Negatives** | `+Before Spend` | Total cost avoidance of previously wasteful spend. |
 | **Harvests** | `+10% Net Sales Lift` | Assumes a conservative 10% efficiency gain from exact match isolation. |
 | **Bid Changes** | `(Sales Delta) - (Spend Delta)` | Net profit change from the observed shift in performance. |
+| **Visibility Boost** | `(Sales Delta) - (Spend Delta)` | Same as bid changes - measures incremental traffic & sales from better auction wins. |
 | **Pauses** | `(Sales Delta) - (Spend Delta)` | Total dollar impact of removing the entity from the mix. |
 
 ### 2. Verified Deduplication
