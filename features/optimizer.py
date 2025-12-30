@@ -1229,14 +1229,20 @@ def _process_bucket(segment_df: pd.DataFrame, config: dict, min_clicks: int, buc
     # VISIBILITY BOOST CONFIG
     # Targets with LOW/NO impressions over 2+ weeks = bid not competitive
     # (High impressions + low clicks = CTR problem, not a bid problem)
+    # ONLY for explicit keyword campaigns + close-match (advertiser chose these)
+    # NOT for loose-match, substitutes, complements, ASIN, category (Amazon decides relevance)
     VISIBILITY_BOOST_MIN_DAYS = 14  # Need at least 2 weeks of data
     VISIBILITY_BOOST_MAX_IMPRESSIONS = 100  # Below this = not winning auctions
     VISIBILITY_BOOST_PCT = 0.30  # 30% boost
+    VISIBILITY_BOOST_ELIGIBLE_TYPES = {"exact", "phrase", "broad", "close-match"}  # Only these get boosted
     
     def apply_optimization(r):
         clicks = r["Clicks"]
         impressions = r.get("Impressions", 0)
         roas = r["ROAS"]
+        targeting = str(r.get("Targeting", "")).strip().lower()
+        match_type = str(r.get("Match Type", "")).strip().lower()
+        
         # Priority: Bid (from bulk) → Ad Group Default Bid (from bulk) → CPC (from STR)
         base_bid = float(
             r.get("Bid") if pd.notna(r.get("Bid")) and r.get("Bid") > 0 else
@@ -1248,8 +1254,17 @@ def _process_bucket(segment_df: pd.DataFrame, config: dict, min_clicks: int, buc
             return 0.0, "Hold: No Bid/CPC Data", "Hold (No Data)"
         
         # VISIBILITY BOOST: 2+ weeks data, <100 impressions = bid not competitive
-        # These targets can't even enter auctions - need a bid boost to compete
-        if data_days >= VISIBILITY_BOOST_MIN_DAYS and impressions < VISIBILITY_BOOST_MAX_IMPRESSIONS and impressions > 0:
+        # Only for keywords (exact/phrase/broad) and close-match auto
+        # Exclude: loose-match, substitutes, complements, ASIN targeting, category targeting
+        is_eligible_for_boost = (
+            match_type in VISIBILITY_BOOST_ELIGIBLE_TYPES or
+            targeting in VISIBILITY_BOOST_ELIGIBLE_TYPES
+        )
+        
+        if (is_eligible_for_boost and 
+            data_days >= VISIBILITY_BOOST_MIN_DAYS and 
+            impressions < VISIBILITY_BOOST_MAX_IMPRESSIONS and 
+            impressions > 0):
             new_bid = round(base_bid * (1 + VISIBILITY_BOOST_PCT), 2)
             return new_bid, f"Visibility Boost: Only {impressions} impressions in {data_days} days", "Visibility Boost (+30%)"
         
