@@ -51,6 +51,38 @@ Where `ROAS_Deviation` is `(Row_ROAS / Baseline_ROAS) - 1`.
 2.  **Aggregated (Broad/Phrase)**: Search terms are grouped by their parent KeywordId. The total Spend/Sales for those terms determines the bid for that keyword.
 3.  **Auto/Category**: Combined into a single logic block to ensure Auto targeting receives the same statistical rigor as manual keywords.
 
+### Visibility Boost (NEW - Dec 2025)
+
+Targets with **low impressions over 2+ weeks** are not competitive in auctions - their bids are too low to win placements.
+
+**Trigger Conditions:**
+- Data window ≥ 14 days (sufficient time to judge)
+- Impressions < 100 (not winning auctions)
+- Impressions > 0 (not paused)
+- Match Type = **Exact, Phrase, Broad, or Close-match** only
+
+**NOT eligible (Amazon decides relevance):**
+- loose-match, substitutes, complements
+- ASIN targeting (product targeting)
+- Category targeting
+
+**Action:** Increase bid by **30%** to gain visibility in auctions.
+
+**Rationale:** High impressions + low clicks = CTR problem (ad quality). LOW impressions = bid problem (not competitive). We only boost the latter for explicitly chosen keywords.
+
+---
+
+## 4. Currency-Neutral Thresholds (Dec 2025 Update)
+
+To support multi-region accounts (USD, AED, SAR, etc.), all thresholds are now **clicks-based** rather than currency-based:
+
+| Old Threshold (REMOVED) | New Threshold |
+|-------------------------|---------------|
+| HARVEST_SALES = $150 | ❌ Removed - uses clicks/orders only |
+| NEGATIVE_SPEND_THRESHOLD = $10 | ❌ Removed - uses clicks only |
+
+**Why:** A $10 threshold makes sense in USD but is too low for AED and too high for INR. Clicks-based thresholds work universally.
+
 ---
 
 ## 4. Harvest Detection (The "Golden Terms")

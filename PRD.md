@@ -354,12 +354,38 @@ If Performance Gap < 0 (Underperforming):
 Clamp New Bid: Min = 0.10 AED, Max = 20.00 AED
 ```
 
-#### 3.5.4 Exclusions
+#### 3.5.5 Visibility Boost (NEW - Dec 2025)
+
+For targets that are **not winning auctions** despite running for 2+ weeks.
+
+| Condition | Threshold |
+|-----------|-----------|
+| Data window | ≥ 14 days |
+| Impressions | < 100 (not winning auctions) |
+| Impressions | > 0 (not paused) |
+
+**Eligible Match Types:**
+- ✅ Exact, Phrase, Broad (explicit keyword choices)
+- ✅ Close-match (most relevant auto type)
+
+**NOT Eligible (Amazon decides relevance):**
+- ❌ loose-match, substitutes, complements
+- ❌ ASIN targeting (product targeting)
+- ❌ Category targeting
+
+**Action:** Increase bid by **30%** to gain visibility.
+
+**Rationale:**
+- High impressions + low clicks = CTR problem (not bid issue)
+- LOW impressions = bid not competitive (needs boost)
+- Only boost keywords the advertiser explicitly chose
+
+#### 3.5.6 Exclusions
 - Terms already in Harvest list (will be promoted to exact)
 - Terms already in Negative list (will be blocked)
 - Low-data targets (below minimum thresholds)
 
-#### 3.5.5 Output
+#### 3.5.7 Output
 - Bid adjustment recommendations per target
 - Grouped by bucket (Exact, PT, Broad/Phrase, Auto)
 - Before/After bid comparison
