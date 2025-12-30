@@ -517,13 +517,19 @@ class PostgresManager:
             query = "SELECT * FROM target_stats WHERE client_id = %s ORDER BY start_date DESC LIMIT %s"
             return pd.read_sql_query(query, conn, params=(account_id, limit))
 
+    # @st.cache_data(ttl=300)  <-- Can't use decorator on method easily without refactoring self. 
+    # Instead, we will implement a direct fetch with optional streamlit caching at the call site or 
+    # simpler: just remove the custom cache for now to force fresh data until we move this to a helper.
+    # Actually, for this specific large query, let's just disable the broken custom cache.
+    
     @retry_on_connection_error()
     def get_target_stats_df(self, client_id: str = 'default_client') -> pd.DataFrame:
-        """Get large historical dataset with caching."""
-        cache_key = f'target_stats_df_{client_id}'
-        cached = _query_cache.get(cache_key)
-        if cached is not None:
-            return cached
+        """Get large historical dataset. Custom caching removed to fix stale data issues."""
+        
+        # cache_key = f'target_stats_df_{client_id}'
+        # cached = _query_cache.get(cache_key)
+        # if cached is not None:
+        #     return cached
 
         with self._get_connection() as conn:
             query = """
@@ -548,7 +554,7 @@ class PostgresManager:
                 df['Date'] = pd.to_datetime(df['Date'])
                 print(f"DEBUG: DB fetch for {client_id}: {len(df)} rows. Range: {df['Date'].min()} to {df['Date'].max()}")
         
-        _query_cache.set(cache_key, df)
+        # _query_cache.set(cache_key, df)
         return df
     
             
