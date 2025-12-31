@@ -843,6 +843,68 @@ def run_consolidated_optimizer():
         with c3: st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{shield_icon}Negatives</div><div style="{value_style}">{total_negatives}</div></div>', unsafe_allow_html=True)
         with c4: st.markdown(f'<div style="{tile_style}"><div style="{label_style}">{leaf_icon}Harvest</div><div style="{value_style}">{total_harvests}</div></div>', unsafe_allow_html=True)
 
+        # === SAVE RUN CTA ===
+        # Brand guidelines: Primary CTA uses Signal Blue (#2A8EC9)
+        st.markdown("<div style='margin-top: 20px; margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+        
+        total_actions = total_bid_changes + total_negatives + total_harvests
+        
+        # Style for primary CTA per brand guidelines
+        st.markdown("""
+        <style>
+        div[data-testid="stButton"] > button.save-run-cta {
+            background: #2A8EC9 !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            font-weight: 600 !important;
+            padding: 12px 24px !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-testid="stButton"] > button.save-run-cta:hover {
+            background: #238BB8 !important;
+            box-shadow: 0 4px 12px rgba(42, 142, 201, 0.3) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        col_spacer_l, col_cta, col_spacer_r = st.columns([2, 3, 2])
+        with col_cta:
+            if st.button(
+                f"💾 Save Run to History ({total_actions} actions)", 
+                key="save_optimizer_run_cta",
+                type="primary",
+                use_container_width=True
+            ):
+                # Get pending actions from session state
+                pending = st.session_state.get('pending_actions')
+                if pending and pending.get('actions'):
+                    from core.db_manager import get_db_manager
+                    db = get_db_manager(st.session_state.get('test_mode', False))
+                    
+                    try:
+                        actions = pending['actions']
+                        client_id = pending.get('client_id', st.session_state.get('active_account_id', 'unknown'))
+                        
+                        # Generate batch ID and get report date
+                        import uuid
+                        batch_id = str(uuid.uuid4())[:8]
+                        report_date = date_info.get('end_date')
+                        if hasattr(report_date, 'strftime'):
+                            report_date = report_date.strftime('%Y-%m-%d')
+                        
+                        # Save to database
+                        saved_count = db.log_action_batch(actions, client_id, batch_id, report_date)
+                        
+                        st.success(f"✅ Saved {saved_count} actions to history!")
+                        st.session_state['pending_actions'] = None  # Clear pending
+                        st.session_state['optimizer_actions_accepted'] = True
+                        
+                    except Exception as e:
+                        st.error(f"Failed to save: {str(e)}")
+                else:
+                    st.warning("No actions to save. Run the optimizer first.")
+
         st.markdown("<div style='margin-bottom: 40px;'></div>", unsafe_allow_html=True)
 
         # Tab Navigation
@@ -940,20 +1002,8 @@ def main():
     render_user_menu()
     
     # Helper: Safe navigation (checks for pending actions when leaving optimizer)
+    # Helper: Navigation
     def safe_navigate(target_module):
-        current = st.session_state.get('current_module', 'home')
-        pending = st.session_state.get('pending_actions')
-        accepted = st.session_state.get('optimizer_actions_accepted', False)
-        
-        # Check if leaving optimizer with pending actions that haven't been accepted
-        if current == 'optimizer' and target_module != 'optimizer':
-            if pending and not accepted:
-                # Store the target and show confirmation
-                st.session_state['_pending_navigation_target'] = target_module
-                st.session_state['_show_action_confirmation'] = True
-                st.rerun()
-                return
-        
         st.session_state['current_module'] = target_module
         st.rerun()
     
@@ -1170,9 +1220,10 @@ def main():
     # Routing
     current = st.session_state.get('current_module', 'home')
     
-    # Check for pending actions confirmation dialog
-    from ui.action_confirmation import render_action_confirmation_modal
-    render_action_confirmation_modal()
+    # Check for pending actions confirmation dialog - REMOVED per user request
+    # Actions are now saved explicitly via "Save Run" button in optimizer
+    # from ui.action_confirmation import render_action_confirmation_modal
+    # render_action_confirmation_modal()
     
     # Show test mode warning banner
     if st.session_state.get('test_mode', False):
