@@ -9,6 +9,7 @@ from typing import Optional
 # Core imports
 from features._base import BaseFeature
 from core.data_hub import DataHub
+from core.account_utils import get_active_account_id, get_test_mode
 from ui.components import metric_card
 from utils.formatters import format_currency, format_percentage
 
@@ -1212,12 +1213,8 @@ def get_account_health_score() -> Optional[float]:
     
     db_manager = get_db_manager(test_mode)
     
-    # Fallback chain for account ID (matches impact_dashboard logic)
-    selected_client = (
-        st.session_state.get('active_account_id') or 
-        st.session_state.get('active_account_name') or 
-        st.session_state.get('last_stats_save', {}).get('client_id')
-    )
+    # Get account ID using centralized utility (replaces duplicated fallback chain)
+    selected_client = get_active_account_id()
     
     print(f"[Health Score] selected_client={selected_client}, db_manager exists={db_manager is not None}")
     

@@ -15,8 +15,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from typing import Dict, Any, List
 from features._base import BaseFeature
+from features.constants import classify_match_type
 from core.data_hub import DataHub
 from core.data_loader import SmartMapper, safe_numeric
+from utils.metrics import calculate_ppc_metrics, ensure_numeric_columns
 
 class PerformanceSnapshotModule(BaseFeature):
     """Performance Snapshot Dashboard."""
@@ -361,21 +363,13 @@ class PerformanceSnapshotModule(BaseFeature):
     def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Prepare data for visualization."""
         df = data.copy()
-        
-        # Ensure numeric
-        numeric_cols = ['Spend', 'Sales', 'Impressions', 'Clicks', 'Orders']
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = safe_numeric(df[col])
-            else:
-                df[col] = 0.0
-                
-        # Create derived metrics
-        df['ROAS'] = np.where(df['Spend'] > 0, df['Sales'] / df['Spend'], 0)
-        df['CPC'] = np.where(df['Clicks'] > 0, df['Spend'] / df['Clicks'], 0)
-        df['CTR'] = np.where(df['Impressions'] > 0, df['Clicks'] / df['Impressions'] * 100, 0)
-        df['CVR'] = np.where(df['Clicks'] > 0, df['Orders'] / df['Clicks'] * 100, 0)
-        df['ACOS'] = np.where(df['Sales'] > 0, df['Spend'] / df['Sales'] * 100, 0)
+
+        # Ensure numeric (using shared utility)
+        df = ensure_numeric_columns(df, inplace=True)
+
+        # Create derived metrics (using shared utility)
+        # performance_snapshot.py uses percentage format: 5.0 = 5%
+        df = calculate_ppc_metrics(df, percentage_format='percentage', inplace=True)
         
         # Handle Date for Trends
         # Try to find a date column
@@ -407,35 +401,10 @@ class PerformanceSnapshotModule(BaseFeature):
         # Start with original Match Type
         df['Refined Match Type'] = df['Match Type'].fillna('-').astype(str)
 
-        # Helper to classify based on Targeting
-        def refine_match_type(row):
-            mt = str(row['Refined Match Type']).upper()
-            # Check Targeting AND TargetingExpression if available
-            targeting = str(row.get('Targeting', '')).lower()
-            # If Targeting starts with 'asin=' or 'category=', use that
-            
-            # 1. Trust Strong Types
-            if mt in ['EXACT', 'BROAD', 'PHRASE', 'PT', 'CATEGORY', 'AUTO']:
-                return mt
-            
-            # 2. Heuristics on Targeting Text
-            if 'asin=' in targeting or (len(targeting) == 10 and targeting.startswith('b0')):
-                return 'PT'
-            if 'category=' in targeting:
-                return 'CATEGORY'
-            
-            # 3. Auto targeting keywords
-            auto_keywords = ['close-match', 'loose-match', 'substitutes', 'complements', '*']
-            if any(k in targeting for k in auto_keywords):
-                return 'AUTO'
-            
-            # 4. Fallback
-            return 'OTHER' if mt in ['-', 'NAN', 'NONE'] else mt
-
-        # Apply refinement
+        # Apply refinement using shared classify_match_type from features.constants
         # Ensure Targeting column exists
         if 'Targeting' in df.columns and not df.empty:
-            df['Refined Match Type'] = df.apply(refine_match_type, axis=1)
+            df['Refined Match Type'] = df.apply(classify_match_type, axis=1)
         
         return {
             'data': df,

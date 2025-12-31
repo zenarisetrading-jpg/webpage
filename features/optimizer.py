@@ -17,12 +17,15 @@ Data Source: DataHub (enriched data with SKUs)
 
 # Import bulk export functions from separate module
 from features.bulk_export import (
-    EXPORT_COLUMNS, 
-    generate_negatives_bulk, 
+    EXPORT_COLUMNS,
+    generate_negatives_bulk,
     generate_bids_bulk,
     generate_harvest_bulk,
     strip_targeting_prefix
 )
+
+# Import shared constants
+from features.constants import AUTO_TARGETING_TYPES, normalize_auto_targeting
 
 import streamlit as st
 import pandas as pd
@@ -34,6 +37,7 @@ from core.data_hub import DataHub
 from core.data_loader import safe_numeric, is_asin
 from utils.formatters import format_currency, dataframe_to_excel
 from utils.matchers import ExactMatcher
+from utils.metrics import calculate_ppc_metrics, ensure_numeric_columns
 from ui.components import metric_card
 import plotly.graph_objects as go
 
@@ -142,13 +146,10 @@ def prepare_data(df: pd.DataFrame, config: dict) -> Tuple[pd.DataFrame, Dict[str
     Returns prepared DataFrame and date_info dict.
     """
     df = df.copy()
-    # Ensure numeric columns
-    for col in ["Impressions", "Clicks", "Spend", "Sales", "Orders"]:
-        if col not in df.columns:
-            df[col] = 0
-        df[col] = safe_numeric(df[col])
-    
-    # CPC calculation
+    # Ensure numeric columns (using shared utility)
+    df = ensure_numeric_columns(df, inplace=True)
+
+    # CPC calculation (will be replaced by calculate_ppc_metrics later)
     df["CPC"] = np.where(df["Clicks"] > 0, df["Spend"] / df["Clicks"], 0)
     
     # Standardize column names
@@ -197,29 +198,19 @@ def prepare_data(df: pd.DataFrame, config: dict) -> Tuple[pd.DataFrame, Dict[str
     df.loc[~exact_mask & generic_targeting, "Targeting"] = df.loc[~exact_mask & generic_targeting, "Match Type"]
     
     df["Targeting"] = df["Targeting"].astype(str)
-    
+
     # 3. Normalize Auto targeting types for consistent grouping
     # e.g., "Close-Match" -> "close-match", "Close Match" -> "close-match"
-    AUTO_TARGETING_TYPES = {'close-match', 'loose-match', 'substitutes', 'complements'}
-    
-    def normalize_auto_targeting(val):
-        """Normalize auto targeting types to canonical lowercase-hyphen form."""
-        val_norm = str(val).strip().lower().replace(" ", "-").replace("_", "-")
-        if val_norm in AUTO_TARGETING_TYPES:
-            return val_norm
-        return val  # Keep original for non-auto types
-    
+    # Using shared normalize_auto_targeting from features.constants
     df["Targeting"] = df["Targeting"].apply(normalize_auto_targeting)
     
     # Sales/Orders attributed columns
     df["Sales_Attributed"] = df["Sales"]
     df["Orders_Attributed"] = df["Orders"]
-    
-    # Derived metrics
-    df["CTR"] = np.where(df["Impressions"] > 0, df["Clicks"] / df["Impressions"], 0)
-    df["ROAS"] = np.where(df["Spend"] > 0, df["Sales"] / df["Spend"], 0)
-    df["CVR"] = np.where(df["Clicks"] > 0, df["Orders"] / df["Clicks"], 0)
-    df["ACoS"] = np.where(df["Sales"] > 0, df["Spend"] / df["Sales"] * 100, 0)
+
+    # Derived metrics (using shared utility)
+    # optimizer.py uses decimal format: 0.05 = 5%
+    df = calculate_ppc_metrics(df, percentage_format='decimal', inplace=True)
     
     # Campaign-level metrics
     camp_stats = df.groupby("Campaign Name")[["Sales", "Spend"]].transform("sum")
@@ -1624,14 +1615,27 @@ def _forecast_scenario(
             
             current_cvr = current_orders / current_clicks if current_clicks > 0 else 0
             current_aov = current_sales / current_orders if current_orders > 0 else 0
+            current_roas = current_sales / current_spend if current_spend > 0 else 0
             
             if current_aov == 0 and baseline["orders"] > 0:
                 current_aov = baseline["sales"] / baseline["orders"]
             
-            # Apply elasticity
+            # Calculate baseline ROAS for comparison
+            baseline_roas = baseline["sales"] / baseline["spend"] if baseline["spend"] > 0 else 1.0
+            
+            # Apply elasticity with ROAS-aware adjustment
             new_cpc = current_cpc * (1 + elasticity["cpc"] * bid_change_pct)
             new_clicks = current_clicks * (1 + elasticity["clicks"] * bid_change_pct)
-            new_cvr = current_cvr * (1 + elasticity["cvr"] * bid_change_pct)
+            
+            # KEY FIX: When DECREASING bids on LOW-ROAS targets, CVR doesn't decrease
+            # because we're cutting wasteful traffic, not good traffic
+            if bid_change_pct < 0 and current_roas < baseline_roas:
+                # Below-average ROAS target: cutting this traffic is GOOD
+                # CVR stays same or improves slightly (removing untargeted clicks)
+                new_cvr = current_cvr * (1 + abs(elasticity["cvr"] * bid_change_pct * 0.2))
+            else:
+                # Normal case: CVR follows elasticity
+                new_cvr = current_cvr * (1 + elasticity["cvr"] * bid_change_pct)
             
             new_orders = new_clicks * new_cvr
             new_sales = new_orders * current_aov
