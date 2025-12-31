@@ -889,13 +889,16 @@ def main():
     # Helper: Safe navigation (checks for pending actions when leaving optimizer)
     def safe_navigate(target_module):
         current = st.session_state.get('current_module', 'home')
+        pending = st.session_state.get('pending_actions')
+        accepted = st.session_state.get('optimizer_actions_accepted', False)
+        
+        # DEBUG: Show navigation check state
+        print(f"[SAFE_NAV] current={current}, target={target_module}, pending={bool(pending)}, accepted={accepted}")
         
         # Check if leaving optimizer with pending actions that haven't been accepted
         if current == 'optimizer' and target_module != 'optimizer':
-            pending = st.session_state.get('pending_actions')
-            accepted = st.session_state.get('optimizer_actions_accepted', False)
-            
             if pending and not accepted:
+                print(f"[SAFE_NAV] Triggering confirmation dialog!")
                 # Store the target and show confirmation
                 st.session_state['_pending_navigation_target'] = target_module
                 st.session_state['_show_action_confirmation'] = True
