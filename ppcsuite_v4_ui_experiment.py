@@ -351,8 +351,10 @@ def run_consolidated_optimizer():
         roas = total_sales / total_spend if total_spend > 0 else 0
         acos = (total_spend / total_sales * 100) if total_sales > 0 else 0
         
-        # === SECTION 1 — DATASET CONTEXT (BASELINE) ===
-        if not st.session_state.get("run_optimizer"):
+        # === RUN OPTIMIZATION PIPELINE (if triggered) ===
+    # CRITICAL: Don't auto-run if we're showing confirmation dialog
+    # This prevents settings from changing during navigation
+    if st.session_state.get("run_optimizer") and not st.session_state.get("_show_action_confirmation"):
             ts_info = f" • STR Upload: {upload_ts.strftime('%H:%M')}" if upload_ts else ""
             
             # Consistent icons for baseline metrics
