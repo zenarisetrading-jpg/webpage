@@ -196,12 +196,7 @@ def run_consolidated_optimizer():
     if not hub.is_loaded("search_term_report"):
         account_id = st.session_state.get('active_account_id')
         if account_id:
-            print(f"[Optimizer] No session data found. Attempting to load from database for account: {account_id}")
             loaded = hub.load_from_database(account_id)
-            if loaded:
-                print(f"[Optimizer] Successfully loaded {hub.get_summary().get('search_terms', 0):,} rows from database")
-            else:
-                print(f"[Optimizer] Database load returned False")
         
         # Check again after database load attempt
         if not hub.is_loaded("search_term_report"):
@@ -250,16 +245,8 @@ def run_consolidated_optimizer():
             # Default to TRUE so users see full history (e.g. for Visibility Boost)
             include_db = st.checkbox("Include Historical Data (from Database)", value=True, help="Extend analysis window by pulling previous records from the database.")
             if include_db:
-                # DEBUG: Show what client_id we're using
-                st.write(f"🔍 DEBUG: Fetching data for client_id = '{client_id}'")
-                
                 with st.spinner("Fetching historical data..."):
                     db_df = db_manager.get_target_stats_df(client_id)
-                    
-                    # DEBUG: Show DB fetch results
-                    st.write(f"🔍 DEBUG: DB returned {len(db_df)} rows")
-                    if not db_df.empty:
-                        st.write(f"🔍 DEBUG: DB date range: {db_df['Date'].min()} to {db_df['Date'].max()}")
                     
                     if not db_df.empty:
                         # Rename columns for consistency if needed (DB already returns standard names)
@@ -334,17 +321,10 @@ def run_consolidated_optimizer():
         
         # Filter data to selected range
         if date_col:
-            # DEBUG: Check date range application
-            st.write(f"DEBUG: Filtering on {date_col} from {start_date} to {end_date}")
-            st.write(f"DEBUG: Before filter: {len(df)} rows. Min: {df[date_col].min()}, Max: {df[date_col].max()}")
-            
             mask = (df[date_col].dt.date >= start_date) & (df[date_col].dt.date <= end_date)
             df = df[mask].copy()
-            
-            st.write(f"DEBUG: After filter: {len(df)} rows")
         else:
             st.error("❌ Could not identify Date column for filtering.")
-            st.write("Columns found:", df.columns.tolist())
             
         days_selected = (end_date - start_date).days + 1
         
@@ -761,7 +741,6 @@ def run_consolidated_optimizer():
             'client_id': st.session_state.get('active_account_id', 'unknown'),
             'count': len(actions_list)
         }
-        print(f"[PENDING_ACTIONS] Stored {len(actions_list)} pending actions")
     else:
         st.session_state['pending_actions'] = None
     
@@ -947,13 +926,9 @@ def main():
         pending = st.session_state.get('pending_actions')
         accepted = st.session_state.get('optimizer_actions_accepted', False)
         
-        # DEBUG: Show navigation check state
-        print(f"[SAFE_NAV] current={current}, target={target_module}, pending={bool(pending)}, accepted={accepted}")
-        
         # Check if leaving optimizer with pending actions that haven't been accepted
         if current == 'optimizer' and target_module != 'optimizer':
             if pending and not accepted:
-                print(f"[SAFE_NAV] Triggering confirmation dialog!")
                 # Store the target and show confirmation
                 st.session_state['_pending_navigation_target'] = target_module
                 st.session_state['_show_action_confirmation'] = True
