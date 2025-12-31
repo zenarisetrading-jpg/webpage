@@ -166,11 +166,8 @@ def run_performance_hub():
 def run_consolidated_optimizer():
     """Execution logic: Optimizer + ASIN Mapper + AI Insights all in one view."""
     
-    # CRITICAL: If showing confirmation dialog, don't re-run optimizer logic
-    # This prevents settings from resetting during navigation
-    if st.session_state.get('_show_action_confirmation'):
-        st.info("⏸️ Optimization paused. Please complete the action confirmation dialog.")
-        return
+    # Flag to skip execution while still rendering widgets (preserves settings during dialog)
+    skip_execution = st.session_state.get('_show_action_confirmation', False)
     
     # Lazy imports for Optimizer
     from features.optimizer import (
@@ -636,6 +633,12 @@ def run_consolidated_optimizer():
             st.rerun()
     
     opt._render_sidebar()
+    
+    # CRITICAL: Skip execution if showing confirmation dialog
+    # Widgets above have rendered to preserve state, but don't re-run the expensive optimizer
+    if skip_execution:
+        st.info("⏸️ Optimization paused. Please complete the action confirmation dialog.")
+        return
     
     # 2. Main Logic Trigger
     with st.spinner("Running Optimization Engine..."):
