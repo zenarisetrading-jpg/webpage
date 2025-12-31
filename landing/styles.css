@@ -1219,12 +1219,453 @@ body {
     }
 }
 
+/* Audit Page Styles */
+.audit-hero {
+    padding: 10rem 0 4rem;
+    text-align: center;
+    background: linear-gradient(to bottom, var(--bg-primary), var(--bg-secondary));
+}
+
+.audit-title {
+    font-size: 4rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.audit-subtitle {
+    font-size: 1.4rem;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.quiz-section {
+    padding: 4rem 0;
+    background: var(--bg-secondary);
+}
+
+.quiz-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--bg-tertiary);
+    border-radius: 20px;
+    padding: 3rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+}
+
+.quiz-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.quiz-header h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.quiz-header p {
+    color: var(--text-secondary);
+}
+
+.progress-container {
+    margin-bottom: 3rem;
+}
+
+.progress-bar {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 4px;
+}
+
+.progress-text {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.questions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+.question-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.question-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+}
+
+.quiz-option {
+    padding: 1rem;
+    background: var(--bg-primary);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    text-align: center;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.quiz-option:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-tertiary);
+}
+
+/* Results Section */
+.results-section {
+    padding: 4rem 0;
+    background: var(--bg-primary);
+}
+
+.results-grid {
+    display: grid;
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.result-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.score-card {
+    text-align: center;
+}
+
+.score-card h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.health-score {
+    font-size: 6rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.score-subtitle {
+    color: var(--text-secondary);
+}
+
+.opportunity-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.08));
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.card-header h3 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+}
+
+.opportunity-icon {
+    width: 40px;
+    height: 40px;
+    color: var(--success);
+}
+
+.opportunity-amount {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--success);
+    margin-bottom: 0.5rem;
+}
+
+.opportunity-subtitle {
+    color: var(--text-secondary);
+}
+
+.breakdown-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.breakdown-item {
+    padding: 1.2rem;
+    background: var(--bg-primary);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.breakdown-item.high {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.breakdown-item.medium {
+    background: rgba(245, 158, 11, 0.05);
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.breakdown-title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.breakdown-amount {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--danger);
+}
+
+/* Upload CTA Card */
+.upload-cta-card {
+    background: linear-gradient(135deg, rgba(8, 145, 178, 0.08), rgba(6, 182, 212, 0.08));
+    border: 2px solid rgba(8, 145, 178, 0.2);
+}
+
+.upload-cta-content {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.upload-icon {
+    background: rgba(8, 145, 178, 0.1);
+    padding: 1.5rem;
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.upload-icon svg {
+    width: 48px;
+    height: 48px;
+    color: var(--accent-primary);
+}
+
+.upload-cta-text h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.upload-cta-text p {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.upload-benefits {
+    list-style: none;
+    padding: 0;
+}
+
+.upload-benefits li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.upload-benefits li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+.upload-disclaimer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+/* Upload Section */
+.upload-section {
+    padding: 4rem 0;
+    background: var(--bg-secondary);
+}
+
+.upload-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--bg-tertiary);
+    border-radius: 20px;
+    padding: 3rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+}
+
+.upload-container h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.upload-description {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.dropzone {
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--bg-primary);
+    margin-bottom: 1.5rem;
+}
+
+.dropzone:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-tertiary);
+}
+
+.file-input {
+    display: none;
+}
+
+.upload-svg {
+    width: 64px;
+    height: 64px;
+    color: var(--text-muted);
+    margin: 0 auto 1rem;
+}
+
+.upload-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.upload-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.file-selected .file-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-bottom: 0.5rem;
+}
+
+.file-selected .file-size {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.error-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.error-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--danger);
+    flex-shrink: 0;
+}
+
+.error-title {
+    font-weight: 600;
+    color: var(--danger);
+    margin-bottom: 0.5rem;
+}
+
+.error-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.upload-instructions {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(8, 145, 178, 0.05);
+    border: 1px solid rgba(8, 145, 178, 0.15);
+    border-radius: 10px;
+}
+
+.upload-instructions h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.upload-instructions ol {
+    list-style-position: inside;
+    color: var(--text-secondary);
+}
+
+.upload-instructions li {
+    padding: 0.4rem 0;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
 /* Smooth Scroll */
 html {
     scroll-behavior: smooth;
 }
 
 /* Loading Animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;

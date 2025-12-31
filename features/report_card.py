@@ -11,7 +11,7 @@ from features._base import BaseFeature
 from core.data_hub import DataHub
 from core.account_utils import get_active_account_id, get_test_mode
 from ui.components import metric_card
-from utils.formatters import format_currency, format_percentage
+from utils.formatters import format_currency, format_percentage, get_account_currency
 
 class ReportCardModule(BaseFeature):
     """
@@ -687,6 +687,9 @@ class ReportCardModule(BaseFeature):
         details = metrics.get('details', {'removed': [], 'added': []})
         fin = metrics['financials']
         
+        # Get dynamic currency
+        currency = get_account_currency()
+        
         # Helper to format stat with premium badge (simplified - just the count)
         def fmt_stat(val, total, context):
             # Just show the value in a premium badge - no percentages
@@ -736,7 +739,7 @@ class ReportCardModule(BaseFeature):
         
         with r2_c1:
             # BRAND-PURPLE SPEND PRESERVED CARD
-            st.markdown(f"<div style='text-align: center; background: rgba(91, 85, 111, 0.08); padding: 24px; border-radius: 12px; border: 1px solid rgba(91, 85, 111, 0.2); height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;'><div style='display: flex; align-items: center; justify-content: center; font-family: Inter, sans-serif; font-size: 15px; font-weight: 700; color: #8F8CA3; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px;'>{money_icon} Spend Preserved</div><div style='font-family: Inter, sans-serif; font-size: 36px; font-weight: 800; color: #22d3ee; margin-bottom: 5px;'>AED {fin['savings']:,.0f}</div><div style='font-size: 11px; color: #8F8CA3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>↑ Annualized Savings Potential</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align: center; background: rgba(91, 85, 111, 0.08); padding: 24px; border-radius: 12px; border: 1px solid rgba(91, 85, 111, 0.2); height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;'><div style='display: flex; align-items: center; justify-content: center; font-family: Inter, sans-serif; font-size: 15px; font-weight: 700; color: #8F8CA3; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px;'>{money_icon} Spend Preserved</div><div style='font-family: Inter, sans-serif; font-size: 36px; font-weight: 800; color: #22d3ee; margin-bottom: 5px;'>{currency} {fin['savings']:,.0f}</div><div style='font-size: 11px; color: #8F8CA3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>↑ Annualized Savings Potential</div></div>", unsafe_allow_html=True)
             
         with r2_c2:
              # Top Contributors Lists
@@ -751,7 +754,7 @@ class ReportCardModule(BaseFeature):
                 st.markdown(f"<div style='display: flex; align-items: center; font-family: Inter, sans-serif; font-size: 15px; font-weight: 800; color: #F5F5F7; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;'>{waste_icon} Sources of Waste Removed</div>", unsafe_allow_html=True)
                 if details['removed']:
                     for item in details['removed']:
-                        val_str = f"AED {item['val']:,.0f}"
+                        val_str = f"{currency} {item['val']:,.0f}"
                         # Simple icon logic
                         row_icon = waste_icon if item['type'] == 'Negative' else down_icon
                         
@@ -764,7 +767,7 @@ class ReportCardModule(BaseFeature):
                 st.markdown(f"<div style='display: flex; align-items: center; font-family: Inter, sans-serif; font-size: 15px; font-weight: 800; color: #F5F5F7; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;'>{growth_icon} Top Investments in Growth</div>", unsafe_allow_html=True)
                 if details['added']:
                     for item in details['added']:
-                        val_str = f"AED {item['val']:,.0f}" # Revenue Potential
+                        val_str = f"{currency} {item['val']:,.0f}" # Revenue Potential
                         row_icon = star_icon if item['type'] == 'Harvest' else up_icon
                         
                         html = f"""

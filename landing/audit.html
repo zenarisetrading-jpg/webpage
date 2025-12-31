@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free PPC Audit - Saddle AdPulse</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .quiz-option {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .quiz-option.selected {
+            background: rgba(8, 145, 178, 0.1);
+            border-color: var(--accent-primary);
+        }
+        .progress-fill {
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <img src="logo.png" alt="Saddle">
+                </div>
+                <div class="nav-links">
+                    <a href="index.html">Home</a>
+                    <a href="audit.html" class="cta-button">Free Audit</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Audit Section -->
+    <section class="audit-hero">
+        <div class="container">
+            <div class="audit-hero-content">
+                <h1 class="audit-title">Free Amazon PPC Audit</h1>
+                <p class="audit-subtitle">
+                    Discover exactly how much you're wasting on Amazon ads—in 2 minutes
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quiz Section -->
+    <section id="quizSection" class="quiz-section">
+        <div class="container">
+            <div class="quiz-container">
+                <div class="quiz-header">
+                    <h2>Quick Health Check</h2>
+                    <p>Answer 6 questions (60 seconds) for an instant estimate</p>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <p class="progress-text"><span id="progressPercent">0</span>% complete</p>
+                </div>
+
+                <!-- Questions Container -->
+                <div id="questionsContainer" class="questions-container"></div>
+
+                <button id="getScoreBtn" disabled class="primary-button large" style="width: 100%; margin-top: 2rem;">
+                    Get My Health Score →
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="resultsSection" class="results-section hidden">
+        <div class="container">
+            <div class="results-grid">
+                <!-- Health Score Card -->
+                <div class="result-card score-card">
+                    <h2>Your Estimated PPC Health Score</h2>
+                    <div id="healthScore" class="health-score">68</div>
+                    <p class="score-subtitle">Based on your responses</p>
+                </div>
+
+                <!-- Opportunity Card -->
+                <div class="result-card opportunity-card">
+                    <div class="card-header">
+                        <h3>Estimated Monthly Opportunity</h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="opportunity-icon">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                    <div id="opportunityAmount" class="opportunity-amount">$2,000 - $2,800</div>
+                    <p class="opportunity-subtitle">in potential waste + missed gains</p>
+                </div>
+
+                <!-- Breakdown Card -->
+                <div class="result-card breakdown-card">
+                    <h3>Where Your Money Might Be Going</h3>
+                    <div id="breakdownList" class="breakdown-list"></div>
+                </div>
+
+                <!-- Upload CTA -->
+                <div class="result-card upload-cta-card">
+                    <div class="upload-cta-content">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="12" y1="18" x2="12" y2="12"></line>
+                                <line x1="9" y1="15" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="upload-cta-text">
+                            <h3>Want Exact Numbers?</h3>
+                            <p>Upload your Search Term Report to see:</p>
+                            <ul class="upload-benefits">
+                                <li>Actual waste amounts (not estimates)</li>
+                                <li>Specific keywords bleeding money</li>
+                                <li>Exact harvest opportunities</li>
+                                <li>Real competitor ASINs found</li>
+                                <li>Precise recommendations</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <button onclick="showUploadSection()" class="primary-button large" style="width: 100%;">
+                        Upload My Report - Get Exact Analysis →
+                    </button>
+                    <p class="upload-disclaimer">100% free • Takes 2 minutes • See real numbers</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upload Section -->
+    <section id="uploadSection" class="upload-section hidden">
+        <div class="container">
+            <div class="upload-container">
+                <h2>Upload Your Search Term Report</h2>
+                <p class="upload-description">We'll analyze your actual data and show you exactly where you're wasting money</p>
+
+                <div id="dropzone" class="dropzone">
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="file-input">
+                    <div id="uploadPrompt" class="upload-prompt">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="upload-svg">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p class="upload-title">Drop your file here or click to browse</p>
+                        <p class="upload-subtitle">Supports CSV, XLSX • Search Term Report from Amazon Ads</p>
+                    </div>
+                    <div id="fileSelected" class="file-selected hidden">
+                        <p id="fileName" class="file-name"></p>
+                        <p id="fileSize" class="file-size"></p>
+                    </div>
+                </div>
+
+                <div id="errorMessage" class="error-message hidden">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-icon">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <div>
+                        <div class="error-title">Error</div>
+                        <div id="errorText" class="error-text"></div>
+                    </div>
+                </div>
+
+                <button id="analyzeBtn" disabled class="primary-button large" style="width: 100%; margin-top: 2rem;">
+                    ✨ Analyze My Account
+                </button>
+
+                <div class="upload-instructions">
+                    <h3>How to get your report:</h3>
+                    <ol>
+                        <li>Log in to Amazon Advertising</li>
+                        <li>Go to Reports → Create Report</li>
+                        <li>Select "Search Term Report"</li>
+                        <li>Choose last 60-90 days</li>
+                        <li>Download as CSV or Excel</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <img src="logo.png" alt="Saddle" style="height: 50px; width: auto;">
+                    </div>
+                    <p>AdPulse - Amazon PPC optimization that actually works.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#how-it-works">How It Works</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="audit.html">Free Audit</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <a href="#">Documentation</a>
+                    <a href="#">Blog</a>
+                    <a href="#">Case Studies</a>
+                    <a href="#">API</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <a href="#">About</a>
+                    <a href="#">Contact</a>
+                    <a href="#">Privacy</a>
+                    <a href="#">Terms</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Saddle AdPulse. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="audit.js"></script>
+</body>
+</html>

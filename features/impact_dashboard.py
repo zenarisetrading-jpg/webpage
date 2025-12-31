@@ -1675,8 +1675,8 @@ def render_reference_data_badge():
 def get_recent_impact_summary() -> Optional[dict]:
     """
     Helper for Home Page cockpit.
-    Returns impact summary metrics from DB for the last 30 days.
-    Simple and reliable - matches get_account_health_score pattern.
+    Returns impact summary metrics from DB for the last 14 days (Decision Impact focus).
+    Matches new 'Recent Impact' tile definition.
     """
     from core.db_manager import get_db_manager
     
@@ -1695,8 +1695,8 @@ def get_recent_impact_summary() -> Optional[dict]:
         return None
         
     try:
-        # Direct DB query - simple and reliable
-        summary = db_manager.get_impact_summary(selected_client, window_days=30)
+        # Direct DB query - 14 DAY WINDOW for "Recent" impact
+        summary = db_manager.get_impact_summary(selected_client, after_days=14)
         
         if not summary:
             return None
@@ -1707,20 +1707,26 @@ def get_recent_impact_summary() -> Optional[dict]:
         if active_summary.get('total_actions', 0) == 0:
             return None
         
-        # Extract key metrics
-        incremental_revenue = active_summary.get('incremental_revenue', 0)
+        # Extract key metrics - DECISION IMPACT FOCUS
+        decision_impact = active_summary.get('decision_impact', 0)
         win_rate = active_summary.get('win_rate', 0)
         
         # Get top action type
         by_type = active_summary.get('by_action_type', {})
         top_action_type = None
         if by_type:
-            top_action_type = max(by_type, key=lambda k: by_type[k].get('count', 0))
+            top_action_type = max(by_type, key=lambda k: by_type[k].get('decision_impact', 0)) # Sort by impact
         
+        pct_good = active_summary.get('pct_good', 0)
+        pct_bad = active_summary.get('pct_bad', 0)
+        quality_score = pct_good - pct_bad
+
         return {
-            'sales': incremental_revenue,
+            'sales': decision_impact, # Mapped to 'sales' key for compatibility but represents impact
+            'label': 'Decision Impact',
             'win_rate': win_rate,
             'top_action_type': top_action_type,
+            'quality_score': quality_score,
             'roi': active_summary.get('roas_lift_pct', 0)
         }
         

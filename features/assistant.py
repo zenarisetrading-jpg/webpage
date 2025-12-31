@@ -1537,6 +1537,9 @@ def get_dynamic_key_insights() -> list:
     }
     """
     import streamlit as st
+    from utils.formatters import get_account_currency
+    
+    currency = get_account_currency()
     
     default_insights = [
         {"type": "positive", "title": "Ready to analyze", "subtitle": "Upload data to start", "icon_type": "info", "strength": 0},
@@ -1651,7 +1654,7 @@ def get_dynamic_key_insights() -> list:
             else:
                 signals.append({
                     "type": "watch", "category": "Risk", "strength": 100 - waste_score,
-                    "title": f"AED {wasted_spend:,.0f} efficiency gap", "subtitle": "Spend optimization needed",
+                    "title": f"{currency} {wasted_spend:,.0f} efficiency gap", "subtitle": "Spend optimization needed",
                     "icon_type": "warning"
                 })
         
@@ -1665,7 +1668,7 @@ def get_dynamic_key_insights() -> list:
                 potential = insight.get('potential_additional_sales', 0)
                 signals.append({
                     "type": "positive", "category": "Opportunity", "strength": 85,
-                    "title": f"AED {potential:,.0f} growth potential", "subtitle": "Scaling opportunities found",
+                    "title": f"{currency} {potential:,.0f} growth potential", "subtitle": "Scaling opportunities found",
                     "icon_type": "success"
                 })
             
@@ -1674,7 +1677,7 @@ def get_dynamic_key_insights() -> list:
                 if wasted > 100:
                     signals.append({
                         "type": "watch", "category": "Risk", "strength": min(95, wasted / 10),
-                        "title": f"AED {wasted:,.0f} bleed detected", "subtitle": "Top wasters identified",
+                        "title": f"{currency} {wasted:,.0f} bleed detected", "subtitle": "Top wasters identified",
                         "icon_type": "warning"
                     })
             
@@ -1692,7 +1695,7 @@ def get_dynamic_key_insights() -> list:
                 if bleed > 100:
                     signals.append({
                         "type": "watch", "category": "Risk", "strength": min(90, bleed / 10),
-                        "title": f"AED {bleed:,.0f} campaign bleed", "subtitle": "Net-negative campaigns",
+                        "title": f"{currency} {bleed:,.0f} campaign bleed", "subtitle": "Net-negative campaigns",
                         "icon_type": "warning"
                     })
         

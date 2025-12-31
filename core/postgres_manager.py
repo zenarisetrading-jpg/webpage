@@ -1029,130 +1029,487 @@ class PostgresManager:
         if cached is not None:
             return cached
 
-        # Query to calculate impact relative to EACH action's date
-        # Strategy:
-        # 1. Select relevant actions 
-        # 2. Join with target_stats on BEFORE window (action_date - 14 days to action_date)
-        # 3. Join with target_stats on AFTER window (action_date + 3 days lag to action_date + 3 + after_days)
+        # Calculate intervals based on before_days and after_days
+        # before_window: latest - before_days to latest (e.g., 14 days before latest)
+        # after_window: latest - after_days + 1 to latest (e.g., last 14 days)
+        after_minus_1 = after_days - 1
+        before_plus_after = before_days + after_days - 1
         
+        # Single batch query with dynamic fixed windows and weekly action aggregation
         query = """
-            WITH action_windows AS (
+            WITH date_range AS (
+                -- Get latest data date and calculate windows
                 SELECT 
-                    id,
-                    action_date::date as action_day,
-                    action_date::date - INTERVAL '14 days' as before_start,
-                    action_date::date as before_end,
-                    action_date::date + INTERVAL '3 days' as after_start,
-                    action_date::date + INTERVAL '3 days' + INTERVAL '%(after_days)s days' as after_end,
-                    client_id,
-                    campaign_name,
-                    ad_group_name,
-                    target_text,
-                    action_type,
-                    old_value,
-                    new_value,
-                    reason,
-                    match_type
+                    MAX(start_date) as latest_date,
+                    MAX(start_date) - INTERVAL '%(after_minus_1)s days' as after_start,  
+                    MAX(start_date) - INTERVAL '%(after_days)s days' as before_end,   
+                    MAX(start_date) - INTERVAL '%(before_plus_after)s days' as before_start,
+                    -- Count actual days with data in each window for normalization
+                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(after_minus_1)s days' AND start_date <= MAX(t2.start_date)) as actual_after_days,
+                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(before_plus_after)s days' AND start_date <= MAX(t2.start_date) - INTERVAL '%(after_days)s days') as actual_before_days
+                FROM target_stats t2
+                WHERE client_id = %(client_id)s
+            ),
+            aggregated_actions AS (
+                -- Group daily actions into weekly buckets (starting Tuesdays to match target_stats)
+                SELECT 
+                    LOWER(target_text) as target_lower,
+                    -- Normalized target for CST matching: strip 'asin="' and '"' for PT negatives
+                    CASE 
+                        WHEN LOWER(target_text) LIKE 'asin=%%' THEN 
+                            LOWER(REPLACE(REPLACE(target_text, 'asin="', ''), '"', ''))
+                        ELSE LOWER(target_text)
+                    END as normalized_target_lower,
+                    LOWER(campaign_name) as campaign_lower,
+                    LOWER(ad_group_name) as ad_group_lower,
+                    target_text, campaign_name, ad_group_name, match_type, action_type,
+                    -- Snap to Tuesday (matching the 2025-12-16, 2025-12-09 pattern)
+                    DATE(action_date - (MOD((EXTRACT(DOW FROM action_date)::int - 2 + 7), 7)) * INTERVAL '1 day') as week_start,
+                    MAX(action_date) as action_date,
+                    -- Keep first old_value and last new_value in the week group
+                    (ARRAY_AGG(old_value ORDER BY action_date ASC))[1] as old_value,
+                    (ARRAY_AGG(new_value ORDER BY action_date DESC))[1] as new_value,
+                    STRING_AGG(DISTINCT reason, '; ') as reason
                 FROM actions_log
                 WHERE client_id = %(client_id)s
-                AND LOWER(action_type) NOT IN ('hold', 'monitor', 'flagged')
+                  AND LOWER(action_type) NOT IN ('hold', 'monitor', 'flagged')
+                  -- Only include actions where we have data to measure
+                  -- Action must be at least after_days before the latest data
+                  AND action_date <= (SELECT MAX(start_date) FROM target_stats WHERE client_id = %(client_id)s)
+                GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
             ),
             before_stats AS (
+                -- Aggregate performance in BEFORE window by target_text (for BID_CHANGE)
+                -- BID_CHANGE actions match on the keyword/targeting being bid on
                 SELECT 
-                    a.id as action_id,
-                    SUM(s.spend) as spend,
-                    SUM(s.sales) as sales,
-                    SUM(s.clicks) as clicks,
-                    COUNT(DISTINCT s.start_date) as days_count
-                FROM action_windows a
-                JOIN target_stats s ON s.client_id = a.client_id
-                    AND s.start_date >= a.before_start
-                    AND s.start_date <= a.before_end
-                WHERE (
-                    (s.target_text = a.target_text AND s.campaign_name = a.campaign_name AND s.ad_group_name = a.ad_group_name)
-                    OR 
-                    (s.customer_search_term = a.target_text AND s.campaign_name = a.campaign_name)
-                )
-                GROUP BY a.id
+                    LOWER(target_text) as target_lower, 
+                    LOWER(campaign_name) as campaign_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.before_start 
+                  AND t.start_date <= dr.before_end
+                GROUP BY LOWER(target_text), LOWER(campaign_name)
             ),
             after_stats AS (
+                -- Aggregate performance in AFTER window by target_text (for BID_CHANGE)
                 SELECT 
-                    a.id as action_id,
-                    SUM(s.spend) as spend,
-                    SUM(s.sales) as sales,
-                    SUM(s.clicks) as clicks,
-                    COUNT(DISTINCT s.start_date) as days_count
-                FROM action_windows a
-                JOIN target_stats s ON s.client_id = a.client_id
-                    AND s.start_date >= a.after_start
-                    AND s.start_date <= a.after_end
-                WHERE (
-                    (s.target_text = a.target_text AND s.campaign_name = a.campaign_name AND s.ad_group_name = a.ad_group_name)
-                    OR 
-                    (s.customer_search_term = a.target_text AND s.campaign_name = a.campaign_name)
-                )
-                GROUP BY a.id
+                    LOWER(target_text) as target_lower, 
+                    LOWER(campaign_name) as campaign_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.after_start 
+                  AND t.start_date <= dr.latest_date
+                GROUP BY LOWER(target_text), LOWER(campaign_name)
+            ),
+            before_cst_stats AS (
+                -- Aggregate performance in BEFORE window by customer_search_term (for NEGATIVE/HARVEST)
+                -- NEGATIVE/HARVEST actions match on the search term being blocked/harvested
+                SELECT 
+                    LOWER(customer_search_term) as cst_lower, 
+                    LOWER(campaign_name) as campaign_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.before_start 
+                  AND t.start_date <= dr.before_end
+                  AND customer_search_term IS NOT NULL
+                GROUP BY LOWER(customer_search_term), LOWER(campaign_name)
+            ),
+            after_cst_stats AS (
+                -- Aggregate performance in AFTER window by customer_search_term (for NEGATIVE/HARVEST)
+                SELECT 
+                    LOWER(customer_search_term) as cst_lower, 
+                    LOWER(campaign_name) as campaign_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.after_start 
+                  AND t.start_date <= dr.latest_date
+                  AND customer_search_term IS NOT NULL
+                GROUP BY LOWER(customer_search_term), LOWER(campaign_name)
+            ),
+            before_campaign AS (
+                -- Fallback: Campaign-level BEFORE stats
+                SELECT 
+                    LOWER(campaign_name) as campaign_lower, 
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.before_start 
+                  AND t.start_date <= dr.before_end
+                GROUP BY LOWER(campaign_name)
+            ),
+            after_campaign AS (
+                -- Fallback: Campaign-level AFTER stats
+                SELECT 
+                    LOWER(campaign_name) as campaign_lower, 
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.after_start 
+                  AND t.start_date <= dr.latest_date
+                GROUP BY LOWER(campaign_name)
+            ),
+            before_cst_account AS (
+                -- Account-level CST fallback (no campaign restriction)
+                SELECT 
+                    LOWER(customer_search_term) as cst_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.before_start 
+                  AND t.start_date <= dr.before_end
+                  AND customer_search_term IS NOT NULL
+                  AND customer_search_term != ''
+                GROUP BY LOWER(customer_search_term)
+            ),
+            after_cst_account AS (
+                -- Account-level CST fallback (no campaign restriction)
+                SELECT 
+                    LOWER(customer_search_term) as cst_lower,
+                    SUM(spend) as spend, 
+                    SUM(sales) as sales,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.after_start 
+                  AND t.start_date <= dr.latest_date
+                  AND customer_search_term IS NOT NULL
+                  AND customer_search_term != ''
+                GROUP BY LOWER(customer_search_term)
+            ),
+            rolling_30d_stats AS (
+                -- 30-day rolling stats by target_text (for baseline comparison)
+                SELECT 
+                    LOWER(target_text) as target_lower, 
+                    LOWER(campaign_name) as campaign_lower,
+                    SUM(sales) as rolling_sales,
+                    SUM(clicks) as rolling_clicks,
+                    CASE WHEN SUM(clicks) > 0 THEN SUM(sales) / SUM(clicks) ELSE NULL END as rolling_spc
+                FROM target_stats t
+                CROSS JOIN date_range dr
+                WHERE t.client_id = %(client_id)s 
+                  AND t.start_date >= dr.latest_date - INTERVAL '30 days'
+                  AND t.start_date <= dr.latest_date
+                GROUP BY LOWER(target_text), LOWER(campaign_name)
             )
             SELECT 
-                a.action_day as action_date,
-                a.action_type,
+                a.action_date, 
+                a.action_type, 
+                a.target_text, 
                 a.campaign_name,
-                a.target_text,
-                a.old_value,
-                a.new_value,
+                a.ad_group_name,
+                a.match_type,
+                a.old_value, 
+                a.new_value, 
                 a.reason,
-                
-                -- Before Metrics (Normalized to weekly)
-                COALESCE(b.spend, 0) as before_spend_total,
-                COALESCE(b.sales, 0) as before_sales_total,
-                COALESCE(b.clicks, 0) as before_clicks_total,
-                COALESCE(b.days_count, 0) as before_days,
-                
-                -- After Metrics (Normalized to weekly)
-                COALESCE(aft.spend, 0) as after_spend_total,
-                COALESCE(aft.sales, 0) as after_sales_total,
-                COALESCE(aft.clicks, 0) as after_clicks_total,
-                COALESCE(aft.days_count, 0) as after_days
-                
-            FROM action_windows a
-            LEFT JOIN before_stats b ON a.id = b.action_id
-            LEFT JOIN after_stats aft ON a.id = aft.action_id
-            WHERE COALESCE(b.spend, 0) + COALESCE(aft.spend, 0) > 0
-            ORDER BY a.action_day DESC, a.campaign_name
+                dr.before_start as before_date,
+                dr.before_end as before_end_date,
+                dr.after_start as after_date,
+                dr.latest_date as after_end_date,
+                dr.actual_before_days,
+                dr.actual_after_days,
+                -- Action-type dependent stats:
+                -- BID_CHANGE: use target_text match (bs/afs)
+                -- NEGATIVE/HARVEST: use customer_search_term match (bcs/afcs)
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.spend, bc.spend, 0)
+                    ELSE COALESCE(bcs.spend, bcsa.spend, bc.spend, 0)
+                END as before_spend,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.sales, bc.sales, 0)
+                    ELSE COALESCE(bcs.sales, bcsa.sales, bc.sales, 0)
+                END as before_sales,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.clicks, bc.clicks, 0)
+                    ELSE COALESCE(bcs.clicks, bcsa.clicks, bc.clicks, 0)
+                END as before_clicks,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.impressions, bc.impressions, 0)
+                    ELSE COALESCE(bcs.impressions, bcsa.impressions, bc.impressions, 0)
+                END as before_impressions,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.spend, ac.spend, 0)
+                    ELSE COALESCE(afcs.spend, afcsa.spend, ac.spend, 0)
+                END as observed_after_spend,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.sales, ac.sales, 0)
+                    ELSE COALESCE(afcs.sales, afcsa.sales, ac.sales, 0)
+                END as observed_after_sales,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.clicks, ac.clicks, 0)
+                    ELSE COALESCE(afcs.clicks, afcsa.clicks, ac.clicks, 0)
+                END as after_clicks,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.impressions, ac.impressions, 0)
+                    ELSE COALESCE(afcs.impressions, afcsa.impressions, ac.impressions, 0)
+                END as after_impressions,
+                CASE 
+                    WHEN a.action_type = 'BID_CHANGE' AND bs.spend IS NOT NULL THEN 'target'
+                    WHEN a.action_type != 'BID_CHANGE' AND bcs.spend IS NOT NULL THEN 'cst'
+                    WHEN a.action_type != 'BID_CHANGE' AND bcsa.spend IS NOT NULL THEN 'cst_account'
+                    ELSE 'campaign' 
+                END as match_level,
+                r30.rolling_spc as rolling_30d_spc
+            FROM aggregated_actions a
+            CROSS JOIN date_range dr
+            -- BID_CHANGE: Join on target_text (the keyword/targeting)
+            LEFT JOIN before_stats bs 
+                ON a.target_lower = bs.target_lower 
+                AND a.campaign_lower = bs.campaign_lower
+            LEFT JOIN after_stats afs 
+                ON a.target_lower = afs.target_lower 
+                AND a.campaign_lower = afs.campaign_lower
+            -- NEGATIVE/HARVEST: Join on customer_search_term using normalized target (handles ASIN format)
+            LEFT JOIN before_cst_stats bcs 
+                ON a.normalized_target_lower = bcs.cst_lower 
+                AND a.campaign_lower = bcs.campaign_lower
+            LEFT JOIN after_cst_stats afcs 
+                ON a.normalized_target_lower = afcs.cst_lower 
+                AND a.campaign_lower = afcs.campaign_lower
+            -- Account-level CST fallback (no campaign restriction)
+            LEFT JOIN before_cst_account bcsa 
+                ON a.normalized_target_lower = bcsa.cst_lower
+            LEFT JOIN after_cst_account afcsa 
+                ON a.normalized_target_lower = afcsa.cst_lower
+            -- Campaign-level fallback
+            LEFT JOIN before_campaign bc 
+                ON a.campaign_lower = bc.campaign_lower
+            LEFT JOIN after_campaign ac 
+                ON a.campaign_lower = ac.campaign_lower
+            LEFT JOIN rolling_30d_stats r30
+                ON a.target_lower = r30.target_lower
+                AND a.campaign_lower = r30.campaign_lower
+            ORDER BY a.action_date DESC
         """
         
         with self._get_connection() as conn:
             df = pd.read_sql(query, conn, params={
-                "client_id": client_id,
-                "after_days": after_days
+                'client_id': client_id,
+                'after_minus_1': after_minus_1,
+                'after_days': after_days,
+                'before_plus_after': before_plus_after
             })
-            
+        
         if df.empty:
-            return pd.DataFrame()
-
-        # Normalization
-        def normalize(value, days):
-             if days < 1: return 0.0
-             return (value / days) * 7.0
-
-        df['before_spend'] = df.apply(lambda x: normalize(x['before_spend_total'], x['before_days']), axis=1)
-        df['before_sales'] = df.apply(lambda x: normalize(x['before_sales_total'], x['before_days']), axis=1)
-        df['after_spend'] = df.apply(lambda x: normalize(x['after_spend_total'], x['after_days']), axis=1)
-        df['after_sales'] = df.apply(lambda x: normalize(x['after_sales_total'], x['after_days']), axis=1)
+            _query_cache.set(cache_key, df)
+            return df
+            
+        # ==========================================
+        # NORMALIZATION: Symmetrical Comparison
+        # ==========================================
+        # If before window has 4 weeks of data and after only has 2 weeks,
+        # we scale the 'after' up to be comparable (apples-to-apples).
+        for idx in df.index:
+            b_days = float(df.at[idx, 'actual_before_days'] or 0)
+            a_days = float(df.at[idx, 'actual_after_days'] or 0)
+            
+            # Normalization factor (to make 'before' comparable to 'after')
+            # If after_days is 3 and before_days is 7, multiply before by 3/7
+            if b_days > 0 and a_days > 0 and b_days != a_days:
+                ratio = a_days / b_days
+                df.at[idx, 'before_spend'] *= ratio
+                df.at[idx, 'before_sales'] *= ratio
+                df.at[idx, 'before_clicks'] *= ratio
         
-        # Calculate deltas (Profit Impact)
-        df['delta_spend'] = df['after_spend'] - df['before_spend']
-        df['delta_sales'] = df['after_sales'] - df['before_sales']
+        # Normalize action types
+        df['action_type'] = df['action_type'].str.upper()
         
-        # Calculate ROAS change
-        df['before_roas'] = df.apply(lambda x: x['before_sales'] / x['before_spend'] if x['before_spend'] > 0 else 0, axis=1)
-        df['after_roas'] = df.apply(lambda x: x['after_sales'] / x['after_spend'] if x['after_spend'] > 0 else 0, axis=1)
-        df['delta_roas'] = df['after_roas'] - df['before_roas']
+        # ==========================================
+        # LAYER 1: ACCOUNT BASELINE CALCULATION
+        # ==========================================
+        # Calculate account-wide spend and ROAS changes to normalize validation
+        total_before_spend = df['before_spend'].sum()
+        total_after_spend = df['observed_after_spend'].sum()
+        total_before_sales = df['before_sales'].sum()
+        total_after_sales = df['observed_after_sales'].sum()
         
-        # Add cosmetic columns expected by UI if missing
-        df['match_level'] = 'precise'
+        # Baseline metrics (stored for later use)
+        baseline_spend_change = (total_after_spend / total_before_spend - 1) if total_before_spend > 0 else 0
+        baseline_roas_before = total_before_sales / total_before_spend if total_before_spend > 0 else 0
+        baseline_roas_after = total_after_sales / total_after_spend if total_after_spend > 0 else 0
+        baseline_roas_change = (baseline_roas_after / baseline_roas_before - 1) if baseline_roas_before > 0 else 0
         
-        return df
+        # Store in dataframe for downstream use
+        df['_baseline_spend_change'] = baseline_spend_change
+        df['_baseline_roas_change'] = baseline_roas_change
+        
+        # Initialize columns
+        df['after_spend'] = 0.0
+        df['after_sales'] = 0.0
+        df['delta_spend'] = 0.0
+        df['delta_sales'] = 0.0
+        df['impact_score'] = 0.0
+        df['attribution'] = 'direct_causation'
+        df['validation_status'] = ''
+        df['spend_avoided'] = 0.0
+        
+        # RULE 1: NEGATIVE → After = $0, impact = cost saved
+        neg_mask = df['action_type'].isin(['NEGATIVE', 'NEGATIVE_ADD'])
+        df.loc[neg_mask, 'after_spend'] = 0.0
+        
+        # REST OF THE VALIDATION LOGIC REMAINS SAME...
+        # (Skipping to deduplication removal)
+        # ...
+        df.loc[neg_mask, 'after_sales'] = 0.0
+        df.loc[neg_mask, 'delta_spend'] = -df.loc[neg_mask, 'before_spend']
+        df.loc[neg_mask, 'delta_sales'] = -df.loc[neg_mask, 'before_sales']
+        df.loc[neg_mask, 'impact_score'] = df.loc[neg_mask, 'before_spend']  # Positive = cost saved
+        df.loc[neg_mask, 'attribution'] = 'cost_avoidance'
+        
+        # Check if negative was actually implemented
+        # Include all levels where we have actual search term data (target, cst, cst_account)
+        # Only 'campaign' level means no search term match
+        has_target_match = df['match_level'].isin(['target', 'cst', 'cst_account'])
+        
+        # Clear case: Target found in after window with spend = keyword still active
+        neg_not_impl = neg_mask & has_target_match & (df['observed_after_spend'] > 0)
+        df.loc[neg_not_impl, 'validation_status'] = '⚠️ NOT IMPLEMENTED'
+        
+        # NORMALIZED VALIDATION for NEG
+        # Target is "confirmed blocked" only if spend dropped significantly MORE than baseline
+        # threshold: at least 50% below baseline change, or 100% drop (to $0)
+        target_spend_change = (df['observed_after_spend'] / df['before_spend'] - 1).fillna(-1)
+        threshold = min(baseline_spend_change - 0.5, -0.95)  # At least 50% worse than baseline
+        
+        # Clear case: Target found with $0 spend = definitely blocked
+        neg_impl_zero = neg_mask & has_target_match & (df['observed_after_spend'] == 0)
+        df.loc[neg_impl_zero, 'validation_status'] = '✓ Confirmed blocked'
+        
+        # Normalized case: Significant drop beyond baseline
+        neg_impl_normalized = neg_mask & has_target_match & (df['observed_after_spend'] > 0) & (target_spend_change < threshold)
+        df.loc[neg_impl_normalized, 'validation_status'] = '✓ Normalized match'
+        
+        # Unclear: Target not found in after window (could be blocked or just no data)
+        neg_unknown = neg_mask & ~has_target_match
+        df.loc[neg_unknown, 'validation_status'] = '◐ Unverified (no target data)'
+        
+        # Special: Preventative negatives
+        prev_mask = neg_mask & (df['before_spend'] == 0)
+        df.loc[prev_mask, 'attribution'] = 'preventative'
+        df.loc[prev_mask, 'impact_score'] = 0
+        df.loc[prev_mask, 'validation_status'] = 'Preventative - no spend to save'
+        
+        # Special: Isolation negatives
+        reason_lower = df['reason'].fillna('').str.lower()
+        iso_mask = neg_mask & (reason_lower.str.contains('isolation|harvest'))
+        df.loc[iso_mask, 'attribution'] = 'isolation_negative'
+        df.loc[iso_mask, 'impact_score'] = 0
+        df.loc[iso_mask, 'validation_status'] = 'Part of harvest consolidation'
+        
+        # RULE 2: HARVEST → Tiered migration validation
+        harv_mask = df['action_type'] == 'HARVEST'
+        df.loc[harv_mask, 'after_spend'] = 0.0
+        df.loc[harv_mask, 'after_sales'] = 0.0
+        df.loc[harv_mask, 'delta_spend'] = 0.0
+        df.loc[harv_mask, 'delta_sales'] = df.loc[harv_mask, 'before_sales'] * 0.10
+        df.loc[harv_mask, 'impact_score'] = df.loc[harv_mask, 'delta_sales']
+        df.loc[harv_mask, 'attribution'] = 'harvest'
+        
+        # Tiered harvest validation based on source drop % and exact match growth
+        min_spend = HARVEST_VALIDATION_CONFIG['min_source_before_spend']
+        near_complete = HARVEST_VALIDATION_CONFIG['near_complete_threshold']
+        strong_thresh = HARVEST_VALIDATION_CONFIG['strong_migration_threshold']
+        partial_thresh = HARVEST_VALIDATION_CONFIG['partial_migration_threshold']
+        exact_growth_req = HARVEST_VALIDATION_CONFIG['exact_growth_required_for_partial']
+        
+        for idx in df[harv_mask].index:
+            source_before = df.at[idx, 'before_spend']
+            source_after = df.at[idx, 'observed_after_spend']
+            target_text = str(df.at[idx, 'target_text']).lower().strip()
+            
+            # Check minimum source spend threshold
+            if source_before < min_spend:
+                df.at[idx, 'validation_status'] = '◐ Unverified (low baseline)'
+                continue
+            
+            # Calculate source drop percentage
+            source_drop_pct = (source_before - source_after) / source_before
+            
+            # Look up exact match spend for this term (from same data)
+            exact_matches = df[
+                (df['target_text'].str.lower().str.strip() == target_text) &
+                (df['match_type'].str.lower() == 'exact')
+            ]
+            exact_after_spend = exact_matches['observed_after_spend'].sum() if len(exact_matches) > 0 else 0
+            exact_before_spend = exact_matches['before_spend'].sum() if len(exact_matches) > 0 else 0
+            exact_growth = exact_after_spend - exact_before_spend
+            exact_growth_pct = exact_growth / max(exact_before_spend, 1) if exact_before_spend > 0 else (1.0 if exact_after_spend > 0 else 0)
+            
+            # Store metrics for transparency
+            df.at[idx, 'source_drop_pct'] = round(source_drop_pct * 100, 1)
+            df.at[idx, 'exact_growth'] = round(exact_growth, 2)
+            
+            # TIER 1: Complete block ($0)
+            if source_after == 0:
+                df.at[idx, 'validation_status'] = '✓ Harvested (complete)'
+                continue
+            
+            # TIER 2: Near-complete (≥90% drop)
+            if source_drop_pct >= near_complete:
+                df.at[idx, 'validation_status'] = '✓ Harvested (90%+ blocked)'
+                continue
+            
+            # TIER 3: Strong migration (≥75% drop)
+            if source_drop_pct >= strong_thresh:
+                df.at[idx, 'validation_status'] = '✓ Harvested (migrated)'
+                continue
+            
+            # TIER 4: Partial migration (≥50% drop)
+            if source_drop_pct >= partial_thresh:
+                df.at[idx, 'validation_status'] = '✓ Harvested (partial)'
+                continue
+            
+            # TIER 5: Incomplete
+            if source_drop_pct > 0:
+                df.at[idx, 'validation_status'] = f'⚠️ Migration {source_drop_pct*100:.0f}%'
+            else:
+                df.at[idx, 'validation_status'] = '⚠️ Source still active'
+        
+        # RULE 3: BID_CHANGE + VISIBILITY_BOOST → Incremental Revenue = before_spend * (roas_after - roas_before)
+        # VISIBILITY_BOOST is treated same as BID_UP for impact calculation
+        bid_mask = df['action_type'].str.contains('BID|VISIBILITY_BOOST', na=False, regex=True)
+        df.loc[bid_mask, 'after_spend'] = df.loc[bid_mask, 'observed_after_spend']
+        df.loc[bid_mask, 'after_sales'] = df.loc[bid_mask, 'observed_after_sales']
+        df.loc[bid_mask, 'delta_spend'] = df.loc[bid_mask, 'observed_after_spend'] - df.loc[bid_mask, 'before_spend']
+        df.loc[bid_mask, 'delta_sales'] = df.loc[bid_mask, 'observed_after_sales'] - df.loc[bid_mask, 'before_sales']
+        
+        # ==========================================
+        # LAYER 2: DIRECTIONAL CPC VALIDATION
+        # ==========================================
+        # Parse old_value/new_value to determine if BID_UP or BID_DOWN
         def parse_bid_direction(row):
             old_str = str(row.get('old_value', '')).strip()
             new_str = str(row.get('new_value', '')).strip()

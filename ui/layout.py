@@ -275,7 +275,7 @@ def render_home():
 
     with t2:
         st.markdown('<div class="cockpit-marker"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="cockpit-label" style="text-align:center;">Recent Impact</div>', unsafe_allow_html=True)
+        st.markdown('<div class="cockpit-label" style="text-align:center;">14-Day Decision Impact</div>', unsafe_allow_html=True)
         impact_data = get_recent_impact_summary()
         st.markdown('<div style="flex-grow:1; display:flex; flex-direction:column; justify-content:space-between; text-align:center;">', unsafe_allow_html=True)
         if impact_data is not None:
@@ -288,7 +288,7 @@ def render_home():
             home_currency = get_account_currency()
             st.markdown('<div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center;">', unsafe_allow_html=True)
             st.markdown(f'<div class="cockpit-value" style="text-align:center;">{f"+{home_currency}{impact:,.0f}" if impact >= 0 else f"-{home_currency}{abs(impact):,.0f}"}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="cockpit-subtext" style="text-align:center;">Net Change Last 30 Days</div>', unsafe_allow_html=True)
+            st.markdown('<div class="cockpit-subtext" style="text-align:center;">Net Change Last 14 Days</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
             # Bottom row callouts - at absolute bottom
@@ -304,17 +304,17 @@ def render_home():
                 arrow_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" style="vertical-align:middle"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>'
                 trend_text = "Growing"
                 trend_color = "#22c55e"
-                trend_tooltip = "Sales are increasing after your optimization actions. Keep up the good work!"
+                trend_tooltip = "Decision Impact is positive over the last 14 days. Your optimization actions are driving value!"
             elif impact < 0:
                 arrow_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" style="vertical-align:middle"><polyline points="6 9 12 15 18 9"></polyline></svg>'
                 trend_text = "Review Needed"
                 trend_color = "#f59e0b"
-                trend_tooltip = "Sales have decreased compared to before optimization. This could be normal short-term fluctuation, or it may indicate your changes need adjustment. Don't panic - review your recent actions in the Impact Analyzer."
+                trend_tooltip = "Decision Impact is negative. This requires review to ensure actions are having the desired effect."
             else:
                 arrow_svg = ''
                 trend_text = "Stable"
                 trend_color = "#64748b"
-                trend_tooltip = "Sales are unchanged since your last optimization. Actions had a neutral effect."
+                trend_tooltip = "Decision Impact is neutral. Actions have stabilized performance."
             
             trend_html = f'{arrow_svg} <span style="color:{trend_color}">{trend_text}</span>'
             
@@ -352,13 +352,13 @@ def render_home():
                     <div style="font-size: 0.95rem; font-weight: 700; color: #94a3b8;">{action_display or "—"}</div>
                     <div style="font-size: 0.6rem; color: #64748b;">
                         Top Driver
-                        <span class="tooltip-container"><span class="info-icon">ⓘ</span><span class="tooltip-text">The action type that contributed most to your recent sales change.</span></span>
+                        <span class="tooltip-container"><span class="info-icon">ⓘ</span><span class="tooltip-text">The action type that contributed most to your recent decision impact.</span></span>
                     </div>
                 </div>
                 <div>
                     <div style="font-size: 0.95rem; font-weight: 700;">{trend_html}</div>
                     <div style="font-size: 0.6rem; color: #64748b;">
-                        30-Day Trend
+                        14-Day Trend
                         <span class="tooltip-container"><span class="info-icon">ⓘ</span><span class="tooltip-text">{trend_tooltip}</span></span>
                     </div>
                 </div>
