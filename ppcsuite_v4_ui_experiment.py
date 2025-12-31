@@ -165,6 +165,13 @@ def run_performance_hub():
 # ==========================================
 def run_consolidated_optimizer():
     """Execution logic: Optimizer + ASIN Mapper + AI Insights all in one view."""
+    
+    # CRITICAL: If showing confirmation dialog, don't re-run optimizer logic
+    # This prevents settings from resetting during navigation
+    if st.session_state.get('_show_action_confirmation'):
+        st.info("⏸️ Optimization paused. Please complete the action confirmation dialog.")
+        return
+    
     # Lazy imports for Optimizer
     from features.optimizer import (
         OptimizerModule, 
