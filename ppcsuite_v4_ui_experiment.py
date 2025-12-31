@@ -268,53 +268,10 @@ def run_consolidated_optimizer():
                             'Ad Group Name': 'Ad Group Name'
                         })
                         
-                        # Merge current upload with DB data
-                        # We use Date, Campaign, Ad Group, and Targeting as keys to avoid duplicates
-                        st.write(f"🔍 DEBUG: Upload df has {len(df)} rows")
-                        
-                        # Detect date column for comparison
-                        upload_date_col = next((c for c in ['Date', 'Start Date', 'date'] if c in df.columns), None)
-                        if upload_date_col:
-                            df[upload_date_col] = pd.to_datetime(df[upload_date_col], errors='coerce')
-                            st.write(f"🔍 DEBUG: Upload date range: {df[upload_date_col].min()} to {df[upload_date_col].max()}")
-                        
-                        # SMART MERGE LOGIC:
-                        # If upload file is entirely within DB date range, it's likely already in DB
-                        # In this case, just use DB data (don't merge, avoid 91% data loss from deduplication)
-                        if upload_date_col:
-                            upload_min = df[upload_date_col].min()
-                            upload_max = df[upload_date_col].max()
-                            db_min = db_df['Date'].min()
-                            db_max = db_df['Date'].max()
-                            
-                            upload_is_subset = (upload_min >= db_min) and (upload_max <= db_max)
-                            
-                            if upload_is_subset:
-                                # Upload is redundant - use DB data which is complete
-                                st.info(f"✅ Upload file ({upload_min.date()} to {upload_max.date()}) is already in database. Using complete DB data ({len(db_df)} rows).")
-                                df = db_df.copy()
-                            else:
-                                # Upload has new data - proceed with merge
-                                combined = pd.concat([df, db_df], ignore_index=True)
-                                st.write(f"🔍 DEBUG: After concat: {len(combined)} rows")
-                                
-                                # Fix types for deduplication
-                                combined['Date'] = pd.to_datetime(combined['Date'])
-                                
-                                combined['Campaign Name'] = combined['Campaign Name'].astype(str).str.strip()
-                                combined['Ad Group Name'] = combined['Ad Group Name'].astype(str).str.strip()
-                                combined['Targeting'] = combined['Targeting'].astype(str).str.strip()
-                                
-                                # Drop duplicates (keep newest/session data which might have more recent metrics)
-                                df = combined.drop_duplicates(subset=['Date', 'Campaign Name', 'Ad Group Name', 'Targeting'], keep='first')
-                                st.write(f"🔍 DEBUG: After deduplication: {len(df)} rows")
-                                
-                                # DEBUG: Final merged range
-                                st.info(f"✅ Merged history. Data now spans {df['Date'].min().date()} to {df['Date'].max().date()} ({len(df)} rows)")
-                        else:
-                            # No date column found in upload, just use DB data to be safe
-                            st.warning("⚠️ Could not detect date column in upload. Using complete DB data.")
-                            df = db_df.copy()
+                        # CONSISTENCY FIX: Use DB data directly like Performance Overview
+                        # No merge, no dedup - just use what's in the database
+                        df = db_df.copy()
+                        st.success(f"✅ Using complete database history: {len(df):,} rows from {df['Date'].min().date()} to {df['Date'].max().date()}")
     
     # =====================================================
     # DATE RANGE FILTER: Default to last 30 days
@@ -567,7 +524,7 @@ def run_consolidated_optimizer():
         run_sim = st.checkbox("Include Simulation & Forecasting", value=True, key="run_simulation_main")
         
         # PRIMARY CTA (commit first)
-        if st.button("Run optimization with recommended settings", type="primary", use_container_width=True):
+        if st.button("Start optimization", type="primary", use_container_width=True):
             st.session_state["optimizer_config"] = opt.config.copy()
             st.session_state["run_optimizer"] = True
             st.session_state["should_log_actions"] = True  # Only log on explicit button click
@@ -766,10 +723,6 @@ def run_consolidated_optimizer():
     if st.session_state.get("should_log_actions", False):
         logged_count = _log_optimization_events(r, active_client, action_log_date)
         st.session_state["should_log_actions"] = False  # Clear flag to prevent re-logging
-    
-    # CRITICAL: Reset run_optimizer to False after execution completes
-    # This prevents auto-run on slider changes / page reruns
-    st.session_state["run_optimizer"] = False
 
     # === POST-OPTIMIZATION INSIGHT LAYER ===
     @st.fragment
