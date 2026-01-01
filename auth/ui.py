@@ -189,41 +189,102 @@ def render_signup_form() -> None:
             ''', unsafe_allow_html=True)
     
     with col_right:
-        st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
-        _, form_col, _ = st.columns([0.15, 0.7, 0.15])
-        
+        # Vertical centering
+        st.markdown('<div style="height: 8vh;"></div>', unsafe_allow_html=True)
+
+        # Center the form content
+        _, form_col, _ = st.columns([0.2, 0.6, 0.2])
+
         with form_col:
             # Logo with tagline
             if logo_b64:
                 st.markdown(f'''
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <img src="data:image/png;base64,{logo_b64}" style="height: 180px; margin-bottom: -10px;" />
-                    <p style="color: #9A9AAA; font-size: 0.85rem; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Amazon advertising, simplified</p>
+                <div style="text-align: center; margin-bottom: 40px;">
+                    <img src="data:image/png;base64,{logo_b64}" style="height: 180px; margin-bottom: 8px;" />
+                    <p style="color: #9A9AAA; font-size: 0.85rem; margin: 0; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; text-transform: uppercase; letter-spacing: 1.2px;">Amazon advertising, simplified</p>
                 </div>
                 ''', unsafe_allow_html=True)
-            
-            # Signup Card Container
+
+            # Signup heading with subtitle
             st.markdown('''
-            <div style="
-                background: rgba(91, 86, 112, 0.15);
-                border: 1px solid rgba(91, 86, 112, 0.4);
-                border-radius: 12px;
-                padding: 24px;
-            ">
-                <h3 style="color: #E9EAF0; font-size: 1.2rem; font-weight: 600; margin: 0 0 20px 0;">Create Account</h3>
+            <div style="margin-bottom: 40px;">
+                <h1 style="color: #E9EAF0; font-size: 2.2rem; font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.5px;">Create Account</h1>
+                <p style="color: #9A9AAA; font-size: 0.95rem; margin: 0; font-weight: 400;">Sign up to get started with AdPulse</p>
             </div>
             ''', unsafe_allow_html=True)
-            
-            st.markdown('<div style="margin-top: -60px; padding: 0 24px 24px 24px; background: rgba(91, 86, 112, 0.15); border-radius: 0 0 12px 12px; border: 1px solid rgba(91, 86, 112, 0.4); border-top: none;">', unsafe_allow_html=True)
-            
-            # Form
+
+            # Enhanced input styling (same as login)
+            st.markdown('''
+            <style>
+            .stTextInput > div > div > input {
+                background: rgba(91, 86, 112, 0.12) !important;
+                border: 1px solid rgba(91, 86, 112, 0.25) !important;
+                border-radius: 8px !important;
+                color: #E9EAF0 !important;
+                padding: 14px 16px !important;
+                font-size: 0.95rem !important;
+            }
+            .stTextInput > div > div > input:focus {
+                border-color: #5B5670 !important;
+                box-shadow: 0 0 0 2px rgba(91, 86, 112, 0.15) !important;
+            }
+            .stTextInput > div > div > input::placeholder {
+                color: rgba(154, 154, 170, 0.5) !important;
+            }
+            .stTextInput label {
+                color: #9A9AAA !important;
+                font-size: 0.85rem !important;
+                font-weight: 500 !important;
+                margin-bottom: 8px !important;
+            }
+            .stTextInput {margin-bottom: 20px !important;}
+
+            /* Premium gradient button */
+            .stFormSubmitButton > button {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                color: #ffffff !important;
+                border: none !important;
+                border-radius: 8px !important;
+                padding: 14px 24px !important;
+                font-weight: 600 !important;
+                font-size: 1rem !important;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+                transition: all 0.3s ease !important;
+            }
+            .stFormSubmitButton > button:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+            }
+
+            /* Secondary button for Sign in */
+            .stButton > button[kind="secondary"] {
+                background: transparent !important;
+                border: 1px solid rgba(91, 86, 112, 0.35) !important;
+                color: #E9EAF0 !important;
+                border-radius: 8px !important;
+                padding: 12px 24px !important;
+                font-weight: 600 !important;
+                font-size: 0.95rem !important;
+            }
+            .stButton > button[kind="secondary"]:hover {
+                border-color: #667eea !important;
+                background: rgba(102, 126, 234, 0.1) !important;
+            }
+
+            [data-testid="stForm"] {border: none !important; padding: 0 !important;}
+            </style>
+            ''', unsafe_allow_html=True)
+
+            # Signup Form
             with st.form("signup_form", clear_on_submit=False):
                 email = st.text_input("Email address", placeholder="name@example.com")
                 password = st.text_input("Password", type="password", placeholder="Minimum 8 characters")
                 confirm = st.text_input("Confirm Password", type="password", placeholder="Confirm password")
-                
+
+                st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
+
                 submitted = st.form_submit_button("Create Account", type="primary", use_container_width=True)
-                
+
                 if submitted:
                     if not email or not password:
                         st.error("Please fill in all fields")
@@ -238,15 +299,16 @@ def render_signup_form() -> None:
                             st.success(result.get("message", "Account created! Check your email."))
                         else:
                             st.error(result.get("error", "Signup failed"))
-            
-            # Already have account link
-            st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
-            st.markdown('<span style="color: #9A9AAA; font-size: 0.8rem;">Already have an account? </span>', unsafe_allow_html=True)
-            if st.button("Sign in", key="back_to_login", type="tertiary"):
+
+            # Already have account - larger button
+            st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="text-align: center; margin-bottom: 12px;">', unsafe_allow_html=True)
+            st.markdown('<span style="color: #9A9AAA; font-size: 0.9rem;">Already have an account?</span>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            if st.button("Sign in", key="back_to_login", type="secondary", use_container_width=True):
                 st.session_state['auth_view'] = 'login'
                 st.rerun()
-            
-            st.markdown('</div>', unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -341,91 +403,115 @@ def render_login_form() -> dict:
             ''', unsafe_allow_html=True)
     
     with col_right:
-        # Minimal top spacing
-        st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
-        
-        # Center the form content
-        _, form_col, _ = st.columns([0.15, 0.7, 0.15])
-        
+        # Vertical centering
+        st.markdown('<div style="height: 8vh;"></div>', unsafe_allow_html=True)
+
+        # Center the form content with more padding
+        _, form_col, _ = st.columns([0.2, 0.6, 0.2])
+
         with form_col:
-            # Logo (bigger) with tagline
+            # Logo with tagline
             if logo_b64:
                 st.markdown(f'''
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <img src="data:image/png;base64,{logo_b64}" style="height: 240px; margin-bottom: -10px;" />
-                    <p style="color: #9A9AAA; font-size: 0.85rem; margin: 0; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; text-transform: uppercase; letter-spacing: 1px;">Amazon advertising, simplified</p>
+                <div style="text-align: center; margin-bottom: 40px;">
+                    <img src="data:image/png;base64,{logo_b64}" style="height: 180px; margin-bottom: 8px;" />
+                    <p style="color: #9A9AAA; font-size: 0.85rem; margin: 0; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; text-transform: uppercase; letter-spacing: 1.2px;">Amazon advertising, simplified</p>
                 </div>
                 ''', unsafe_allow_html=True)
-            
-            # Custom styling
+
+            # Login heading with subtitle
+            st.markdown('''
+            <div style="margin-bottom: 40px;">
+                <h1 style="color: #E9EAF0; font-size: 2.2rem; font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.5px;">Login</h1>
+                <p style="color: #9A9AAA; font-size: 0.95rem; margin: 0; font-weight: 400;">Sign in to your account to continue</p>
+            </div>
+            ''', unsafe_allow_html=True)
+
+            # Enhanced input styling
             st.markdown('''
             <style>
             .stTextInput > div > div > input {
-                background: #0B0B0D !important;
-                border: 1px solid rgba(91, 86, 112, 0.4) !important;
-                border-radius: 6px !important;
+                background: rgba(91, 86, 112, 0.12) !important;
+                border: 1px solid rgba(91, 86, 112, 0.25) !important;
+                border-radius: 8px !important;
                 color: #E9EAF0 !important;
-                padding: 10px 12px !important;
-                font-size: 0.85rem !important;
+                padding: 14px 16px !important;
+                font-size: 0.95rem !important;
             }
             .stTextInput > div > div > input:focus {
                 border-color: #5B5670 !important;
+                box-shadow: 0 0 0 2px rgba(91, 86, 112, 0.15) !important;
             }
             .stTextInput > div > div > input::placeholder {
-                color: #9A9AAA !important;
+                color: rgba(154, 154, 170, 0.5) !important;
             }
             .stTextInput label {
                 color: #9A9AAA !important;
-                font-size: 0.75rem !important;
-                font-weight: 500 !important;
-            }
-            
-            .stFormSubmitButton > button {
-                background: #5B5670 !important;
-                color: #E9EAF0 !important;
-                border: none !important;
-                border-radius: 6px !important;
-                padding: 10px !important;
-                font-weight: 600 !important;
                 font-size: 0.85rem !important;
+                font-weight: 500 !important;
+                margin-bottom: 8px !important;
+            }
+            .stTextInput {margin-bottom: 20px !important;}
+
+            /* Premium gradient button */
+            .stFormSubmitButton > button {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                color: #ffffff !important;
+                border: none !important;
+                border-radius: 8px !important;
+                padding: 14px 24px !important;
+                font-weight: 600 !important;
+                font-size: 1rem !important;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+                transition: all 0.3s ease !important;
             }
             .stFormSubmitButton > button:hover {
-                background: #6c6684 !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
             }
+
+            /* Tertiary button for links */
+            .stButton > button[kind="tertiary"] {
+                background: transparent !important;
+                border: none !important;
+                color: #667eea !important;
+                padding: 0 !important;
+                font-size: 0.9rem !important;
+                font-weight: 500 !important;
+                text-decoration: none !important;
+            }
+            .stButton > button[kind="tertiary"]:hover {
+                color: #764ba2 !important;
+                text-decoration: underline !important;
+            }
+
+            /* Align bottom row elements */
+            div[data-testid="column"] .stButton {
+                display: inline-block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            div[data-testid="column"] span {
+                display: inline !important;
+                vertical-align: middle !important;
+            }
+
+            [data-testid="stForm"] {border: none !important; padding: 0 !important;}
             </style>
             ''', unsafe_allow_html=True)
-            
-            # Login Card Container - wraps everything
-            st.markdown('''
-            <div style="
-                background: rgba(91, 86, 112, 0.15);
-                border: 1px solid rgba(91, 86, 112, 0.4);
-                border-radius: 12px;
-                padding: 24px;
-            ">
-                <h3 style="color: #E9EAF0; font-size: 1.2rem; font-weight: 600; margin: 0 0 20px 0;">Login</h3>
-            </div>
-            ''', unsafe_allow_html=True)
-            
-            # Overlay form inside the card using negative margin
-            st.markdown('<div style="margin-top: -60px; padding: 0 24px 24px 24px; background: rgba(91, 86, 112, 0.15); border-radius: 0 0 12px 12px; border: 1px solid rgba(91, 86, 112, 0.4); border-top: none;">', unsafe_allow_html=True)
-            
+
             # Login Form
             with st.form("login_form", clear_on_submit=False):
+                # Email field
                 email = st.text_input("Email address", placeholder="name@example.com", key="login_email")
-                
-                # Password label with forgot link
-                col_pwd_label, col_forgot = st.columns([1, 1])
-                with col_pwd_label:
-                    st.markdown('<span style="color: #9A9AAA; font-size: 0.75rem; font-weight: 500;">Password</span>', unsafe_allow_html=True)
-                with col_forgot:
-                    if st.form_submit_button("Forgot password?", type="tertiary"):
-                        pass  # Can't navigate from form submit, handled separately
-                
-                password = st.text_input("Password", type="password", placeholder="password", key="login_password", label_visibility="collapsed")
-                
+
+                # Password field
+                password = st.text_input("Password", type="password", placeholder="password", key="login_password")
+
+                st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
+
                 submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
-                
+
                 if submitted:
                     if not email or not password:
                         st.error("Please enter email & password")
@@ -436,22 +522,26 @@ def render_login_form() -> dict:
                         st.rerun()
                     else:
                         st.error(result.get("error", "Login failed"))
-            
-            # Not registered link + Forgot password (functional buttons)
-            st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
-            
-            col_signup, col_forgot_btn = st.columns([2, 1])
-            with col_signup:
-                st.markdown('<span style="color: #9A9AAA; font-size: 0.8rem;">Not registered? </span>', unsafe_allow_html=True)
+
+            # Bottom row - clean single-line layout
+            st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+
+            col_left_link, col_right_link = st.columns(2)
+
+            with col_left_link:
+                # Text and button on same line
+                st.markdown('<span style="color: #9A9AAA; font-size: 0.9rem;">Not registered? </span>', unsafe_allow_html=True)
                 if st.button("Create account", key="create_acc", type="tertiary"):
                     st.session_state['auth_view'] = 'signup'
                     st.rerun()
-            with col_forgot_btn:
-                if st.button("Forgot password?", key="forgot_pwd", type="tertiary"):
+
+            with col_right_link:
+                # Right-aligned button
+                st.markdown('<div style="text-align: right;">', unsafe_allow_html=True)
+                if st.button("Forgot password?", key="forgot_pwd_bottom", type="tertiary"):
                     st.session_state['auth_view'] = 'reset'
                     st.rerun()
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
     return {"authenticated": auth.is_authenticated()}
 

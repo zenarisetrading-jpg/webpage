@@ -1030,31 +1030,15 @@ class PostgresManager:
             return cached
 
         # Calculate intervals based on before_days and after_days
-        # before_window: latest - before_days to latest (e.g., 14 days before latest)
-        # after_window: latest - after_days + 1 to latest (e.g., last 14 days)
         after_minus_1 = after_days - 1
-        before_plus_after = before_days + after_days - 1
         
-        # Single batch query with dynamic fixed windows and weekly action aggregation
+        # Original LATERAL join query - accurate but slower
+        # Indexes added for performance: idx_ts_client_campaign, idx_ts_client_target, idx_ts_client_cst
         query = """
-            WITH date_range AS (
-                -- Get latest data date and calculate windows
-                SELECT 
-                    MAX(start_date) as latest_date,
-                    MAX(start_date) - INTERVAL '%(after_minus_1)s days' as after_start,  
-                    MAX(start_date) - INTERVAL '%(after_days)s days' as before_end,   
-                    MAX(start_date) - INTERVAL '%(before_plus_after)s days' as before_start,
-                    -- Count actual days with data in each window for normalization
-                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(after_minus_1)s days' AND start_date <= MAX(t2.start_date)) as actual_after_days,
-                    (SELECT COUNT(DISTINCT start_date) FROM target_stats WHERE client_id = %(client_id)s AND start_date >= MAX(t2.start_date) - INTERVAL '%(before_plus_after)s days' AND start_date <= MAX(t2.start_date) - INTERVAL '%(after_days)s days') as actual_before_days
-                FROM target_stats t2
-                WHERE client_id = %(client_id)s
-            ),
-            aggregated_actions AS (
-                -- Group daily actions into weekly buckets (starting Tuesdays to match target_stats)
+            WITH aggregated_actions AS (
+                -- Group daily actions into weekly buckets
                 SELECT 
                     LOWER(target_text) as target_lower,
-                    -- Normalized target for CST matching: strip 'asin="' and '"' for PT negatives
                     CASE 
                         WHEN LOWER(target_text) LIKE 'asin=%%' THEN 
                             LOWER(REPLACE(REPLACE(target_text, 'asin="', ''), '"', ''))
@@ -1063,167 +1047,22 @@ class PostgresManager:
                     LOWER(campaign_name) as campaign_lower,
                     LOWER(ad_group_name) as ad_group_lower,
                     target_text, campaign_name, ad_group_name, match_type, action_type,
-                    -- Snap to Tuesday (matching the 2025-12-16, 2025-12-09 pattern)
                     DATE(action_date - (MOD((EXTRACT(DOW FROM action_date)::int - 2 + 7), 7)) * INTERVAL '1 day') as week_start,
                     MAX(action_date) as action_date,
-                    -- Keep first old_value and last new_value in the week group
                     (ARRAY_AGG(old_value ORDER BY action_date ASC))[1] as old_value,
                     (ARRAY_AGG(new_value ORDER BY action_date DESC))[1] as new_value,
-                    STRING_AGG(DISTINCT reason, '; ') as reason
+                    STRING_AGG(DISTINCT reason, '; ') as reason,
+                    MAX(action_date) - INTERVAL '%(before_days)s days' as before_start,
+                    MAX(action_date) - INTERVAL '1 day' as before_end,
+                    MAX(action_date) as after_start,
+                    MAX(action_date) + INTERVAL '%(after_minus_1)s days' as after_end
                 FROM actions_log
                 WHERE client_id = %(client_id)s
                   AND LOWER(action_type) NOT IN ('hold', 'monitor', 'flagged')
-                  -- Only include actions where we have data to measure
-                  -- Action must be at least after_days before the latest data
-                  AND action_date <= (SELECT MAX(start_date) FROM target_stats WHERE client_id = %(client_id)s)
                 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
             ),
-            before_stats AS (
-                -- Aggregate performance in BEFORE window by target_text (for BID_CHANGE)
-                -- BID_CHANGE actions match on the keyword/targeting being bid on
-                SELECT 
-                    LOWER(target_text) as target_lower, 
-                    LOWER(campaign_name) as campaign_lower,
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.before_start 
-                  AND t.start_date <= dr.before_end
-                GROUP BY LOWER(target_text), LOWER(campaign_name)
-            ),
-            after_stats AS (
-                -- Aggregate performance in AFTER window by target_text (for BID_CHANGE)
-                SELECT 
-                    LOWER(target_text) as target_lower, 
-                    LOWER(campaign_name) as campaign_lower,
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.after_start 
-                  AND t.start_date <= dr.latest_date
-                GROUP BY LOWER(target_text), LOWER(campaign_name)
-            ),
-            before_cst_stats AS (
-                -- Aggregate performance in BEFORE window by customer_search_term (for NEGATIVE/HARVEST)
-                -- NEGATIVE/HARVEST actions match on the search term being blocked/harvested
-                SELECT 
-                    LOWER(customer_search_term) as cst_lower, 
-                    LOWER(campaign_name) as campaign_lower,
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.before_start 
-                  AND t.start_date <= dr.before_end
-                  AND customer_search_term IS NOT NULL
-                GROUP BY LOWER(customer_search_term), LOWER(campaign_name)
-            ),
-            after_cst_stats AS (
-                -- Aggregate performance in AFTER window by customer_search_term (for NEGATIVE/HARVEST)
-                SELECT 
-                    LOWER(customer_search_term) as cst_lower, 
-                    LOWER(campaign_name) as campaign_lower,
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.after_start 
-                  AND t.start_date <= dr.latest_date
-                  AND customer_search_term IS NOT NULL
-                GROUP BY LOWER(customer_search_term), LOWER(campaign_name)
-            ),
-            before_campaign AS (
-                -- Fallback: Campaign-level BEFORE stats
-                SELECT 
-                    LOWER(campaign_name) as campaign_lower, 
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.before_start 
-                  AND t.start_date <= dr.before_end
-                GROUP BY LOWER(campaign_name)
-            ),
-            after_campaign AS (
-                -- Fallback: Campaign-level AFTER stats
-                SELECT 
-                    LOWER(campaign_name) as campaign_lower, 
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.after_start 
-                  AND t.start_date <= dr.latest_date
-                GROUP BY LOWER(campaign_name)
-            ),
-            before_cst_account AS (
-                -- Account-level CST fallback (no campaign restriction)
-                SELECT 
-                    LOWER(customer_search_term) as cst_lower,
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.before_start 
-                  AND t.start_date <= dr.before_end
-                  AND customer_search_term IS NOT NULL
-                  AND customer_search_term != ''
-                GROUP BY LOWER(customer_search_term)
-            ),
-            after_cst_account AS (
-                -- Account-level CST fallback (no campaign restriction)
-                SELECT 
-                    LOWER(customer_search_term) as cst_lower,
-                    SUM(spend) as spend, 
-                    SUM(sales) as sales,
-                    SUM(clicks) as clicks,
-                    SUM(impressions) as impressions
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.after_start 
-                  AND t.start_date <= dr.latest_date
-                  AND customer_search_term IS NOT NULL
-                  AND customer_search_term != ''
-                GROUP BY LOWER(customer_search_term)
-            ),
-            rolling_30d_stats AS (
-                -- 30-day rolling stats by target_text (for baseline comparison)
-                SELECT 
-                    LOWER(target_text) as target_lower, 
-                    LOWER(campaign_name) as campaign_lower,
-                    SUM(sales) as rolling_sales,
-                    SUM(clicks) as rolling_clicks,
-                    CASE WHEN SUM(clicks) > 0 THEN SUM(sales) / SUM(clicks) ELSE NULL END as rolling_spc
-                FROM target_stats t
-                CROSS JOIN date_range dr
-                WHERE t.client_id = %(client_id)s 
-                  AND t.start_date >= dr.latest_date - INTERVAL '30 days'
-                  AND t.start_date <= dr.latest_date
-                GROUP BY LOWER(target_text), LOWER(campaign_name)
+            latest_data AS (
+                SELECT MAX(start_date) as latest_date FROM target_stats WHERE client_id = %(client_id)s
             )
             SELECT 
                 a.action_date, 
@@ -1235,83 +1074,94 @@ class PostgresManager:
                 a.old_value, 
                 a.new_value, 
                 a.reason,
-                dr.before_start as before_date,
-                dr.before_end as before_end_date,
-                dr.after_start as after_date,
-                dr.latest_date as after_end_date,
-                dr.actual_before_days,
-                dr.actual_after_days,
-                -- Action-type dependent stats:
-                -- BID_CHANGE: use target_text match (bs/afs)
-                -- NEGATIVE/HARVEST: use customer_search_term match (bcs/afcs)
+                a.before_start as before_date,
+                a.before_end as before_end_date,
+                a.after_start as after_date,
+                LEAST(a.after_end, ld.latest_date) as after_end_date,
+                -- Count actual data days in windows
+                (SELECT COUNT(DISTINCT start_date) FROM target_stats 
+                 WHERE client_id = %(client_id)s 
+                   AND start_date >= a.before_start AND start_date <= a.before_end) as actual_before_days,
+                (SELECT COUNT(DISTINCT start_date) FROM target_stats 
+                 WHERE client_id = %(client_id)s 
+                   AND start_date >= a.after_start AND start_date <= LEAST(a.after_end, ld.latest_date)) as actual_after_days,
+                -- BEFORE stats via LATERAL (per-action window)
+                COALESCE(bs.spend, bcs.spend, bc.spend, 0) as before_spend,
+                COALESCE(bs.sales, bcs.sales, bc.sales, 0) as before_sales,
+                COALESCE(bs.clicks, bcs.clicks, bc.clicks, 0) as before_clicks,
+                COALESCE(bs.impressions, bcs.impressions, bc.impressions, 0) as before_impressions,
+                -- AFTER stats via LATERAL (per-action window)
+                COALESCE(afs.spend, afcs.spend, ac.spend, 0) as observed_after_spend,
+                COALESCE(afs.sales, afcs.sales, ac.sales, 0) as observed_after_sales,
+                COALESCE(afs.clicks, afcs.clicks, ac.clicks, 0) as after_clicks,
+                COALESCE(afs.impressions, afcs.impressions, ac.impressions, 0) as after_impressions,
                 CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.spend, bc.spend, 0)
-                    ELSE COALESCE(bcs.spend, bcsa.spend, bc.spend, 0)
-                END as before_spend,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.sales, bc.sales, 0)
-                    ELSE COALESCE(bcs.sales, bcsa.sales, bc.sales, 0)
-                END as before_sales,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.clicks, bc.clicks, 0)
-                    ELSE COALESCE(bcs.clicks, bcsa.clicks, bc.clicks, 0)
-                END as before_clicks,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(bs.impressions, bc.impressions, 0)
-                    ELSE COALESCE(bcs.impressions, bcsa.impressions, bc.impressions, 0)
-                END as before_impressions,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.spend, ac.spend, 0)
-                    ELSE COALESCE(afcs.spend, afcsa.spend, ac.spend, 0)
-                END as observed_after_spend,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.sales, ac.sales, 0)
-                    ELSE COALESCE(afcs.sales, afcsa.sales, ac.sales, 0)
-                END as observed_after_sales,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.clicks, ac.clicks, 0)
-                    ELSE COALESCE(afcs.clicks, afcsa.clicks, ac.clicks, 0)
-                END as after_clicks,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' THEN COALESCE(afs.impressions, ac.impressions, 0)
-                    ELSE COALESCE(afcs.impressions, afcsa.impressions, ac.impressions, 0)
-                END as after_impressions,
-                CASE 
-                    WHEN a.action_type = 'BID_CHANGE' AND bs.spend IS NOT NULL THEN 'target'
-                    WHEN a.action_type != 'BID_CHANGE' AND bcs.spend IS NOT NULL THEN 'cst'
-                    WHEN a.action_type != 'BID_CHANGE' AND bcsa.spend IS NOT NULL THEN 'cst_account'
+                    WHEN bs.spend IS NOT NULL THEN 'target'
+                    WHEN bcs.spend IS NOT NULL THEN 'cst'
                     ELSE 'campaign' 
                 END as match_level,
                 r30.rolling_spc as rolling_30d_spc
             FROM aggregated_actions a
-            CROSS JOIN date_range dr
-            -- BID_CHANGE: Join on target_text (the keyword/targeting)
-            LEFT JOIN before_stats bs 
-                ON a.target_lower = bs.target_lower 
-                AND a.campaign_lower = bs.campaign_lower
-            LEFT JOIN after_stats afs 
-                ON a.target_lower = afs.target_lower 
-                AND a.campaign_lower = afs.campaign_lower
-            -- NEGATIVE/HARVEST: Join on customer_search_term using normalized target (handles ASIN format)
-            LEFT JOIN before_cst_stats bcs 
-                ON a.normalized_target_lower = bcs.cst_lower 
-                AND a.campaign_lower = bcs.campaign_lower
-            LEFT JOIN after_cst_stats afcs 
-                ON a.normalized_target_lower = afcs.cst_lower 
-                AND a.campaign_lower = afcs.campaign_lower
-            -- Account-level CST fallback (no campaign restriction)
-            LEFT JOIN before_cst_account bcsa 
-                ON a.normalized_target_lower = bcsa.cst_lower
-            LEFT JOIN after_cst_account afcsa 
-                ON a.normalized_target_lower = afcsa.cst_lower
-            -- Campaign-level fallback
-            LEFT JOIN before_campaign bc 
-                ON a.campaign_lower = bc.campaign_lower
-            LEFT JOIN after_campaign ac 
-                ON a.campaign_lower = ac.campaign_lower
-            LEFT JOIN rolling_30d_stats r30
-                ON a.target_lower = r30.target_lower
-                AND a.campaign_lower = r30.campaign_lower
+            CROSS JOIN latest_data ld
+            -- BEFORE: target_text match (for BID_CHANGE)
+            LEFT JOIN LATERAL (
+                SELECT SUM(spend) as spend, SUM(sales) as sales, SUM(clicks) as clicks, SUM(impressions) as impressions
+                FROM target_stats t
+                WHERE t.client_id = %(client_id)s
+                  AND LOWER(t.target_text) = a.target_lower
+                  AND LOWER(t.campaign_name) = a.campaign_lower
+                  AND t.start_date >= a.before_start AND t.start_date <= a.before_end
+            ) bs ON TRUE
+            -- BEFORE: CST match (for NEGATIVE/HARVEST)
+            LEFT JOIN LATERAL (
+                SELECT SUM(spend) as spend, SUM(sales) as sales, SUM(clicks) as clicks, SUM(impressions) as impressions
+                FROM target_stats t
+                WHERE t.client_id = %(client_id)s
+                  AND LOWER(t.customer_search_term) = a.normalized_target_lower
+                  AND t.start_date >= a.before_start AND t.start_date <= a.before_end
+            ) bcs ON a.action_type IN ('NEGATIVE', 'NEGATIVE_ADD', 'HARVEST')
+            -- BEFORE: Campaign fallback
+            LEFT JOIN LATERAL (
+                SELECT SUM(spend) as spend, SUM(sales) as sales, SUM(clicks) as clicks, SUM(impressions) as impressions
+                FROM target_stats t
+                WHERE t.client_id = %(client_id)s
+                  AND LOWER(t.campaign_name) = a.campaign_lower
+                  AND t.start_date >= a.before_start AND t.start_date <= a.before_end
+            ) bc ON bs.spend IS NULL AND bcs.spend IS NULL
+            -- AFTER: target_text match (for BID_CHANGE)
+            LEFT JOIN LATERAL (
+                SELECT SUM(spend) as spend, SUM(sales) as sales, SUM(clicks) as clicks, SUM(impressions) as impressions
+                FROM target_stats t
+                WHERE t.client_id = %(client_id)s
+                  AND LOWER(t.target_text) = a.target_lower
+                  AND LOWER(t.campaign_name) = a.campaign_lower
+                  AND t.start_date >= a.after_start AND t.start_date <= LEAST(a.after_end, ld.latest_date)
+            ) afs ON TRUE
+            -- AFTER: CST match (for NEGATIVE/HARVEST)
+            LEFT JOIN LATERAL (
+                SELECT SUM(spend) as spend, SUM(sales) as sales, SUM(clicks) as clicks, SUM(impressions) as impressions
+                FROM target_stats t
+                WHERE t.client_id = %(client_id)s
+                  AND LOWER(t.customer_search_term) = a.normalized_target_lower
+                  AND t.start_date >= a.after_start AND t.start_date <= LEAST(a.after_end, ld.latest_date)
+            ) afcs ON a.action_type IN ('NEGATIVE', 'NEGATIVE_ADD', 'HARVEST')
+            -- AFTER: Campaign fallback
+            LEFT JOIN LATERAL (
+                SELECT SUM(spend) as spend, SUM(sales) as sales, SUM(clicks) as clicks, SUM(impressions) as impressions
+                FROM target_stats t
+                WHERE t.client_id = %(client_id)s
+                  AND LOWER(t.campaign_name) = a.campaign_lower
+                  AND t.start_date >= a.after_start AND t.start_date <= LEAST(a.after_end, ld.latest_date)
+            ) ac ON afs.spend IS NULL AND afcs.spend IS NULL
+            -- Rolling 30d stats for baseline
+            LEFT JOIN LATERAL (
+                SELECT CASE WHEN SUM(clicks) > 0 THEN SUM(sales) / SUM(clicks) ELSE NULL END as rolling_spc
+                FROM target_stats t
+                WHERE t.client_id = %(client_id)s
+                  AND LOWER(t.target_text) = a.target_lower
+                  AND LOWER(t.campaign_name) = a.campaign_lower
+                  AND t.start_date >= ld.latest_date - INTERVAL '30 days'
+            ) r30 ON TRUE
             ORDER BY a.action_date DESC
         """
         
@@ -1319,8 +1169,7 @@ class PostgresManager:
             df = pd.read_sql(query, conn, params={
                 'client_id': client_id,
                 'after_minus_1': after_minus_1,
-                'after_days': after_days,
-                'before_plus_after': before_plus_after
+                'before_days': before_days
             })
         
         if df.empty:

@@ -53,26 +53,48 @@
     <!-- Quiz Section -->
     <section id="quizSection" class="quiz-section">
         <div class="container">
-            <div class="quiz-container">
-                <div class="quiz-header">
-                    <h2>Quick Health Check</h2>
-                    <p>Answer 6 questions (60 seconds) for an instant estimate</p>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="progress-container">
-                    <div class="progress-bar">
-                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            <div class="quiz-wrapper">
+                <!-- Quiz Header Card -->
+                <div class="quiz-intro-card">
+                    <div class="quiz-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                        </svg>
                     </div>
-                    <p class="progress-text"><span id="progressPercent">0</span>% complete</p>
+                    <h2>Quick Health Check</h2>
+                    <p class="quiz-subtitle">Answer 6 questions to get your personalized PPC health score</p>
+
+                    <!-- Progress Tracker -->
+                    <div class="progress-tracker">
+                        <div class="progress-stats">
+                            <span class="stat-item">
+                                <span class="stat-number" id="progressPercent">0</span>
+                                <span class="stat-label">of 6</span>
+                            </span>
+                            <span class="stat-divider">•</span>
+                            <span class="stat-time">~60 seconds</span>
+                        </div>
+                        <div class="progress-bar-modern">
+                            <div id="progressFill" class="progress-fill-modern"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Questions Container -->
-                <div id="questionsContainer" class="questions-container"></div>
+                <div id="questionsContainer" class="questions-grid"></div>
 
-                <button id="getScoreBtn" disabled class="primary-button large" style="width: 100%; margin-top: 2rem;">
-                    Get My Health Score →
-                </button>
+                <!-- CTA Button -->
+                <div class="quiz-cta-wrapper">
+                    <button id="getScoreBtn" disabled class="quiz-submit-btn">
+                        <span class="btn-text">Get My Health Score</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-arrow">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </button>
+                    <p class="quiz-disclaimer">100% free • No credit card • Instant results</p>
+                </div>
             </div>
         </div>
     </section>

@@ -91,7 +91,7 @@ Candidates are identified based on three criteria, all of which are configurable
 
 1.  **Relative Efficiency**: `ROAS >= (Baseline_ROAS * Config_Multiplier)`. 
     *   *Example*: If your account baseline is 4.0x and your multiplier is 80%, the threshold is 3.2x.
-2.  **Volume**: `Spend >= Config_Min_Sales` and `Clicks >= Config_Min_Clicks`.
+2.  **Volume**: `Clicks >= Config_Min_Clicks`.
 3.  **Uniqueness**: The term must NOT already be running as an active Exact Match keyword.
 
 ---

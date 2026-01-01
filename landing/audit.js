@@ -85,21 +85,36 @@ function initQuiz() {
     const container = document.getElementById('questionsContainer');
     questions.forEach((q, idx) => {
         const questionDiv = document.createElement('div');
-        questionDiv.className = 'question-block';
+        questionDiv.className = 'question-card';
         questionDiv.innerHTML = `
-            <label class="question-label">
-                ${idx + 1}. ${q.question}
-            </label>
-            <div class="options-grid" id="options-${q.id}">
+            <div class="question-header">
+                <div class="question-number">${idx + 1}</div>
+                <div class="question-content">
+                    <h3 class="question-text">${q.question}</h3>
+                    <div class="question-checkmark" id="check-${q.id}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="options-modern" id="options-${q.id}">
                 ${q.options.map(opt => `
-                    <div
-                        class="quiz-option"
+                    <button
+                        type="button"
+                        class="option-button"
                         data-question="${q.id}"
                         data-value="${opt.value}"
                         onclick='selectAnswer("${q.id}", ${JSON.stringify(opt).replace(/'/g, "&apos;")})'
                     >
-                        ${opt.label}
-                    </div>
+                        <span class="option-text">${opt.label}</span>
+                        <span class="option-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="9 12 11 14 15 10"></polyline>
+                            </svg>
+                        </span>
+                    </button>
                 `).join('')}
             </div>
         `;
@@ -108,9 +123,10 @@ function initQuiz() {
 }
 
 function selectAnswer(questionId, option) {
+    // Store answer
     quizAnswers[questionId] = option;
 
-    // Update UI
+    // Update UI - option buttons
     const options = document.querySelectorAll(`[data-question="${questionId}"]`);
     options.forEach(opt => {
         if (opt.dataset.value === option.value) {
@@ -120,13 +136,38 @@ function selectAnswer(questionId, option) {
         }
     });
 
+    // Show checkmark on question card
+    const checkmark = document.getElementById(`check-${questionId}`);
+    if (checkmark) {
+        checkmark.classList.add('visible');
+    }
+
     // Update progress
-    const progress = (Object.keys(quizAnswers).length / questions.length) * 100;
-    document.getElementById('progressFill').style.width = progress + '%';
-    document.getElementById('progressPercent').textContent = Math.round(progress);
+    const answeredCount = Object.keys(quizAnswers).length;
+    const progress = (answeredCount / questions.length) * 100;
+
+    // Update progress bar
+    const progressBar = document.getElementById('progressFill');
+    if (progressBar) {
+        progressBar.style.width = progress + '%';
+    }
+
+    // Update progress counter
+    const progressCounter = document.getElementById('progressPercent');
+    if (progressCounter) {
+        progressCounter.textContent = answeredCount;
+    }
 
     // Enable button when all answered
-    document.getElementById('getScoreBtn').disabled = Object.keys(quizAnswers).length < 6;
+    const submitBtn = document.getElementById('getScoreBtn');
+    if (submitBtn) {
+        submitBtn.disabled = answeredCount < questions.length;
+        if (answeredCount === questions.length) {
+            submitBtn.classList.add('ready');
+        } else {
+            submitBtn.classList.remove('ready');
+        }
+    }
 }
 
 function calculateQuizScore() {

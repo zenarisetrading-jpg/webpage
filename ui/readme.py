@@ -142,30 +142,27 @@ def render_readme():
             - New Bid: 1.00 × [1 + (0.5 × 0.15)] = **AED 1.075**
             """)
         
-        with st.expander("**Rule-Based Impact Math**"):
+        with st.expander("**Impact Attribution Logic**"):
             st.markdown("""
-            We use a conservative, verifiable method to calculate impact:
+            We use **Measured Actuals** to calculate true impact:
             
-            - **Negatives**: `+Before Spend` (Absolute savings).
-            - **Harvests**: `+10% Sales Lift` (Baseline efficiency boost).
-            - **Bids/Pauses**: `(Sales Shift) - (Spend Shift)` (Performance Delta).
+            - **Negatives**: `Spend Before - Spend After` (Direct cost savings).
+            - **Harvests**: `Sales After - Sales Before` (Revenue growth from new terms).
+            - **Bids**: `(Sales Δ) - (Spend Δ)` (Net profit change).
             
-            **Deduplication**: We only count impact once per campaign to ensure the "Net Result" tile is 100% accurate and never double-counted.
+            **Verification**: The Impact Dashboard compares performance 14 days *before* vs 14 days *after* every action to prove results.
             """)
         
         with st.expander("**Harvest Qualification Criteria**"):
             st.markdown("""
-            A term qualifies for harvesting when:
+            A term qualifies for harvesting when it meets the criteria of your selected **Preset**:
             
-            1. **ROAS ≥ Baseline × Multiplier** (default 80%)
-            2. **Clicks ≥ Minimum** (default 3)
-            3. **Orders ≥ 1**
+            1. **ROAS ≥ Target** (variable by preset)
+            2. **Clicks ≥ Threshold** (e.g., 10 for Balanced)
+            3. **Orders ≥ Threshold** (e.g., 3 for Balanced)
             4. **Not already Exact Match**
             
-            **Example:**
-            - Baseline ROAS: 4.0x
-            - Multiplier: 80%
-            - Threshold: 4.0 × 0.8 = **3.2x ROAS minimum**
+            **Note:** Use the **Conservative**, **Balanced**, or **Aggressive** presets to adjust these thresholds instantly.
             """)
         
         with st.expander("**Baseline ROAS Calculation (Winsorized)**"):
@@ -211,7 +208,7 @@ def render_readme():
             - ROAS thresholds are set too high
             - Winning terms are already Exact Match
             
-            **Fix:** Lower the ROAS multiplier in Optimizer settings, or upload more data.
+            **Fix:** Switch to the **Aggressive** preset to lower the qualification thresholds and find more terms.
             """)
         
         with st.expander("**How often should I run the optimizer?**"):

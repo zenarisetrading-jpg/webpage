@@ -58,7 +58,7 @@ DATABASE_URL = "postgresql://..."
 
 ### 3. Usage
 ```bash
-streamlit run ppcsuite_v4.py
+streamlit run ppcsuite.py
 ```
 
 ---

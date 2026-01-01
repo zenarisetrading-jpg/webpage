@@ -260,7 +260,6 @@ Identify high-performing search terms or ASINs that should be "harvested" as exa
 |----------|-----------|-------------|
 | Minimum Clicks | 10+ | Statistical significance |
 | Minimum Orders | 3+ (CVR-adjusted) | Proven conversion |
-| Minimum Sales | AED 150+ | Revenue threshold |
 | ROAS Requirement | ≥80% of bucket median | Relative performance |
 
 #### 3.3.3 Winner Selection Logic
@@ -472,13 +471,13 @@ Action Logged (T0)
       │
       ▼
 ┌─────────────────────┐
-│  "Before" Period    │ ← 7 days before T0
+│  "Before" Period    │ ← 14 days before T0
 │  (Baseline)         │
 └─────────────────────┘
       │
       ▼
 ┌─────────────────────┐
-│  "After" Period     │ ← 7 days after T0
+│  "After" Period     │ ← 14 days after T0
 │  (Measurement)      │
 └─────────────────────┘
       │
@@ -522,20 +521,52 @@ Validation distinguishes **action-driven impact** from **market-wide shifts**. A
 
 #### 4.5.2 Validation Status Definitions
 
-| Status | Meaning | Toggle Included? |
-|--------|---------|-----------------| 
-| **✓ Confirmed blocked** | Negative keyword → Spend dropped to $0 | ✅ Yes |
-| **✓ Normalized match** | Negative keyword → Spend dropped significantly MORE than account baseline | ✅ Yes |
-| **✓ CPC Validated** | Bid change → After CPC within ±15% of suggested bid | ✅ Yes |
-| **✓ CPC Match** | Bid change → After CPC closely matches recommendation | ✅ Yes |
-| **✓ Directional match** | Bid change → CPC moved in expected direction (bid up→CPC up, bid down→CPC down) by >5% | ✅ Yes |
-| **✓ Volume Validated** | Bid change → Impressions changed significantly (+20%/-15%) in expected direction | ✅ Yes |
-| **✓ Directional + Volume** | Bid change → Weak CPC signal + moderate impressions signal combined | ✅ Yes |
-| **✓ Harvested to exact** | Harvest action → Source auto/broad has $0 spend (traffic moved to exact) | ✅ Yes |
-| **◐ Unverified** | Target has no performance data in after window | ❌ No |
-| **⚠️ Source still active** | Harvest action → Source campaign still has spend (not fully migrated) | ❌ No |
-| **Preventative** | Negative with $0 spend before action (blocking future waste) | ❌ No |
-| **Part of harvest consolidation** | Isolation negative (blocks source to funnel to winner) | ❌ No |
+##### ✅ Validated Statuses (Included in "Validated Only" toggle)
+
+| Status | Action Type | Meaning | Threshold/Calculation |
+|--------|-------------|---------|----------------------|
+| **✓ Confirmed blocked** | Negative | Search term completely eliminated | After spend = $0 |
+| **✓ Normalized match** | Negative | Spend dropped significantly vs baseline | Drop ≥50% more than account baseline |
+| **✓ Harvested (complete)** | Harvest | Source term fully migrated | Source after spend = $0 |
+| **✓ Harvested (90%+ blocked)** | Harvest | Near-complete migration | Source spend dropped ≥90% |
+| **✓ Harvested (migrated)** | Harvest | Strong migration | Source spend dropped ≥75% |
+| **✓ Harvested (partial)** | Harvest | Partial migration | Source spend dropped ≥50% |
+| **✓ CPC Validated** | Bid Change | CPC matches suggested bid | Observed CPC within ±15% of new bid |
+| **✓ CPC Match + Baseline** | Bid Change | CPC matches AND beat trend | CPC validated + outperformed baseline |
+| **✓ Directional match** | Bid Change | CPC moved in expected direction | CPC change >5% in correct direction |
+| **✓ Directional + Baseline** | Bid Change | Direction correct + beat baseline | Directional match + baseline beat |
+| **✓ Directional + Volume** | Bid Change | Direction + click volume aligned | Weak CPC + moderate volume signals |
+| **✓ Volume Validated** | Bid Change | Clicks changed as expected | Clicks +20%/-15% in expected direction |
+| **✓ Spend Eliminated** | Any | Target has zero spend | After spend = $0 |
+| **✓ Confirmed paused** | Pause | Pause action confirmed | After spend = $0 |
+
+##### ⚠️ Not Validated Statuses (Excluded from "Validated Only")
+
+| Status | Action Type | Meaning | Cause |
+|--------|-------------|---------|-------|
+| **⚠️ NOT IMPLEMENTED** | Negative | Negative not applied | Spend continues after action date |
+| **⚠️ Source still active** | Harvest | Source term not blocked | Source spend drop ≤0% |
+| **⚠️ Migration X%** | Harvest | Partial harvest progress | Source dropped X% (less than 50%) |
+| **⚠️ Not validated** | Bid Change | No validation criteria met | CPC, direction, and volume all failed |
+| **⚠️ Still has spend** | Pause | Pause not working | Target still has spend after pause |
+
+##### ◐ Inconclusive Statuses (Excluded from "Validated Only")
+
+| Status | Meaning | Cause |
+|--------|---------|-------|
+| **◐ Unverified (no target data)** | No matching stats found | Target text not in target_stats |
+| **◐ Unverified (low baseline)** | Before period too small | Before spend < minimum threshold |
+| **◐ Dormant target** | Zero activity both periods | Spend = $0 before AND after |
+| **◐ Low click volume** | Not enough clicks | Clicks < 5 in measurement period |
+| **◐ Beat baseline only** | Only passed secondary test | Baseline beat but no primary validation |
+| **◐ No after data** | No post-action data yet | Data upload not current |
+
+##### Special Statuses
+
+| Status | Meaning | Notes |
+|--------|---------|-------|
+| **Preventative - no spend to save** | Proactive block | Negative added for term with $0 spend (prevents future waste) |
+| **Part of harvest consolidation** | Isolation negative | Blocking source as part of harvest migration strategy |
 
 #### 4.5.3 What is "Normalized" Validation?
 
@@ -581,6 +612,69 @@ When **enabled** (default):
 When **disabled**:
 - Shows all logged actions regardless of validation status
 - Useful for seeing complete picture including pending items
+
+### 4.6.1 Market Tag Definitions
+
+Market Tags identify whether observed changes are due to user actions or broader market conditions.
+
+| Market Tag | Meaning | Calculation |
+|------------|---------|-------------|
+| **Normal** | Market conditions stable | No significant account-wide decline detected |
+| **Market Downshift** | Account-wide decline | Account baseline spend/ROAS dropped significantly vs prior period |
+| **Low Data** | Insufficient data | `before_clicks = 0` (no click history to assess) |
+
+**Why it matters:**
+- Actions under "Market Downshift" that saved spend are still credited as "Good" — the decision helped in a down market
+- Actions under "Normal" market with negative Decision Impact are flagged as "Bad" — decision error
+- Actions under "Low Data" are marked "Neutral" — no basis to judge
+
+### 4.6.2 Decision Outcome Definitions
+
+Decision Outcome summarizes whether the action was beneficial, neutral, or harmful.
+
+| Decision Outcome | Meaning | Logic |
+|------------------|---------|-------|
+| **🟢 Good** | Positive impact | Decision Impact > 0 OR (defensive action + significant spend avoided) |
+| **🟡 Neutral** | Small/ambiguous impact | \|Decision Impact\| < 5% of before_sales or $10 |
+| **🔴 Bad** | Negative impact in stable market | Decision Impact < 0 AND Market Tag = "Normal" |
+
+**Special cases:**
+- Defensive actions (BID_DOWN, PAUSE, NEGATIVE) with Spend Avoided ≥ 10% of before_spend are "Good" even if Decision Impact ≤ 0
+- Market Downshift actions with negative impact are "Neutral" (market conditions masked the action effect)
+
+### 4.6.3 Confidence Classification (High / Medium / Low)
+
+Confidence is a classification layer that indicates data reliability — it does NOT alter Decision Impact values.
+
+#### Calculation
+
+1. **Per-Action Variance**: `sigma_i = |decision_impact_i| × (1 - confidence_weight_i)`
+   - Apply market multiplier: `sigma_i *= 1.3` if Market Downshift
+
+2. **Aggregate Variance**: `total_sigma = sqrt(Σ sigma_i²)` (validated actions only)
+
+3. **Signal-to-Noise Ratio**: `signal_ratio = |total_decision_impact| / total_sigma`
+
+4. **Classification**:
+
+| Condition | Confidence |
+|-----------|------------|
+| signal_ratio ≥ 1.5 AND validated_actions ≥ 30 | **High** |
+| signal_ratio ≥ 0.8 | **Medium** |
+| else | **Low** |
+
+#### Downgrade Rule
+If >40% of impact comes from "Market Downshift" actions → downgrade one level.
+
+#### UI Display
+Shown under Decision Impact hero tile: `Confidence: High | Medium | Low`
+
+**Tooltip**: "Confidence reflects data sufficiency, variance, and market stability."
+
+#### Constraints
+- ❌ Do NOT use "statistically significant" 
+- ❌ Do NOT show σ, Z-scores, or p-values in UI
+- ❌ Do NOT add toggles for confidence
 
 ### 4.7 Decision Impact Methodology
 
