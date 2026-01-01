@@ -64,3 +64,49 @@ def metric_card(label: str, value: str, icon_name: str = None, delta: str = None
     # Force a single-line, clean HTML string with no newlines or leading spaces
     html = f'<div style="background-color: {bg_color}; padding: 20px 16px; border-radius: 12px; border: 1px solid {border_color}; margin-bottom: 10px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;"><div style="color: {label_color}; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; width: 100%;">{icon_html}{label}</div><div style="margin: 0; padding: 0; display: flex; align-items: baseline; gap: 8px; justify-content: center; width: 100%;"><span style="color: {val_color}; font-size: 1.6rem; font-weight: 800; line-height: 1;">{value}</span>{delta_html}</div>{subtitle_html}</div>'
     st.markdown(html, unsafe_allow_html=True)
+
+
+def metric_card_with_tooltip(label: str, value: str, tooltip: str, icon_html: str = "", 
+                              value_color: str = None, confidence_text: str = None, 
+                              confidence_color: str = "#94a3b8"):
+    """
+    Render a styled metric card with an info icon tooltip.
+    
+    Args:
+        label: The label text (e.g. "Estimated Revenue Impact")
+        value: The value text (e.g. "+INR 1,234")
+        tooltip: Tooltip text shown on hover (PRD-compliant copy)
+        icon_html: Optional SVG icon HTML
+        value_color: Text color for the value
+        confidence_text: Optional confidence level text (e.g. "High", "Medium", "Low")
+        confidence_color: Color for the confidence indicator
+    """
+    label_color = "#94a3b8"
+    val_color = value_color or "#F5F5F7"
+    bg_color = "rgba(15, 23, 42, 0.6)"
+    border_color = "rgba(255, 255, 255, 0.05)"
+    
+    # Info icon SVG for tooltip trigger
+    info_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: help; margin-left: 4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
+    
+    # Confidence line if provided
+    confidence_html = ""
+    if confidence_text:
+        confidence_html = f'<div style="font-size: 0.75rem; color: #8F8CA3; margin-top: 8px;">Confidence: <span style="color: {confidence_color}; font-weight: 600;">{confidence_text}</span></div>'
+    
+    # Escape tooltip for HTML attribute (replace quotes)
+    safe_tooltip = tooltip.replace('"', '&quot;').replace("'", "&#39;")
+    
+    html = f'''
+    <div style="background-color: {bg_color}; padding: 20px 16px; border-radius: 12px; border: 1px solid {border_color}; margin-bottom: 10px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+        <div style="color: {label_color}; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; width: 100%;">
+            {icon_html}{label}
+            <span title="{safe_tooltip}" style="display: inline-flex; align-items: center;">{info_icon}</span>
+        </div>
+        <div style="margin: 0; padding: 0; display: flex; align-items: baseline; gap: 8px; justify-content: center; width: 100%;">
+            <span style="color: {val_color}; font-size: 1.6rem; font-weight: 800; line-height: 1;">{value}</span>
+        </div>
+        {confidence_html}
+    </div>
+    '''
+    st.markdown(html, unsafe_allow_html=True)

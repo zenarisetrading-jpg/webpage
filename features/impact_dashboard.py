@@ -49,6 +49,177 @@ IMPACT_WINDOWS = {
     "available_horizons": ["14D", "30D", "60D"],
 }
 
+# ==========================================
+# CONFIDENCE CLASSIFICATION (High/Medium/Low)
+# ==========================================
+from math import sqrt
+from typing import List, Literal
+
+def compute_confidence(
+    actions_df: pd.DataFrame,
+    min_validated_actions: int = 30
+) -> Dict[str, Any]:
+    """
+    Compute confidence classification for aggregated Decision Impact.
+    
+    Confidence is a classification layer only — does NOT alter impact values.
+    Based on signal-to-noise ratio derived from data sufficiency, market conditions, and variance.
+    
+    Args:
+        actions_df: DataFrame with columns: decision_impact, confidence_weight, market_tag, is_validated
+        min_validated_actions: Minimum validated actions needed for "High" confidence
+        
+    Returns:
+        dict with: confidence ("High"/"Medium"/"Low"), signalRatio, totalSigma
+    """
+    if actions_df.empty:
+        return {"confidence": "Low", "signalRatio": 0.0, "totalSigma": 0.0}
+    
+    # Filter to validated actions
+    validated = actions_df[actions_df.get('is_validated', False) == True].copy()
+    
+    if len(validated) == 0:
+        return {"confidence": "Low", "signalRatio": 0.0, "totalSigma": 0.0}
+    
+    total_impact = 0.0
+    variance_sum = 0.0
+    downshift_impact = 0.0
+    
+    for _, row in validated.iterrows():
+        # Use direct column access for pandas Series (not dict .get())
+        impact = row['decision_impact'] if pd.notna(row['decision_impact']) else 0
+        total_impact += impact
+        
+        # Per-action variance: sigma_i = abs(impact) * (1 - confidence_weight)
+        cw = row['confidence_weight'] if 'confidence_weight' in row.index and pd.notna(row['confidence_weight']) else 0.5
+        sigma = abs(impact) * (1 - cw)
+        
+        # Apply market multiplier for downshift
+        market_tag = row['market_tag'] if 'market_tag' in row.index else 'Normal'
+        if market_tag == "Market Downshift":
+            sigma *= 1.3
+            downshift_impact += abs(impact)
+        
+        variance_sum += sigma ** 2
+    
+    # Aggregate variance
+    total_sigma = sqrt(variance_sum) if variance_sum > 0 else 0
+    
+    # Signal-to-noise ratio
+    signal_ratio = abs(total_impact) / total_sigma if total_sigma > 0 else 0
+    
+    # Confidence classification
+    if signal_ratio >= 1.5 and len(validated) >= min_validated_actions:
+        confidence = "High"
+    elif signal_ratio >= 0.8:
+        confidence = "Medium"
+    else:
+        confidence = "Low"
+    
+    # Optional downgrade: if >40% of impact from Market Downshift
+    downshift_ratio = downshift_impact / abs(total_impact) if total_impact != 0 else 0
+    if downshift_ratio > 0.4:
+        if confidence == "High":
+            confidence = "Medium"
+        elif confidence == "Medium":
+            confidence = "Low"
+    
+    return {
+        "confidence": confidence,
+        "signalRatio": round(signal_ratio, 2),
+        "totalSigma": round(total_sigma, 2)
+    }
+
+def compute_spend_avoided_confidence(
+    actions_df: pd.DataFrame,
+    min_validated_actions: int = 10
+) -> Dict[str, Any]:
+    """
+    Compute confidence classification for Spend Avoided summary.
+    
+    Uses auction variance (not revenue CW) - reflects auction stability.
+    Variance factors: Normal = 0.15, Market Downshift = 0.25
+    
+    Args:
+        actions_df: DataFrame with columns: before_spend, observed_after_spend, market_tag, is_validated
+        min_validated_actions: Minimum validated actions for "High" confidence
+        
+    Returns:
+        dict with: confidence, signalRatio, totalSigma, totalSpendAvoided
+    """
+    if actions_df.empty:
+        return {"confidence": "Low", "signalRatio": 0.0, "totalSigma": 0.0, "totalSpendAvoided": 0.0}
+    
+    # Filter to validated actions only
+    validated = actions_df[actions_df.get('is_validated', False) == True].copy()
+    
+    if len(validated) == 0:
+        return {"confidence": "Low", "signalRatio": 0.0, "totalSigma": 0.0, "totalSpendAvoided": 0.0}
+    
+    total_spend_avoided = 0.0
+    variance_sum = 0.0
+    downshift_spend_avoided = 0.0
+    valid_action_count = 0
+    
+    # Auction variance factors
+    VARIANCE_NORMAL = 0.15
+    VARIANCE_DOWNSHIFT = 0.25
+    
+    for _, row in validated.iterrows():
+        before_spend = row['before_spend'] if pd.notna(row['before_spend']) else 0
+        after_spend = row['observed_after_spend'] if 'observed_after_spend' in row.index and pd.notna(row['observed_after_spend']) else 0
+        
+        # Spend avoided = max(0, before - after)
+        spend_avoided = max(0, before_spend - after_spend)
+        
+        # Skip rows with zero spend avoided
+        if spend_avoided == 0:
+            continue
+        
+        total_spend_avoided += spend_avoided
+        valid_action_count += 1
+        
+        # Determine auction variance factor
+        market_tag = row['market_tag'] if 'market_tag' in row.index else 'Normal'
+        variance_factor = VARIANCE_DOWNSHIFT if market_tag == "Market Downshift" else VARIANCE_NORMAL
+        
+        # Per-action variance: sigma_i = spend_avoided * variance_factor
+        sigma = spend_avoided * variance_factor
+        
+        if market_tag == "Market Downshift":
+            downshift_spend_avoided += spend_avoided
+        
+        variance_sum += sigma ** 2
+    
+    # Aggregate variance
+    total_sigma = sqrt(variance_sum) if variance_sum > 0 else 0
+    
+    # Signal-to-noise ratio
+    signal_ratio = total_spend_avoided / total_sigma if total_sigma > 0 else 0
+    
+    # Confidence classification (stricter thresholds than Decision Impact)
+    if signal_ratio >= 2.0 and valid_action_count >= min_validated_actions:
+        confidence = "High"
+    elif signal_ratio >= 1.0:
+        confidence = "Medium"
+    else:
+        confidence = "Low"
+    
+    # Optional downgrade: if >30% of spend avoided from Market Downshift
+    downshift_ratio = downshift_spend_avoided / total_spend_avoided if total_spend_avoided > 0 else 0
+    if downshift_ratio > 0.3:
+        if confidence == "High":
+            confidence = "Medium"
+        elif confidence == "Medium":
+            confidence = "Low"
+    
+    return {
+        "confidence": confidence,
+        "signalRatio": round(signal_ratio, 2),
+        "totalSigma": round(total_sigma, 2),
+        "totalSpendAvoided": round(total_spend_avoided, 2)
+    }
+
 def get_maturity_status(action_date, latest_data_date, horizon: str = "14D") -> dict:
     """
     Check if action has matured enough for impact calculation at a specific horizon.
@@ -227,7 +398,7 @@ def render_impact_dashboard():
         # Use cached fetcher
         test_mode = st.session_state.get('test_mode', False)
         # Force cache bust with version + timestamp
-        cache_version = "v9_multi_horizon_" + str(st.session_state.get('data_upload_timestamp', 'init'))
+        cache_version = "v13_indexed_lateral_" + str(st.session_state.get('data_upload_timestamp', 'init'))
         
         # Get horizon config
         horizon_config = IMPACT_WINDOWS["horizons"].get(horizon, IMPACT_WINDOWS["horizons"]["14D"])
@@ -405,8 +576,48 @@ def render_impact_dashboard():
     active_df = mature_df[spend_mask].copy()
     dormant_df = mature_df[~spend_mask].copy()
     
+    # ==========================================
+    # CONFIDENCE CLASSIFICATION
+    # ==========================================
+    # Add required columns for confidence calculation
+    import numpy as np
+    
+    # confidence_weight: based on data quality (clicks, spend, validation)
+    if not active_df.empty:
+        active_df['confidence_weight'] = (
+            np.clip(np.log1p(active_df['before_clicks'].fillna(0)) / 5, 0, 0.3) +  # Max 0.3 from clicks
+            np.clip(np.log1p(active_df['before_spend'].fillna(0)) / 10, 0, 0.3) +  # Max 0.3 from spend
+            np.clip(np.log1p(active_df['after_clicks'].fillna(0)) / 5, 0, 0.2) +   # Max 0.2 from after data
+            (active_df['validation_status'].str.contains('✓', na=False).astype(float) * 0.2)  # 0.2 if validated
+        ).clip(0, 1)
+        
+        # market_tag: detect market downshift
+        def get_market_tag(row):
+            if row.get('before_clicks', 0) == 0:
+                return "Low Data"
+            if row.get('market_downshift', False) == True:
+                return "Market Downshift"
+            return "Normal"
+        active_df['market_tag'] = active_df.apply(get_market_tag, axis=1)
+        
+        # is_validated: already used for filtering
+        active_df['is_validated'] = True  # All in active_df are validated if toggle is on
+        
+        # Compute confidence for Decision Impact
+        confidence_result = compute_confidence(active_df, min_validated_actions=30)
+        
+        # Compute confidence for Spend Avoided
+        spend_avoided_result = compute_spend_avoided_confidence(active_df, min_validated_actions=10)
+    else:
+        confidence_result = {"confidence": "Low", "signalRatio": 0.0, "totalSigma": 0.0}
+        spend_avoided_result = {"confidence": "Low", "signalRatio": 0.0, "totalSigma": 0.0, "totalSpendAvoided": 0.0}
+    
     # Use pre-calculated summary from backend for the tiles
     display_summary = full_summary.get('validated' if show_validated_only else 'all', {})
+    display_summary['confidence'] = confidence_result['confidence']
+    display_summary['signal_ratio'] = confidence_result['signalRatio']
+    display_summary['spend_avoided_confidence'] = spend_avoided_result['confidence']
+    display_summary['spend_avoided_sigma'] = spend_avoided_result['totalSigma']
     
     # HERO TILES (Now synchronized with FILTERED maturity counts)
     # Use len(mature_df) and len(pending_attr_df) which respect the Validated Only toggle
@@ -414,7 +625,14 @@ def render_impact_dashboard():
     
     st.divider()
 
-    with st.expander("🔍 View supporting evidence", expanded=True):
+    with st.expander("📊 Impact Summary (Modeled vs Baseline)", expanded=True):
+        # Panel header subtext
+        st.markdown("""
+        <div style="color: #8F8CA3; font-size: 0.8rem; margin-bottom: 16px; font-style: italic;">
+            Market-adjusted • based on validated actions only
+        </div>
+        """, unsafe_allow_html=True)
+        
         # ==========================================
         # MEASURED vs PENDING IMPACT TABS
         # ==========================================
@@ -490,7 +708,7 @@ def _render_empty_state():
 
 
 def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_count: int = 0, mature_count: int = 0, pending_count: int = 0):
-    """Render the hero metric tiles with ROAS analytics."""
+    """Render hero metric tiles: Performance Overview (actuals) + Estimated Impact (modeled)."""
     
     # Theme-aware colors
     theme_mode = st.session_state.get('theme_mode', 'dark')
@@ -500,49 +718,68 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
         negative_text = "#f87171"  # Red-400
         neutral_text = "#cbd5e1"  # Slate-300
         muted_text = "#8F8CA3"
+        section_header_color = "#e2e8f0"
     else:
         positive_text = "#16a34a"  # Green-600
         negative_text = "#dc2626"  # Red-600
         neutral_text = "#475569"  # Slate-600
         muted_text = "#64748b"
+        section_header_color = "#1e293b"
     
     # SVG Icons
     icon_color = "#8F8CA3"
     
-    # Chart bars icon (Actions)
-    actions_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>'
+    # Spend icon
+    spend_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'
     
-    # Trending up icon (ROAS Lift)
-    roas_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>'
-    
-    # Dollar sign icon (Revenue)
+    # Revenue icon
     revenue_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'
     
-    # Check circle icon (Implementation)
+    # ROAS trending icon
+    roas_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>'
+    
+    # Target icon (for Estimated Revenue Impact)
+    target_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'
+    
+    # Shield icon (for Capital Protected)
+    shield_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>'
+    
+    # Score icon
+    score_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2"><path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg>'
+    
+    # Implementation icon
     impl_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
     
-    # Stat sig indicators
-    sig_positive = f'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#22c55e" stroke="#22c55e" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>'
-    sig_negative = f'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>'
+    # Info icon for tooltips
+    info_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: help; margin-left: 4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
     
     # Extract metrics
     total_actions = summary.get('total_actions', 0)
-    roas_lift = summary.get('roas_lift_pct', 0)
-    incr_revenue = summary.get('incremental_revenue', 0)
     impl_rate = summary.get('implementation_rate', 0)
-    is_sig = summary.get('is_significant', False)
-    p_value = summary.get('p_value', 1.0)
-    confidence = summary.get('confidence_pct', 0)
     
-
+    # Actual performance metrics
+    total_before_spend = summary.get('total_before_spend', 0)
+    total_after_spend = summary.get('total_after_spend', 0)
+    total_before_sales = summary.get('total_before_sales', 0)
+    total_after_sales = summary.get('total_after_sales', 0)
+    roas_before = summary.get('roas_before', 0)
+    roas_after = summary.get('roas_after', 0)
     
-    # By action type for callout
-    by_type = summary.get('by_action_type', {})
-    cost_saved = sum(v['net_sales'] for k, v in by_type.items() if 'NEGATIVE' in k.upper())
-    harvest_gains = sum(v['net_sales'] for k, v in by_type.items() if 'HARVEST' in k.upper())
-    bid_changes = sum(v['net_sales'] for k, v in by_type.items() if 'BID' in k.upper())
+    # Estimated impact metrics (modeled)
+    decision_impact = summary.get('decision_impact', 0)
+    spend_avoided = summary.get('spend_avoided', 0)
+    pct_good = summary.get('pct_good', 0)
+    pct_neutral = summary.get('pct_neutral', 0)
+    pct_bad = summary.get('pct_bad', 0)
+    market_downshift = summary.get('market_downshift_count', 0)
     
-    # CSS
+    # NPS-style Decision Quality Score = Good% - Bad%
+    decision_quality_score = pct_good - pct_bad
+    
+    from utils.formatters import get_account_currency
+    currency = get_account_currency()
+    
+    # CSS for tiles and sections
     st.markdown("""
     <style>
     .hero-card {
@@ -576,56 +813,73 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
         justify-content: center;
         gap: 4px;
     }
+    .section-header {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+        padding-left: 4px;
+    }
     </style>
     """, unsafe_allow_html=True)
     
     # ==========================================
-    # PRIMARY METRICS CARDS (Row 1) - Decision-Focused
+    # ESTIMATED IMPACT VS BASELINE (Modeled)
     # ==========================================
-    # Extract new Decision Impact metrics
-    decision_impact = summary.get('decision_impact', 0)
-    spend_avoided = summary.get('spend_avoided', 0)
-    pct_good = summary.get('pct_good', 0)
-    pct_neutral = summary.get('pct_neutral', 0)
-    pct_bad = summary.get('pct_bad', 0)
-    market_downshift = summary.get('market_downshift_count', 0)
-    
-    # NPS-style Decision Quality Score = Good% - Bad%
-    decision_quality_score = pct_good - pct_bad
-    
-    from utils.formatters import get_account_currency
-    currency = get_account_currency()
-    
-    # Icons for new cards
-    target_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'
-    shield_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>'
-    score_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2"><path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg>'
+    st.markdown(f"""
+    <div class="section-header">📈 Estimated Impact vs Baseline (Modeled)</div>
+    """, unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     
+    # Confidence classification styling
+    confidence = summary.get('confidence', 'Low')
+    conf_colors = {'High': '#22c55e', 'Medium': '#f59e0b', 'Low': '#94a3b8'}
+    conf_color = conf_colors.get(confidence, '#94a3b8')
+    
     with col1:
+        # Estimated Revenue Impact tile (renamed from Decision Impact)
         di_color = positive_text if decision_impact > 0 else negative_text if decision_impact < 0 else neutral_text
         di_prefix = '+' if decision_impact > 0 else ''
+        tooltip_text = "Estimated revenue difference relative to a modeled scenario with no bid, targeting, or budget optimizations applied. This is a counterfactual estimate, not additional realized revenue."
         st.markdown(f"""
         <div class="hero-card">
-            <div class="hero-label">{target_icon} Decision Impact</div>
+            <div class="hero-label">
+                {target_icon} Estimated Revenue Impact
+                <span title="{tooltip_text}">{info_icon}</span>
+            </div>
             <div class="hero-value" style="color: {di_color};">{di_prefix}{currency}{decision_impact:,.0f}</div>
-            <div class="hero-sub">market-adjusted</div>
+            <div class="hero-sub">Revenue preserved vs no-optimization baseline</div>
+            <div class="hero-sub" style="margin-top: 6px;">
+                Confidence: <span style="color: {conf_color}; font-weight: 600;">{confidence}</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
+        # Capital Protected tile (renamed from Spend Avoided)
         sa_color = positive_text if spend_avoided > 0 else neutral_text
+        sa_confidence = summary.get('spend_avoided_confidence', 'Low')
+        sa_conf_color = conf_colors.get(sa_confidence, '#94a3b8')
+        tooltip_text = "Estimated reduction in ad spend relative to a modeled no-optimization baseline. Represents reduced capital exposure, not incremental profit."
         st.markdown(f"""
         <div class="hero-card">
-            <div class="hero-label">{shield_icon} Spend Avoided</div>
+            <div class="hero-label">
+                {shield_icon} Capital Protected
+                <span title="{tooltip_text}">{info_icon}</span>
+            </div>
             <div class="hero-value" style="color: {sa_color};">{currency}{spend_avoided:,.0f}</div>
-            <div class="hero-sub">capital protected</div>
+            <div class="hero-sub">Spend avoided vs modeled baseline</div>
+            <div class="hero-sub" style="margin-top: 6px;">
+                Protection Confidence: <span style="color: {sa_conf_color}; font-weight: 600;">{sa_confidence}</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
-        # NPS-style bands: +40 to +100 Exceptional, +10 to +39 Strong, -10 to +9 Neutral, <-10 Needs review
+        # Decision Quality tile
         if decision_quality_score >= 40:
             score_color = positive_text
             score_label = "Exceptional"
@@ -655,6 +909,7 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
         """, unsafe_allow_html=True)
     
     with col4:
+        # Implementation tile
         impl_color = positive_text if impl_rate >= 70 else negative_text if impl_rate < 40 else neutral_text
         st.markdown(f"""
         <div class="hero-card">
@@ -665,11 +920,11 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
         """, unsafe_allow_html=True)
     
     # ==========================================
-    # SINGLE COMBINED CALLOUT (Context + Stats)
+    # CONTEXT CALLOUT (Measurement disclaimer)
     # ==========================================
     win_rate = summary.get('win_rate', 0)
     confirmed = mature_count if mature_count > 0 else summary.get('confirmed_impact', 0)
-    pending = pending_count  # Use maturity-based pending count
+    pending = pending_count
     wr_color = positive_text if win_rate >= 60 else negative_text if win_rate < 40 else neutral_text
     
     market_context = f" ({market_downshift} market shifts detected)" if market_downshift > 0 else ""
@@ -680,7 +935,7 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
         <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 1.1rem;">💡</span>
             <span style="color: #8F8CA3; font-size: 0.85rem;">
-                Results adjust for market changes. We measure whether <strong>your decisions</strong> helped.{market_context}
+                Impact metrics are modeled deltas vs a no-optimization baseline. They are not additive to actual performance.{market_context}
             </span>
         </div>
         <div style="display: flex; gap: 24px; color: #8F8CA3; font-size: 0.85rem;">
@@ -692,10 +947,106 @@ def _render_hero_tiles(summary: Dict[str, Any], active_count: int = 0, dormant_c
 
 
 def _render_new_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFrame, validated_only: bool = True):
-    """Render new impact analytics: 3 Core Charts."""
+    """Render new impact analytics: Impact Summary sub-panels + Core Charts."""
     
     from utils.formatters import get_account_currency
     currency = get_account_currency()
+    
+    # Theme colors
+    theme_mode = st.session_state.get('theme_mode', 'dark')
+    if theme_mode == 'dark':
+        positive_text = "#4ade80"
+        neutral_text = "#cbd5e1"
+        panel_bg = "rgba(255,255,255,0.03)"
+        border_color = "rgba(143, 140, 163, 0.15)"
+    else:
+        positive_text = "#16a34a"
+        neutral_text = "#475569"
+        panel_bg = "rgba(0,0,0,0.02)"
+        border_color = "rgba(143, 140, 163, 0.2)"
+    
+    # Extract metrics
+    decision_impact = summary.get('decision_impact', 0)
+    spend_avoided = summary.get('spend_avoided', 0)
+    confidence = summary.get('confidence', 'Low')
+    sa_confidence = summary.get('spend_avoided_confidence', 'Low')
+    total_actions = summary.get('total_actions', 0)
+    
+    # Calculate confidence range (80%) - estimation based on variance
+    sigma = summary.get('spend_avoided_sigma', abs(decision_impact) * 0.3) if decision_impact != 0 else 0
+    di_lower = max(0, decision_impact - sigma) if decision_impact > 0 else decision_impact - sigma
+    di_upper = decision_impact + sigma
+    
+    sa_sigma = abs(spend_avoided) * 0.25 if spend_avoided != 0 else 0
+    sa_lower = max(0, spend_avoided - sa_sigma)
+    sa_upper = spend_avoided + sa_sigma
+    
+    conf_colors = {'High': '#22c55e', 'Medium': '#f59e0b', 'Low': '#94a3b8'}
+    conf_color = conf_colors.get(confidence, '#94a3b8')
+    sa_conf_color = conf_colors.get(sa_confidence, '#94a3b8')
+    
+    # Info icon
+    info_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8F8CA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: help; margin-left: 4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
+    
+    # ==========================================
+    # IMPACT SUMMARY SUB-PANELS (Confidence Ranges)
+    # ==========================================
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Estimated Revenue Impact sub-panel
+        di_prefix = '+' if decision_impact > 0 else ''
+        tooltip = "Estimated revenue preserved relative to a modeled baseline where no optimization actions were applied. Ranges reflect uncertainty due to auction dynamics, conversion variability, and market conditions."
+        st.markdown(f"""
+        <div style="background: {panel_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <div style="font-size: 0.8rem; color: #8F8CA3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center;">
+                Estimated Revenue Impact
+                <span title="{tooltip}">{info_icon}</span>
+            </div>
+            <div style="font-size: 1.3rem; font-weight: 700; color: {positive_text if decision_impact > 0 else neutral_text}; margin-bottom: 8px;">
+                Expected Impact: {di_prefix}{currency}{decision_impact:,.0f}
+            </div>
+            <div style="font-size: 0.85rem; color: #8F8CA3; margin-bottom: 8px;">
+                Confidence: <span style="color: {conf_color}; font-weight: 600;">{confidence}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #64748b;">
+                <div style="margin-bottom: 4px;">Confidence Range (80%)</div>
+                <div style="color: #94a3b8;">{di_prefix}{currency}{di_lower:,.0f} → {di_prefix}{currency}{di_upper:,.0f}</div>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748b; margin-top: 8px; border-top: 1px solid {border_color}; padding-top: 8px;">
+                Validated Actions: {total_actions}<br>
+                Baseline: Modeled no-optimization scenario
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        # Capital Protected sub-panel
+        tooltip = "Estimated reduction in ad spend relative to a modeled baseline. Indicates improved capital efficiency and reduced risk exposure, not realized savings added to performance."
+        st.markdown(f"""
+        <div style="background: {panel_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <div style="font-size: 0.8rem; color: #8F8CA3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center;">
+                Capital Protected
+                <span title="{tooltip}">{info_icon}</span>
+            </div>
+            <div style="font-size: 1.3rem; font-weight: 700; color: {positive_text if spend_avoided > 0 else neutral_text}; margin-bottom: 8px;">
+                Expected Capital Protected: {currency}{spend_avoided:,.0f}
+            </div>
+            <div style="font-size: 0.85rem; color: #8F8CA3; margin-bottom: 8px;">
+                Protection Confidence: <span style="color: {sa_conf_color}; font-weight: 600;">{sa_confidence}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #64748b;">
+                <div style="margin-bottom: 4px;">Confidence Range (80%)</div>
+                <div style="color: #94a3b8;">{currency}{sa_lower:,.0f} → {currency}{sa_upper:,.0f}</div>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748b; margin-top: 8px; border-top: 1px solid {border_color}; padding-top: 8px;">
+                Validated Actions: {total_actions}<br>
+                Baseline: Modeled no-optimization spend
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
     
     # Chart 1: Decision Outcome Matrix (full width)
     _render_decision_outcome_matrix(impact_df, summary)
@@ -711,7 +1062,7 @@ def _render_new_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFram
 
 
 def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, Any]):
-    """Chart 1: Decision Outcome Matrix - The visual backbone."""
+    """Chart 1: Decision Outcome Matrix - CPC Change vs Decision Impact."""
     
     import plotly.graph_objects as go
     import numpy as np
@@ -740,81 +1091,61 @@ def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, 
     
     # Clean infinite/nan values
     df = df[np.isfinite(df['cpc_change_pct']) & np.isfinite(df['decision_impact'])]
-    df = df[df['cpc_change_pct'].abs() < 200]  # Filter extreme outliers
+    df = df[df['cpc_change_pct'].abs() < 300]  # Filter extreme CPC outliers
+    
+    # CLIP OUTLIERS: Bound Y-axis to 5th-95th percentile to prevent chart compression
+    lower_bound = df['decision_impact'].quantile(0.05)
+    upper_bound = df['decision_impact'].quantile(0.95)
+    df['impact_display'] = df['decision_impact'].clip(lower_bound, upper_bound)
     
     if len(df) < 3:
         st.info("Insufficient data for matrix")
         return
     
-    # Color by action type (including NEGATIVE)
+    # Color by action type
     action_colors = {
-        'BID_UP': '#22c55e',      # Green
-        'BID_DOWN': '#3b82f6',    # Blue
-        'BID': '#6366f1',         # Indigo (generic bid)
-        'HOLD': '#8b5cf6',        # Purple
-        'PAUSE': '#f59e0b',       # Orange
-        'NEGATIVE': '#ef4444',    # Red (negatives stand out)
-        'BID_CHANGE': '#6366f1',  # Indigo
+        'BID': '#60a5fa',         # Blue
+        'BID_CHANGE': '#60a5fa',  # Blue
+        'NEGATIVE': '#f87171',    # Red/coral
+        'NEGATIVE_ADD': '#f87171',
+        'HARVEST': '#94a3b8',     # Gray
     }
     
-    # Normalize action types
-    df['action_clean'] = df['action_type'].str.upper().str.replace('_CHANGE', '').str.replace('ADJUSTMENT', '').str.replace('_ADD', '')
-    
-    # Determine if point is in "neutral zone" (close to 0,0)
-    impact_threshold = max(df['decision_impact'].abs().quantile(0.25), 50)
-    cpc_threshold = 10  # ±10% CPC change is neutral zone
-    df['is_neutral_zone'] = (df['decision_impact'].abs() < impact_threshold) & (df['cpc_change_pct'].abs() < cpc_threshold)
+    # Normalize action types for display
+    df['action_clean'] = df['action_type'].str.upper().str.replace('_CHANGE', '').str.replace('_ADD', '')
+    df['action_clean'] = df['action_clean'].replace({'BID': 'Bid', 'NEGATIVE': 'Negative', 'HARVEST': 'Harvest'})
     
     fig = go.Figure()
     
     # Add dots for each action type
-    for action_type in df['action_clean'].unique():
+    for action_type, color in [('Bid', '#60a5fa'), ('Negative', '#f87171'), ('Harvest', '#94a3b8')]:
         type_df = df[df['action_clean'] == action_type]
-        color = action_colors.get(action_type, '#8F8CA3')
+        if type_df.empty:
+            continue
         
-        # Different opacity based on zone
-        neutral_mask = type_df['is_neutral_zone']
-        
-        # Non-neutral points (full opacity)
-        if (~neutral_mask).any():
-            non_neutral = type_df[~neutral_mask]
-            fig.add_trace(go.Scatter(
-                x=non_neutral['cpc_change_pct'],
-                y=non_neutral['decision_impact'],
-                mode='markers',
-                name=action_type.replace('_', ' ').title(),
-                marker=dict(size=10, color=color, opacity=0.8),
-                hovertemplate='CPC: %{x:.1f}%<br>Impact: %{y:,.0f}<extra></extra>',
-                legendgroup=action_type
-            ))
-        
-        # Neutral zone points (muted opacity)
-        if neutral_mask.any():
-            neutral = type_df[neutral_mask]
-            fig.add_trace(go.Scatter(
-                x=neutral['cpc_change_pct'],
-                y=neutral['decision_impact'],
-                mode='markers',
-                name=action_type.replace('_', ' ').title(),
-                marker=dict(size=8, color=color, opacity=0.35),  # Smaller, more muted
-                hovertemplate='CPC: %{x:.1f}%<br>Impact: %{y:,.0f} (neutral)<extra></extra>',
-                legendgroup=action_type,
-                showlegend=False  # Don't duplicate legend
-            ))
+        fig.add_trace(go.Scatter(
+            x=type_df['cpc_change_pct'],
+            y=type_df['impact_display'],  # Use clipped values
+            mode='markers',
+            name=action_type,
+            marker=dict(size=10, color=color, opacity=0.8),
+            customdata=type_df['decision_impact'],  # Actual value for hover
+            hovertemplate='CPC: %{x:.1f}%<br>Impact: %{customdata:,.0f}<extra></extra>',
+        ))
     
     # Add quadrant lines
     fig.add_hline(y=0, line_dash="dash", line_color="rgba(255,255,255,0.3)")
     fig.add_vline(x=0, line_dash="dash", line_color="rgba(255,255,255,0.3)")
     
-    # Add quadrant labels
-    x_range = max(abs(df['cpc_change_pct'].min()), abs(df['cpc_change_pct'].max()), 20)
-    y_range = max(abs(df['decision_impact'].min()), abs(df['decision_impact'].max()), 100)
+    # Add quadrant labels in corners
+    x_range = max(abs(df['cpc_change_pct'].min()), abs(df['cpc_change_pct'].max()), 50)
+    y_range = df['impact_display'].abs().max()
     
     annotations = [
-        dict(x=-x_range*0.5, y=y_range*0.7, text="🟢 Good Defense", showarrow=False, font=dict(color='#22c55e', size=11)),
-        dict(x=x_range*0.5, y=y_range*0.7, text="🟢 Good Offense", showarrow=False, font=dict(color='#22c55e', size=11)),
-        dict(x=-x_range*0.5, y=-y_range*0.7, text="🟡 Market-Driven Loss", showarrow=False, font=dict(color='#f59e0b', size=11)),
-        dict(x=x_range*0.5, y=-y_range*0.7, text="🔴 Decision Error", showarrow=False, font=dict(color='#ef4444', size=11)),
+        dict(x=-x_range*0.7, y=y_range*0.85, text="🟢 Good Defense", showarrow=False, font=dict(color='#22c55e', size=11)),
+        dict(x=x_range*0.7, y=y_range*0.85, text="🟢 Good Offense", showarrow=False, font=dict(color='#22c55e', size=11)),
+        dict(x=-x_range*0.7, y=-y_range*0.85, text="🟡 Market-Driven Loss", showarrow=False, font=dict(color='#f59e0b', size=11)),
+        dict(x=x_range*0.7, y=-y_range*0.85, text="🔴 Decision Error", showarrow=False, font=dict(color='#ef4444', size=11)),
     ]
     
     fig.update_layout(
