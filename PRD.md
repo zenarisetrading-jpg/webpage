@@ -760,7 +760,66 @@ is_mature(horizon) = (action_date + horizon_days + 3) ≤ latest_data_date
 > **Why not 7 days?**  
 > Most PPC tools measure at 7 days. This captures only ~75% of attributed conversions and measures bid changes before they stabilize. We choose accuracy over speed.
 
----
+### 4.9 Decision Outcome Matrix (Jan 2026 - Counterfactual Framework)
+
+#### 4.9.1 Philosophy
+Isolate **decision quality** from **market conditions** by comparing actual performance to a counterfactual baseline.
+
+#### 4.9.2 Counterfactual Logic
+
+**X-Axis: Expected Trend %**
+- Formula: `(Expected Sales - Before Sales) / Before Sales * 100`
+- Expected Sales = `(New Spend / Baseline CPC) × Baseline SPC`
+- **Translation**: "If we maintained our old efficiency, what would sales be at the new spend level?"
+
+**Y-Axis: vs Expectation %**
+- Formula: `Actual Change % - Expected Trend %`
+- **Translation**: "How much did we BEAT or MISS the counterfactual baseline?"
+
+#### 4.9.3 Quadrants
+
+| Quadrant | Criteria | Meaning | Attribution |
+|----------|----------|---------|-------------|
+| **Offensive Win** | X≥0, Y≥0 | Spend increased + beat baseline → Efficient scaling | ✅ Included |
+| **Defensive Win** | X<0, Y≥0 | Market shrank, but we beat the expected drop → Good defense | ✅ Included |
+| **Decision Gap** | X≥0, Y<0 | Spend increased but missed expectations → Inefficient scale | ✅ Included |
+| **Market Drag** | X<0, Y<0 | Market shrank AND we underperformed → External confound | ❌ **EXCLUDED** |
+
+#### 4.9.4 Decision-Attributed Impact (Refined Hero Metric)
+
+**Formula**: `Sum(Offensive Wins + Defensive Wins + Decision Gaps)`
+
+**Critical Exclusion**: Market Drag is **EXCLUDED** from all impact totals.
+
+**Reasoning**:
+- Market Drag represents external headwinds we didn't control
+- Including it would conflate market luck with decision quality
+- We ONLY attribute impact where our DECISION had clear directional influence
+
+**Display Format**:
+- Main Number: Net Impact (Green if positive, Red if negative)
+- Breakdown: "✅ Wins: +X (Offensive + Defensive) | ❌ Gaps: -Y"
+- Footnote: "ℹ️ Z actions excluded (Market Drag — ambiguous attribution)"
+
+### 4.10 Capital Protected (Refined Logic)
+
+**Definition**: Wasteful spend eliminated from confirmed negative keyword blocks.
+
+**Formula**: `Sum of before_spend for NEGATIVE actions where observed_after_spend == 0`
+
+**Why This Works**:
+- Only counts actions **INTENDED** to protect capital (negatives)
+- `after_spend == 0` proves the block was successful
+- Bid increases **SHOULD** increase spend — that's scaling winners
+
+**Display**: "From X confirmed negatives" + "Confidence: High"
+
+**Why Not Total Spend Reduction?**
+- Bid optimizations may increase or decrease spend — both can be correct
+- Only NEGATIVE actions have the explicit goal of capital protection
+- Counting only confirmed blocks (spend = 0) provides clear proof
+
+
 
 ## 5. Forecast Model (Simulator)
 

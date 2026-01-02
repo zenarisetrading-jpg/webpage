@@ -172,3 +172,70 @@ Where horizon_days = {
 - **After window**: 14, 30, or 60 days (per horizon)
 - **Buffer**: 3 days for attribution to settle
 - Actions not yet mature are shown as "Pending" for that horizon
+
+---
+
+## 7. Impact Dashboard - Counterfactual Framework (Jan 2026)
+
+### Philosophy: Isolating Decision Quality from Market Conditions
+
+The Impact Dashboard uses a **counterfactual analysis** approach to separate what we CONTROLLED (optimization decisions) from what we DIDN'T (external market trends).
+
+### Decision Outcome Matrix
+
+A 2x2 matrix that plots each action based on:
+
+**X-Axis: Expected Trend %**
+- Formula: `(Expected Sales - Before Sales) / Before Sales * 100`
+- Expected Sales = `(New Spend / Baseline CPC) × Baseline SPC`
+- **Translation**: "If we maintained our old efficiency, what would sales be at the new spend level?"
+
+**Y-Axis: vs Expectation %**
+- Formula: `Actual Change % - Expected Trend %`
+- **Translation**: "How much did we BEAT or MISS the counterfactual baseline?"
+
+### Quadrants
+
+1. **Offensive Win** (X≥0, Y≥0): Spend increased + beat baseline efficiency → Efficient scaling
+2. **Defensive Win** (X<0, Y≥0): Market shrank, but we beat the expected drop → Good defense
+3. **Decision Gap** (X≥0, Y<0): Spend increased but missed expectations → Inefficient scale
+4. **Market Drag** (X<0, Y<0): Market shrank AND we underperformed → **EXCLUDED from attribution**
+
+### Decision-Attributed Impact (Hero Metric)
+
+**Formula**: `Sum(Offensive Wins + Defensive Wins + Decision Gaps)`
+
+**Critical Exclusion**: **Market Drag is EXCLUDED** from all impact totals.
+
+**Reasoning**:
+- Market Drag represents external headwinds we didn't control
+- Including it would conflate market luck with decision quality
+- We ONLY attribute impact where our DECISION had clear directional influence
+
+**Display Format**:
+- Main Number: Net Impact (Green if positive, Red if negative)
+- Breakdown: "✅ Wins: +X (Offensive + Defensive) | ❌ Gaps: -Y"
+- Footnote: "ℹ️ Z actions excluded (Market Drag — ambiguous attribution)"
+
+### Capital Protected (Refined Logic)
+
+**Definition**: Wasteful spend eliminated from confirmed negative keyword blocks.
+
+**Formula**: `Sum of before_spend for NEGATIVE actions where observed_after_spend == 0`
+
+**Why This Works**:
+- Only counts actions **INTENDED** to protect capital (negatives)
+- `after_spend == 0` proves the block was successful
+- Bid increases **SHOULD** increase spend — that's scaling winners
+
+**Display**: "From X confirmed negatives" + "Confidence: High"
+
+### Key Metric Definitions
+
+| Metric | Definition | Use Case |
+|--------|-----------|----------|
+| **Verified Impact vs Baseline** | Decision-Attributed Impact (excludes Market Drag) | Prove optimization value |
+| **Capital Protected** | Spend saved from confirmed negative blocks | Show waste elimination |
+| **Win Rate** | % of actions in Win quadrants | Measure decision quality |
+| **Decision Gap** | Actions that scaled but missed efficiency | Identify optimization errors |
+| **Market Drag** | Actions confounded by external conditions | Transparent exclusion |

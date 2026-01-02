@@ -1858,10 +1858,10 @@ class PostgresManager:
             'pct_bad': round(pct_bad, 1),
             'market_downshift_count': market_downshift_count,
             'period_info': {
-                'before_start': df['before_date'].iloc[0] if 'before_date' in df.columns else None,
-                'before_end': df['before_end_date'].iloc[0] if 'before_end_date' in df.columns else None,
-                'after_start': df['after_date'].iloc[0] if 'after_date' in df.columns else None,
-                'after_end': df['after_end_date'].iloc[0] if 'after_end_date' in df.columns else None
+                'before_start': df['before_date'].min() if 'before_date' in df.columns else None,
+                'before_end': df['before_end_date'].max() if 'before_end_date' in df.columns else None,
+                'after_start': df['after_date'].min() if 'after_date' in df.columns else None,
+                'after_end': df['after_end_date'].max() if 'after_end_date' in df.columns else None
             }
         }
     

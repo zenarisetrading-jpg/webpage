@@ -971,7 +971,7 @@ If Auto outperforms Manual: Discovery is working - harvest more aggressively
         Sanitized for general explanation.
         """
         return """
-PLATFORM METHODOLOGY & ENGINE LOGIC (UPDATED DEC 30, 2025)
+PLATFORM METHODOLOGY & ENGINE LOGIC (UPDATED JAN 2, 2026)
 
 1. MAJOR REVISION HIGHLIGHTS
    The platform recently underwent a significant upgrade to enhance accuracy and trust:
@@ -1026,6 +1026,69 @@ PLATFORM METHODOLOGY & ENGINE LOGIC (UPDATED DEC 30, 2025)
    - HARVEST_SALES threshold REMOVED (was $150)
    - NEGATIVE_SPEND_THRESHOLD REMOVED (was $10)
    - All thresholds now use CLICKS only (works in any currency)
+
+7. IMPACT DASHBOARD METHODOLOGY (JAN 2026 - COUNTERFACTUAL FRAMEWORK)
+   
+   **Core Philosophy**: Isolate DECISION QUALITY from MARKET CONDITIONS.
+   
+   A. DECISION OUTCOME MATRIX (Counterfactual Analysis)
+      - **Purpose**: Separate what WE controlled (decisions) from what we DIDN'T (market trends)
+      
+      - **X-Axis: Expected Trend %**
+        * Formula: (Expected Sales - Before Sales) / Before Sales * 100
+        * Expected Sales = (New Spend / Baseline CPC) * Baseline SPC
+        * Translation: "If we maintained old efficiency, what would sales be at new spend?"
+      
+      - **Y-Axis: vs Expectation %**
+        * Formula: Actual Change % - Expected Trend %
+        * Translation: "How much did we BEAT or MISS the counterfactual?"
+      
+      - **Quadrants**:
+        1. **Offensive Win** (X≥0, Y≥0): Spend increase + beat baseline → Efficient scaling
+        2. **Defensive Win** (X<0, Y≥0): Market headwinds, but we beat the drop → Good defense
+        3. **Decision Gap** (X≥0, Y<0): Spend increase but missed expectations → Inefficient scale
+        4. **Market Drag** (X<0, Y<0): Market shrank AND we underperformed → External + internal failure
+      
+   B. DECISION-ATTRIBUTED IMPACT (Hero Metric)
+      - **Formula**: Sum(Offensive Wins + Defensive Wins + Decision Gaps)
+      - **Exclusion**: **Market Drag is EXCLUDED** from all impact totals
+      - **Reasoning**: 
+        * Market Drag = External headwinds we didn't control
+        * Including it would conflate market luck with decision quality
+        * We ONLY attribute impact where our DECISION had clear directional influence
+      
+      - **Display**: 
+        * Main Number: Net Impact (Green if positive, Red if negative)
+        * Breakdown: "✅ Wins: +X (Offensive + Defensive) | ❌ Gaps: -Y"
+        * Footnote: "ℹ️ Z actions excluded (Market Drag — ambiguous attribution)"
+   
+   C. CAPITAL PROTECTED (Refined Logic)
+      - **Definition**: Wasteful spend eliminated from confirmed negative keyword blocks
+      - **Formula**: Sum of `before_spend` for NEGATIVE actions where `observed_after_spend == 0`
+      - **Why This Works**:
+        * Only counts actions INTENDED to protect capital (negatives)
+        * `after_spend == 0` proves the block was successful
+        * Bid increases SHOULD increase spend — that's scaling winners
+      - **Display**: "From X confirmed negatives" + "Confidence: High"
+   
+   D. IMPACT VALIDATION
+      - **Maturity Buffer**: 3 days after measurement window for attribution to settle
+      - **Validation Status**: Actions marked as Validated, Directional, Pending, or Invalid
+      - **Verified Impact**: Only includes Validated + Directional status
+   
+   E. KEY DISTINCTIONS FOR USER QUESTIONS
+      - **"Verified Impact vs Baseline"** = Decision-Attributed Impact (excludes Market Drag)
+      - **"Measured Impact"** = Same as Verified Impact (alternate phrasing)
+      - **"Capital Protected"** = Spend saved from confirmed negative blocks
+      - **"Win Rate"** = % of actions in Win quadrants (Offensive + Defensive)
+      - **"Decision Gap"** = Actions where we scaled but missed efficiency targets
+      - **"Market Drag"** = Actions where market conditions confound attribution
+
+   F. WHEN USER ASKS ABOUT IMPACT METRICS
+      - Always explain the COUNTERFACTUAL: "We compare to what WOULD HAVE happened"
+      - Emphasize Market Drag exclusion: "We only count where YOUR decisions had clear impact"
+      - Use concrete examples: "This action had +$500 vs baseline, meaning we made $500 MORE than if we hadn't optimized"
+      - Distinguish from actual performance: "This is INCREMENTAL to what already happened, not total sales"
 """
 
     def _compute_optimization_impact(self, df: pd.DataFrame) -> Dict[str, Any]:
