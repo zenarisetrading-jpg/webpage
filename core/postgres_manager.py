@@ -1661,6 +1661,44 @@ class PostgresManager:
         df.loc[insufficient_baseline_mask, 'decision_impact'] = 0
         df['insufficient_baseline'] = insufficient_baseline_mask
         
+        # ==========================================
+        # MARKET QUADRANT CLASSIFICATION (Single Source of Truth)
+        # ==========================================
+        # These percentages and tags are used for Hero banner, charts, and all displays
+        # Calculating ONCE here prevents recalculation in 5+ places in impact_dashboard.py
+        
+        # Expected Trend %: What market would have done without your decision
+        df['expected_trend_pct'] = (
+            (df['expected_sales'] - df['before_sales']) / 
+            df['before_sales'].replace(0, np.nan) * 100
+        ).fillna(0)
+        
+        # Actual Change %: What actually happened
+        df['actual_change_pct'] = (
+            (df['observed_after_sales'] - df['before_sales']) / 
+            df['before_sales'].replace(0, np.nan) * 100
+        ).fillna(0)
+        
+        # Decision Value %: Impact attributable to your decision (Actual - Expected)
+        df['decision_value_pct'] = df['actual_change_pct'] - df['expected_trend_pct']
+        
+        # Zero out decision_value_pct for low-sample baselines
+        df.loc[insufficient_baseline_mask, 'decision_value_pct'] = 0
+        
+        # Market Tag: Quadrant classification for aggregation
+        # - Offensive Win: Market up, decision helped
+        # - Defensive Win: Market down, decision saved you
+        # - Gap: Market up, decision hurt (missed opportunity)
+        # - Market Drag: Market down, decision also down (ambiguous attribution)
+        conditions = [
+            (df['expected_trend_pct'] >= 0) & (df['decision_value_pct'] >= 0),  # Offensive Win
+            (df['expected_trend_pct'] < 0) & (df['decision_value_pct'] >= 0),   # Defensive Win
+            (df['expected_trend_pct'] >= 0) & (df['decision_value_pct'] < 0),   # Gap
+            (df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0),    # Market Drag
+        ]
+        choices = ['Offensive Win', 'Defensive Win', 'Gap', 'Market Drag']
+        df['market_tag'] = np.select(conditions, choices, default='Unknown')
+        
         # Spend Avoided (for defensive actions) - preserve any existing value
         df['spend_avoided'] = df['spend_avoided'].fillna(
             (df['before_spend'] - df['observed_after_spend']).clip(lower=0)

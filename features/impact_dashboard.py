@@ -741,6 +741,9 @@ def _render_hero_banner(impact_df: pd.DataFrame, currency: str, horizon_label: s
     """
     Render the Hero Section: "Did your optimizations make money?"
     Human-centered design with YES/NO/BREAK EVEN prefix.
+    
+    NOTE: Uses pre-calculated decision_impact and market_tag from get_action_impact()
+    to ensure consistency across all displays (single source of truth).
     """
     import numpy as np
     
@@ -750,44 +753,31 @@ def _render_hero_banner(impact_df: pd.DataFrame, currency: str, horizon_label: s
 
     df = impact_df.copy()
     
-    # --- METRIC CALCULATION (Same logic as before) ---
-    df['spc_before'] = df['before_sales'] / df['before_clicks'].replace(0, np.nan)
-    df['cpc_before'] = df['before_spend'] / df['before_clicks'].replace(0, np.nan)
-    df['expected_clicks'] = df['observed_after_spend'] / df['cpc_before']
-    df['expected_sales'] = df['expected_clicks'] * df['spc_before']
-    
-    df['expected_trend_pct'] = ((df['expected_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-    df['actual_change_pct'] = ((df['observed_after_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-    df['decision_value_pct'] = df['actual_change_pct'] - df['expected_trend_pct']
-    df['decision_impact'] = df['observed_after_sales'] - df['expected_sales']
-    
     # ==========================================
-    # CRITICAL: Zero out impact for low-sample baselines
+    # USE PRE-CALCULATED VALUES (Single Source of Truth)
     # ==========================================
-    # Targets with <5 clicks cannot provide reliable impact estimates
-    # The SPC from 1-4 clicks is statistically meaningless
-    MIN_CLICKS_FOR_RELIABLE = 5
-    low_sample_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE
-    df.loc[low_sample_mask, 'decision_impact'] = 0
-    df.loc[low_sample_mask, 'decision_value_pct'] = 0
+    # decision_impact, expected_trend_pct, decision_value_pct, and market_tag
+    # are pre-calculated in get_action_impact() with all guardrails applied.
+    # We NO LONGER recalculate them here - this prevents drift between components.
     
-    # Quadrant Calculation
-    offensive_wins = df[(df['expected_trend_pct'] >= 0) & (df['decision_value_pct'] >= 0)]
+    # Quadrant Aggregation using pre-calculated market_tag
+    offensive_wins = df[df['market_tag'] == 'Offensive Win']
     offensive_val = offensive_wins['decision_impact'].sum()
     
-    defensive_wins = df[(df['expected_trend_pct'] < 0) & (df['decision_value_pct'] >= 0)]
+    defensive_wins = df[df['market_tag'] == 'Defensive Win']
     defensive_val = defensive_wins['decision_impact'].sum()
     
-    gaps = df[(df['expected_trend_pct'] >= 0) & (df['decision_value_pct'] < 0)]
+    gaps = df[df['market_tag'] == 'Gap']
     gap_val = gaps['decision_impact'].sum()
     
-    drag = df[(df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0)]
+    drag = df[df['market_tag'] == 'Market Drag']
     drag_count = len(drag)
     
+    # Attributed Impact excludes Market Drag (ambiguous attribution)
     attributed_impact = offensive_val + defensive_val + gap_val
     total_wins = offensive_val + defensive_val
     
-    # Store metrics in session for other sections
+    # Store metrics in session for other sections to consume
     st.session_state['_impact_metrics'] = {
         'attributed_impact': attributed_impact,
         'offensive_val': offensive_val,
@@ -1049,7 +1039,10 @@ def _render_data_confidence_section(impact_df: pd.DataFrame):
 
 
 def _render_value_breakdown_section(impact_df: pd.DataFrame, currency: str):
-    """Section 6: Where did the value come from? - Impact by action type."""
+    """Section 6: Where did the value come from? - Impact by action type.
+    
+    NOTE: Uses pre-calculated decision_impact and market_tag from get_action_impact()
+    """
     import plotly.graph_objects as go
     
     if impact_df.empty:
@@ -1067,31 +1060,17 @@ def _render_value_breakdown_section(impact_df: pd.DataFrame, currency: str):
     </div>
     """, unsafe_allow_html=True)
     
-    import numpy as np
-    
-    # Recalculate decision_impact using counterfactual (same as Hero) to ensure consistency
+    # ==========================================
+    # USE PRE-CALCULATED VALUES (Single Source of Truth)
+    # ==========================================
+    # decision_impact and market_tag are pre-calculated with all guardrails applied
     df = impact_df.copy()
-    df['spc_before'] = df['before_sales'] / df['before_clicks'].replace(0, np.nan)
-    df['cpc_before'] = df['before_spend'] / df['before_clicks'].replace(0, np.nan)
-    df['expected_clicks'] = df['observed_after_spend'] / df['cpc_before']
-    df['expected_sales'] = df['expected_clicks'] * df['spc_before']
-    df['recalc_impact'] = (df['observed_after_sales'] - df['expected_sales']).fillna(0)
     
-    # ==========================================
-    # CRITICAL: Zero out impact for low-sample baselines
-    # ==========================================
-    MIN_CLICKS_FOR_RELIABLE = 5
-    low_sample_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE
-    df.loc[low_sample_mask, 'recalc_impact'] = 0
+    # Exclude Market Drag (ambiguous attribution)
+    df = df[df['market_tag'] != 'Market Drag']
     
-    # Exclude Market Drag (same as Hero)
-    df['expected_trend_pct'] = ((df['expected_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-    df['decision_value_pct'] = ((df['observed_after_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0) - df['expected_trend_pct']
-    df.loc[low_sample_mask, 'decision_value_pct'] = 0  # Don't exclude low-sample from drag
-    df = df[~((df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0))]
-    
-    # Group by action type using recalculated impact
-    type_impact = df.groupby('action_type')['recalc_impact'].sum().sort_values(ascending=False)
+    # Group by action type using pre-calculated decision_impact
+    type_impact = df.groupby('action_type')['decision_impact'].sum().sort_values(ascending=False)
     
     if type_impact.empty:
         st.info("No action type data")
@@ -1272,7 +1251,10 @@ def _render_validation_rate_chart(impact_df: pd.DataFrame):
 
 
 def _render_cumulative_impact_chart(impact_df: pd.DataFrame, currency: str):
-    """Section 4: Is it getting better? - Cumulative Impact Over Time."""
+    """Section 4: Is it getting better? - Cumulative Impact Over Time.
+    
+    NOTE: Uses pre-calculated decision_impact and market_tag from get_action_impact()
+    """
     import plotly.graph_objects as go
     import numpy as np
     
@@ -1301,38 +1283,13 @@ def _render_cumulative_impact_chart(impact_df: pd.DataFrame, currency: str):
         return
     
     # ==========================================
-    # APPLY SAME MARKET DRAG EXCLUSION AS HERO
+    # USE PRE-CALCULATED VALUES (Single Source of Truth)
     # ==========================================
-    if 'before_spend' in df.columns and 'before_clicks' in df.columns:
-        # Calculate counterfactuals (SAME as Hero)
-        df['spc_before'] = df['before_sales'] / df['before_clicks'].replace(0, np.nan)
-        df['cpc_before'] = df['before_spend'] / df['before_clicks'].replace(0, np.nan)
-        df['expected_clicks'] = df['observed_after_spend'] / df['cpc_before']
-        df['expected_sales'] = df['expected_clicks'] * df['spc_before']
-        
-        df['expected_trend_pct'] = ((df['expected_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-        df['actual_change_pct'] = ((df['observed_after_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-        df['decision_value_pct'] = df['actual_change_pct'] - df['expected_trend_pct']
-        
-        # RECALCULATE decision_impact using counterfactual (same as Hero)
-        df['decision_impact_recalc'] = df['observed_after_sales'] - df['expected_sales']
-        
-        # ==========================================
-        # CRITICAL: Zero out impact for low-sample baselines
-        # ==========================================
-        MIN_CLICKS_FOR_RELIABLE = 5
-        low_sample_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE
-        df.loc[low_sample_mask, 'decision_impact_recalc'] = 0
-        df.loc[low_sample_mask, 'decision_value_pct'] = 0
-        
-        # Exclude Market Drag (X < 0 AND Y < 0)
-        df = df[~((df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0))]
-        
-        # Use recalculated impact
-        impact_column = 'decision_impact_recalc'
-    else:
-        # Fallback to original column if calculation not possible
-        impact_column = 'decision_impact'
+    # Exclude Market Drag (ambiguous attribution) using pre-calculated market_tag
+    df = df[df['market_tag'] != 'Market Drag']
+    
+    # Use pre-calculated decision_impact (already has guardrails applied)
+    impact_column = 'decision_impact'
         
     if df.empty:
         st.info("No attributable impact data to plot")
@@ -1470,36 +1427,16 @@ def _render_new_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFram
     roas_after = summary.get('roas_after', 0)
     
     # ==========================================
-    # RECALCULATE DECISION-ATTRIBUTED IMPACT
-    # (Exclude Market Drag)
+    # USE PRE-CALCULATED VALUES (Single Source of Truth)
     # ==========================================
-    import numpy as np
+    # decision_impact and market_tag are pre-calculated in get_action_impact()
+    # with all guardrails (including MIN_CLICKS_FOR_RELIABLE) already applied.
     
-    if not impact_df.empty and 'before_spend' in impact_df.columns:
+    if not impact_df.empty and 'market_tag' in impact_df.columns:
         df = impact_df.copy()
         
-        # Calc Counterfactuals (same as Hero Banner)
-        df['spc_before'] = df['before_sales'] / df['before_clicks'].replace(0, np.nan)
-        df['cpc_before'] = df['before_spend'] / df['before_clicks'].replace(0, np.nan)
-        df['expected_clicks'] = df['observed_after_spend'] / df['cpc_before']
-        df['expected_sales'] = df['expected_clicks'] * df['spc_before']
-        
-        df['expected_trend_pct'] = ((df['expected_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-        df['actual_change_pct'] = ((df['observed_after_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-        df['decision_value_pct'] = df['actual_change_pct'] - df['expected_trend_pct']
-        df['decision_impact'] = df['observed_after_sales'] - df['expected_sales']
-        
-        # ==========================================
-        # CRITICAL: Zero out impact for low-sample baselines
-        # ==========================================
-        MIN_CLICKS_FOR_RELIABLE = 5
-        low_sample_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE
-        df.loc[low_sample_mask, 'decision_impact'] = 0
-        df.loc[low_sample_mask, 'decision_value_pct'] = 0
-        
-        # Quadrant Assignment (Exclude Market Drag: X < 0, Y < 0)
-        # Include: Offensive Wins + Defensive Wins + Decision Gaps
-        non_drag = df[~((df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0))]
+        # Exclude Market Drag (ambiguous attribution)
+        non_drag = df[df['market_tag'] != 'Market Drag']
         
         # Decision-Attributed Impact (Wins + Gaps)
         decision_impact = non_drag['decision_impact'].sum()
@@ -1631,7 +1568,11 @@ def _render_new_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFram
 
 
 def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, Any]):
-    """Section 3: Did each decision help or hurt? - Decision Outcome Matrix."""
+    """Section 3: Did each decision help or hurt? - Decision Outcome Matrix.
+    
+    NOTE: Uses pre-calculated columns from get_action_impact():
+    - expected_trend_pct, decision_value_pct, decision_impact, market_tag
+    """
     
     import plotly.graph_objects as go
     import numpy as np
@@ -1655,44 +1596,13 @@ def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, 
     df = impact_df.copy()
     df = df[df['before_spend'] > 0]
     
-    # ---------------------------------------------------------
-    # DECISION OUTCOME MATRIX (Counterfactual Logic)
-    # ---------------------------------------------------------
-    # Goal: Isolate decision quality by comparing Actual vs Expected Outcome.
-    
-    # 1. Calculate Expected Sales (Counterfactual)
-    # If we maintained baseline efficiency at new spend levels, what would sales be?
-    df['spc_before'] = df['before_sales'] / df['before_clicks'].replace(0, np.nan)
-    df['cpc_before'] = df['before_spend'] / df['before_clicks'].replace(0, np.nan)
-    
-    # Expected Clicks = New Spend / Old CPC
-    # Expected Sales = Expected Clicks * Old SPC
-    df['expected_clicks'] = df['observed_after_spend'] / df['cpc_before']
-    df['expected_sales'] = df['expected_clicks'] * df['spc_before']
-    
-    # 2. X-AXIS: Expected Trend % (The "Market/Spend" Move)
-    # How much did we EXPECT to grow/shrink based on our spend change?
-    # (Expected Sales - Before Sales) / Before Sales
-    df['expected_trend_pct'] = ((df['expected_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-    
-    # 3. Y-AXIS: Decision Value % (The "Alpha")
-    # How much did we beat that expectation?
-    # Actual Sales Change % - Expected Trend %
-    df['actual_change_pct'] = ((df['observed_after_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
-    df['decision_value_pct'] = df['actual_change_pct'] - df['expected_trend_pct']
-    
-    # Calculate Raw Impact for sizing/hover (Revenue Delta)
-    df['decision_impact'] = df['observed_after_sales'] - df['expected_sales']
-    
     # ==========================================
-    # CRITICAL: Zero out impact for low-sample baselines
+    # USE PRE-CALCULATED VALUES (Single Source of Truth)
     # ==========================================
-    MIN_CLICKS_FOR_RELIABLE = 5
-    low_sample_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE
-    df.loc[low_sample_mask, 'decision_impact'] = 0
-    df.loc[low_sample_mask, 'decision_value_pct'] = 0
+    # expected_trend_pct, decision_value_pct, decision_impact, and market_tag
+    # are pre-calculated in get_action_impact() with all guardrails applied.
     
-    # Clean up infinite/nan values
+    # Clean up infinite/nan values for visualization
     df = df[np.isfinite(df['expected_trend_pct']) & np.isfinite(df['decision_value_pct'])]
     
     if len(df) < 3:
@@ -1713,9 +1623,9 @@ def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, 
     
     fig = go.Figure()
     
-    # Split data: Non-Market Drag vs Market Drag
-    non_drag = df[~((df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0))]
-    drag = df[(df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0)]
+    # Split data: Non-Market Drag vs Market Drag using pre-calculated market_tag
+    non_drag = df[df['market_tag'] != 'Market Drag']
+    drag = df[df['market_tag'] == 'Market Drag']
     
     # 1. ACTIVE POINTS (By Type)
     for action_type, color in [('Bid', '#2A8EC9'), ('Negative', '#9A9AAA'), ('Harvest', '#8FC9D6')]:
