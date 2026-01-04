@@ -602,17 +602,59 @@ def enrich_with_ids(df: pd.DataFrame, bulk: pd.DataFrame) -> pd.DataFrame:
     bulk['_ag_norm'] = normalize_for_mapping(bulk.get('Ad Group Name', pd.Series([''] * len(bulk))))
     
     # Precise Match 1: Keywords
+    # CRITICAL: Include Match Type to distinguish phrase/exact versions of the same keyword
     kw_col = next((c for c in ['Customer Search Term', 'Keyword Text', 'keyword_text'] if c in bulk.columns), None)
     if kw_col:
         bulk['_kw_norm'] = normalize_for_mapping(bulk[kw_col])
-        kw_lookup = bulk[bulk['KeywordId'].notna() & (bulk['KeywordId'] != "") & (bulk['KeywordId'] != "nan")][['_camp_norm', '_ag_norm', '_kw_norm', 'KeywordId', 'CampaignId', 'AdGroupId']].drop_duplicates()
+        # Normalize Match Type for both df and bulk
+        df['_match_norm'] = df['Match Type'].astype(str).str.lower().str.strip() if 'Match Type' in df.columns else ''
+        bulk['_match_norm'] = bulk['Match Type'].astype(str).str.lower().str.strip() if 'Match Type' in bulk.columns else ''
         
+        # STRICT LOOKUP: Include Match Type to prevent collision between phrase/exact/broad
+        # Use groupby().first() to ensure 1-to-1 mapping and prevent row explosion
+        kw_base = bulk[bulk['KeywordId'].notna() & (bulk['KeywordId'] != "") & (bulk['KeywordId'] != "nan")][
+            ['_camp_norm', '_ag_norm', '_kw_norm', '_match_norm', 'KeywordId', 'CampaignId', 'AdGroupId']
+        ]
+        kw_lookup = kw_base.groupby(['_camp_norm', '_ag_norm', '_kw_norm', '_match_norm']).first().reset_index()
+        
+        # STRATEGY 1: Strict match (Campaign + AG + Keyword + Match Type)
         df = df.merge(
             kw_lookup.rename(columns={'_kw_norm': '_target_norm'}),
-            on=['_camp_norm', '_ag_norm', '_target_norm'],
+            on=['_camp_norm', '_ag_norm', '_target_norm', '_match_norm'],
             how='left',
             suffixes=('', '_bulk_kw')
         )
+        
+        # STRATEGY 2: Fallback for unmatched rows (ignore Match Type)
+        # Only fill if KeywordId is still missing after strict match
+        strict_matched = df.get('KeywordId_bulk_kw', pd.Series([np.nan]*len(df))).notna()
+        if (~strict_matched).any():
+            # Relaxed lookup: Campaign + AG + Keyword only (take first ID for each)
+            kw_lookup_relaxed = kw_base.groupby(['_camp_norm', '_ag_norm', '_kw_norm'])[
+                ['KeywordId', 'CampaignId', 'AdGroupId']
+            ].first().reset_index()
+            kw_lookup_relaxed = kw_lookup_relaxed.rename(columns={
+                '_kw_norm': '_target_norm', 
+                'KeywordId': 'KeywordId_relaxed', 
+                'CampaignId': 'CampaignId_relaxed', 
+                'AdGroupId': 'AdGroupId_relaxed'
+            })
+            df = df.merge(
+                kw_lookup_relaxed,
+                on=['_camp_norm', '_ag_norm', '_target_norm'],
+                how='left',
+                suffixes=('', '_relax')
+            )
+            # Only use relaxed match if strict match failed
+            for col in ['KeywordId', 'CampaignId', 'AdGroupId']:
+                relaxed_col = f'{col}_relaxed'
+                bulk_kw_col = f'{col}_bulk_kw'
+                if relaxed_col in df.columns:
+                    if bulk_kw_col in df.columns:
+                        df[bulk_kw_col] = df[bulk_kw_col].fillna(df[relaxed_col])
+                    else:
+                        df[bulk_kw_col] = df[relaxed_col]
+                    df.drop(columns=[relaxed_col], inplace=True, errors='ignore')
         
     # Precise Match 2: Product Targeting
     pt_col = next((c for c in ['TargetingExpression', 'Product Targeting Expression', 'targeting_expression'] if c in bulk.columns), None)

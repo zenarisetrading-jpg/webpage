@@ -534,7 +534,7 @@ class CreatorModule(BaseFeature):
             return harvest_df, f"❌ Error mapping SKUs: {str(e)}"
 
     def map_skus_from_file(self, harvest_df: pd.DataFrame, campaigns_file) -> tuple[pd.DataFrame, str]:
-        """Resolves SKUs from Purchased Product Report (Preserved Logic)."""
+        """Resolves SKUs from Purchased Product Report (Advertised Product Report)."""
         try:
             camp_df = load_uploaded_file(campaigns_file)
             if camp_df is None: return harvest_df, "❌ Failed to load file"
@@ -542,21 +542,74 @@ class CreatorModule(BaseFeature):
             col_map = SmartMapper.map_columns(camp_df)
             c_col = col_map.get("Campaign Name")
             s_col = col_map.get("SKU")
+            ag_col = col_map.get("Ad Group Name")
             
             if not (c_col and s_col):
                 return harvest_df, "❌ Missing Campaign or SKU columns in file"
+            
+            # Use same normalization as map_skus_from_df for consistency
+            camp_df = camp_df.copy()
+            camp_df['_camp_norm'] = camp_df[c_col].astype(str).str.strip().str.lower()
+            
+            # If Ad Group exists, use it for better precision
+            if ag_col and ag_col in camp_df.columns:
+                camp_df['_ag_norm'] = camp_df[ag_col].astype(str).str.strip().str.lower()
                 
-            camp_df['_key'] = camp_df[c_col].astype(str).str.strip()
-            sku_map = pd.Series(camp_df[s_col].values, index=camp_df['_key']).to_dict()
+                # Create composite key: campaign|adgroup -> SKU
+                camp_df['_composite_key'] = camp_df['_camp_norm'] + '|' + camp_df['_ag_norm']
+                
+                # Aggregate SKUs (in case multiple SKUs per campaign/adgroup)
+                sku_lookup = camp_df.groupby('_composite_key')[s_col].apply(
+                    lambda x: ', '.join(x.dropna().astype(str).unique())
+                ).to_dict()
+                
+                # Also create campaign-only fallback
+                sku_lookup_camp = camp_df.groupby('_camp_norm')[s_col].apply(
+                    lambda x: ', '.join(x.dropna().astype(str).unique())
+                ).to_dict()
+            else:
+                # Campaign-only lookup
+                sku_lookup_camp = camp_df.groupby('_camp_norm')[s_col].apply(
+                    lambda x: ', '.join(x.dropna().astype(str).unique())
+                ).to_dict()
+                sku_lookup = {}
             
             def resolve(row):
-                c_name = str(row.get("Campaign Name", "")).strip()
-                return sku_map.get(c_name, "SKU_NEEDED")
+                # If already has SKU, keep it
+                existing = str(row.get("Advertised SKU", "")).strip()
+                if existing and existing != "SKU_NEEDED":
+                    return existing
+                
+                # Normalize search keys
+                c_name = str(row.get("Campaign Name", "")).strip().lower()
+                ag_name = str(row.get("Ad Group Name", "")).strip().lower()
+                
+                # Try composite key first (most precise)
+                if sku_lookup:
+                    composite_key = f"{c_name}|{ag_name}"
+                    found = sku_lookup.get(composite_key)
+                    if found:
+                        return found
+                
+                # Fallback to campaign-only
+                found = sku_lookup_camp.get(c_name)
+                if found:
+                    return found
+                
+                return "SKU_NEEDED"
                 
             harvest_df["Advertised SKU"] = harvest_df.apply(resolve, axis=1)
-            found = len(harvest_df[harvest_df["Advertised SKU"] != "SKU_NEEDED"])
             
-            return harvest_df, f"✅ Mapped SKUs for {found} terms"
+            # Stats
+            found = len(harvest_df[harvest_df["Advertised SKU"] != "SKU_NEEDED"])
+            total = len(harvest_df)
+            missing = total - found
+            
+            msg = f"✅ Mapped SKUs for {found} terms"
+            if missing > 0:
+                msg += f" | ⚠️ {missing} still need manual mapping"
+            
+            return harvest_df, msg
         except Exception as e:
             return harvest_df, f"❌ Error: {str(e)}"
 

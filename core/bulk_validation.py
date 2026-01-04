@@ -81,6 +81,7 @@ ERROR_MESSAGES = {
     "BID003": "Bid change exceeds 300%",  # Warning only
     "BID004": "Missing entity ID",
     "BID005": "Dual IDs detected",
+    "BID006": "Duplicate bid update (kept first)",
     
     # Auto Campaign
     "AUTO001": "Cannot add positive keyword to Auto campaign",

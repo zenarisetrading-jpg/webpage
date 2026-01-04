@@ -1603,6 +1603,26 @@ class PostgresManager:
         )
         df['spc_before'] = df['rolling_30d_spc'].fillna(df['spc_window'])
         
+        # ==========================================
+        # LOW-SAMPLE SPC GUARDRAIL (Critical Fix)
+        # ==========================================
+        # Problem: Single-click conversions create inflated SPC (e.g., 62 AED/click)
+        # which causes massive negative impacts when extrapolated.
+        # Solution: Cap SPC for low-sample targets to reasonable max using median + 2*std
+        MIN_CLICKS_FOR_RELIABLE_SPC = 5
+        low_sample_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE_SPC
+        
+        # Calculate reasonable SPC cap from higher-sample data
+        reliable_spc = df.loc[~low_sample_mask, 'spc_before'].dropna()
+        if len(reliable_spc) > 3:
+            spc_cap = reliable_spc.median() + 2 * reliable_spc.std()
+        else:
+            # Fallback: Use simple max of 10 AED per click (reasonable for most products)
+            spc_cap = 10.0
+        
+        # Apply cap to low-sample SPC values
+        df.loc[low_sample_mask, 'spc_before'] = df.loc[low_sample_mask, 'spc_before'].clip(upper=spc_cap)
+        
         # CPC calculations
         df['cpc_before'] = (
             df['before_spend'] / 
@@ -1629,6 +1649,17 @@ class PostgresManager:
         df['decision_impact'] = (
             df['observed_after_sales'] - df['expected_sales']
         )
+        
+        # ==========================================
+        # CRITICAL: Zero out impact for low-sample baselines
+        # ==========================================
+        # Targets with <5 clicks cannot provide reliable impact estimates
+        # The SPC from 1-2 clicks is statistically meaningless
+        # These should NOT contribute positive or negative to total impact
+        import numpy as np
+        insufficient_baseline_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE_SPC
+        df.loc[insufficient_baseline_mask, 'decision_impact'] = 0
+        df['insufficient_baseline'] = insufficient_baseline_mask
         
         # Spend Avoided (for defensive actions) - preserve any existing value
         df['spend_avoided'] = df['spend_avoided'].fillna(
@@ -1699,6 +1730,26 @@ class PostgresManager:
             bid_df['spc_window'] = bid_df['before_sales'] / bid_df['before_clicks'].replace(0, np.nan)
             bid_df['spc_before'] = bid_df['rolling_30d_spc'].fillna(bid_df['spc_window'])
             
+            # ==========================================
+            # LOW-SAMPLE SPC GUARDRAIL (Critical Fix)
+            # ==========================================
+            # Problem: Single-click conversions create inflated SPC (e.g., 62 AED/click)
+            # which causes massive negative impacts when extrapolated.
+            # Solution: Cap SPC for low-sample targets to reasonable max using median + 2*std
+            MIN_CLICKS_FOR_RELIABLE_SPC = 5
+            low_sample_mask = bid_df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE_SPC
+            
+            # Calculate reasonable SPC cap from higher-sample data
+            reliable_spc = bid_df.loc[~low_sample_mask, 'spc_before'].dropna()
+            if len(reliable_spc) > 3:
+                spc_cap = reliable_spc.median() + 2 * reliable_spc.std()
+            else:
+                # Fallback: Use simple max of 10 AED per click (reasonable for most products)
+                spc_cap = 10.0
+            
+            # Apply cap to low-sample SPC values
+            bid_df.loc[low_sample_mask, 'spc_before'] = bid_df.loc[low_sample_mask, 'spc_before'].clip(upper=spc_cap)
+            
             # Counterfactual: Expected sales if we kept old CPC
             # Expected_Clicks = After_Spend / Before_CPC
             # Expected_Sales = Expected_Clicks * SPC_Baseline (30D rolling or window fallback)
@@ -1721,8 +1772,9 @@ class PostgresManager:
             # Guardrail 1: Market Downshift (CPC dropped 25%+)
             bid_df['market_downshift'] = bid_df['cpc_after'] <= 0.75 * bid_df['cpc_before']
             
-            # Guardrail 2: Insufficient Baseline (no clicks before)
-            bid_df['insufficient_baseline'] = bid_df['before_clicks'] == 0
+            # Guardrail 2: Insufficient Baseline (fewer than 3 clicks before)
+            # NOTE: Extended from 0 to 3 to catch more low-sample edge cases
+            bid_df['insufficient_baseline'] = bid_df['before_clicks'] < 3
             
             # ==========================================
             # OUTCOME CLASSIFICATION
@@ -1774,7 +1826,16 @@ class PostgresManager:
             
             bid_df['outcome'] = bid_df.apply(classify_outcome, axis=1)
             
-            # Aggregate Decision Impact metrics
+            # ==========================================
+            # CRITICAL: Zero out impact for low-sample baselines
+            # ==========================================
+            # Targets with <5 clicks cannot provide reliable impact estimates
+            # Must zero BEFORE aggregation to prevent inflated totals
+            MIN_CLICKS_FOR_RELIABLE = 5
+            low_sample_mask = bid_df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE
+            bid_df.loc[low_sample_mask, 'decision_impact'] = 0
+            
+            # Aggregate Decision Impact metrics (now excludes low-sample)
             valid_impacts = bid_df['decision_impact'].dropna()
             total_decision_impact = valid_impacts.sum() if len(valid_impacts) > 0 else 0
             total_spend_avoided = bid_df['spend_avoided'].sum()

@@ -464,6 +464,40 @@ def generate_bids_bulk(bids_df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
         has_ptid = not is_blank(row.get("Product Targeting Id"))
         if has_kwid and has_ptid:
             issues.append({"row": row_num, "code": "BID005", "msg": "Row has both Keyword Id and PT Id", "severity": "error"})
+
+    # --- BID006: Duplicate Detection ---
+    # Deduplicate based on Entity logic to prevent conflicting updates
+    
+    kw_mask = df["Entity"] == "Keyword"
+    pt_mask = df["Entity"] == "Product Targeting"
+    
+    if kw_mask.any():
+        # For Keywords: Campaign + AdGroup + Text + Match Type
+        # (Same keyword text can exist with different match types)
+        dup_subset = ["Campaign Name", "Ad Group Name", "Keyword Text", "Match Type"]
+        kw_rows = df[kw_mask]
+        dup_kw = kw_rows.duplicated(subset=dup_subset, keep="first")
+        
+        if dup_kw.any():
+            dup_count = dup_kw.sum()
+            issues.append({"row": -1, "code": "BID006", "msg": f"Removed {dup_count} duplicate Bid updates for Keywords (kept first)", "severity": "warning"})
+            # Identify indices to drop
+            drop_indices = kw_rows[dup_kw].index
+            df = df.drop(drop_indices)
+    
+    if pt_mask.any():
+        # For PT: Campaign + AdGroup + Expression
+        # (PT expression is unique per ad group usually)
+        dup_subset = ["Campaign Name", "Ad Group Name", "Product Targeting Expression"]
+        pt_rows = df[pt_mask]
+        dup_pt = pt_rows.duplicated(subset=dup_subset, keep="first")
+        
+        if dup_pt.any():
+            dup_count = dup_pt.sum()
+            issues.append({"row": -1, "code": "BID006", "msg": f"Removed {dup_count} duplicate Bid updates for Targets (kept first)", "severity": "warning"})
+            # Identify indices to drop
+            drop_indices = pt_rows[dup_pt].index
+            df = df.drop(drop_indices)
     
     # --- FINAL SORT: Complete rows first, problematic rows at bottom ---
     # For bids: need Campaign Id + (Keyword Id OR PT Id)

@@ -179,50 +179,45 @@ class MappingEngine:
                 kw_lookup = bulk[bulk[kw_col].notna() & (bulk[kw_col].astype(str).str.strip() != '')].copy()
                 
                 if not kw_lookup.empty:
-                    kw_lookup = kw_lookup[['Campaign Name', 'Ad Group Name', kw_col, kwid_col]].copy()
-                    
-                    # Detect match type if available
-                    if 'Match Type' in kw_lookup.columns:
-                        kw_lookup['_match_type'] = kw_lookup['Match Type'].str.lower()
-                    else:
-                        kw_lookup['_match_type'] = 'unknown'
+                    kw_lookup = kw_lookup[['Campaign Name', 'Ad Group Name', kw_col, kwid_col, 'Match Type']].copy()
                     
                     kw_lookup['_camp_norm'] = MappingEngine.normalize(kw_lookup['Campaign Name'])
                     kw_lookup['_ag_norm'] = MappingEngine.normalize(kw_lookup['Ad Group Name'])
                     kw_lookup['_target_norm'] = MappingEngine.normalize_targeting(kw_lookup[kw_col])
+                    kw_lookup['_match_norm'] = kw_lookup['Match Type'].astype(str).str.lower().str.strip()
+                    
+                    # ENRICHED (STR) Normalization
+                    enriched['_match_norm'] = enriched['Match Type'].astype(str).str.lower().str.strip() if 'Match Type' in enriched.columns else ''
                     
                     # CRITICAL: Standardize to 'KeywordId' (no space) for internal use
                     kw_lookup = kw_lookup.rename(columns={kwid_col: 'KeywordId'})
                     
-                    # Split into exact vs non-exact
-                    exact_kw = kw_lookup[kw_lookup['_match_type'] == 'exact'].copy()
-                    nonexact_kw = kw_lookup[kw_lookup['_match_type'] != 'exact'].copy()
+                    # STRATEGY 1: Strict Match (Campaign + AG + Keyword + Match Type)
+                    # This handles the "phrase" vs "exact" collision correctly
+                    strict_lookup = kw_lookup.groupby(['_camp_norm', '_ag_norm', '_target_norm', '_match_norm'])['KeywordId'].first().reset_index()
+                    enriched = enriched.merge(strict_lookup, on=['_camp_norm', '_ag_norm', '_target_norm', '_match_norm'], how='left', suffixes=('', '_strict'))
                     
-                    # For EXACT keywords: Match on Campaign + Ad Group + Targeting (strict)
-                    if not exact_kw.empty:
-                        # CRITICAL: Enforce uniqueness on join keys
-                        exact_kw = exact_kw.groupby(['_camp_norm', '_ag_norm', '_target_norm'])['KeywordId'].first().reset_index()
-                        enriched = enriched.merge(exact_kw, on=['_camp_norm', '_ag_norm', '_target_norm'], how='left', suffixes=('', '_exact'))
+                    if 'KeywordId_strict' in enriched.columns:
+                        if 'KeywordId' not in enriched.columns:
+                            enriched['KeywordId'] = enriched['KeywordId_strict']
+                        else:
+                            enriched['KeywordId'] = enriched['KeywordId'].fillna(enriched['KeywordId_strict'])
+                        enriched.drop(columns=['KeywordId_strict'], inplace=True, errors='ignore')
                         
-                        if 'KeywordId_exact' in enriched.columns:
-                            if 'KeywordId' not in enriched.columns:
-                                enriched['KeywordId'] = enriched['KeywordId_exact']
-                            else:
-                                enriched['KeywordId'] = enriched['KeywordId'].fillna(enriched['KeywordId_exact'])
-                            enriched.drop(columns=['KeywordId_exact'], inplace=True, errors='ignore')
+                    # STRATEGY 2: Relaxed Match (Campaign + AG + Keyword) - Fallback
+                    # Only for rows that didn't match strictly (e.g. if Match Type is missing or formatted differently)
+                    relaxed_lookup = kw_lookup.groupby(['_camp_norm', '_ag_norm', '_target_norm'])['KeywordId'].first().reset_index()
+                    enriched = enriched.merge(relaxed_lookup, on=['_camp_norm', '_ag_norm', '_target_norm'], how='left', suffixes=('', '_relaxed'))
                     
-                    # For BROAD/PHRASE/AUTO: Match on Campaign + Ad Group only (loose)
-                    if not nonexact_kw.empty:
-                        # Group by campaign + ad group and take first KeywordId (representative)
-                        nonexact_agg = nonexact_kw.groupby(['_camp_norm', '_ag_norm'])['KeywordId'].first().reset_index()
-                        enriched = enriched.merge(nonexact_agg, on=['_camp_norm', '_ag_norm'], how='left', suffixes=('', '_nonexact'))
-                        
-                        if 'KeywordId_nonexact' in enriched.columns:
-                            if 'KeywordId' not in enriched.columns:
-                                enriched['KeywordId'] = enriched['KeywordId_nonexact']
-                            else:
-                                enriched['KeywordId'] = enriched['KeywordId'].fillna(enriched['KeywordId_nonexact'])
-                            enriched.drop(columns=['KeywordId_nonexact'], inplace=True, errors='ignore')
+                    if 'KeywordId_relaxed' in enriched.columns:
+                        if 'KeywordId' not in enriched.columns:
+                            enriched['KeywordId'] = enriched['KeywordId_relaxed']
+                        else:
+                            enriched['KeywordId'] = enriched['KeywordId'].fillna(enriched['KeywordId_relaxed'])
+                        enriched.drop(columns=['KeywordId_relaxed'], inplace=True, errors='ignore')
+                    
+                    # Cleanup specific normalization col
+                    enriched.drop(columns=['_match_norm'], inplace=True, errors='ignore')
                     
                     stats['keyword_id_matched'] = enriched['KeywordId'].notna().sum()
             

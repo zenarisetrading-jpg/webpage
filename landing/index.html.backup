@@ -109,27 +109,6 @@
         </div>
     </section>
 
-    <!-- SYSTEM REFRAME -->
-    <section class="system-reframe">
-        <div class="container">
-            <h3 class="system-title">
-                PPC Is Not an Optimization Problem.
-                <br />
-                It's a Learning System Problem.
-            </h3>
-            <p class="system-body">
-                Every PPC account already has an optimizer —
-                it's just implicit, unmeasured, and unaccountable.
-                <br /><br />
-                AdPulse makes it explicit.
-                <br />
-                Every decision is tracked.
-                Every outcome is measured.
-                Every lesson is retained.
-            </p>
-        </div>
-    </section>
-
     <!-- Solution Section -->
     <section class="solution-section">
         <div class="container">
@@ -146,30 +125,17 @@
                             <div class="preview-dot"></div>
                         </div>
                         <div class="preview-body">
-                            <div class="optimizer-status">
-                                <div class="status-header">
-                                    <span class="status-dot active"></span>
-                                    <span class="status-text">Optimizer Running</span>
-                                    <span class="status-time">Last run: 2 min ago</span>
-                                </div>
+                            <div class="preview-metric">
+                                <span class="metric-label">Revenue Impact</span>
+                                <span class="metric-value positive">+$47,291</span>
                             </div>
                             <div class="preview-metric">
-                                <span class="metric-label">NEGATIVES DETECTED</span>
-                                <span class="metric-value warning">47 search terms</span>
-                                <div class="preview-subtext">Bleeding $2,847/month</div>
-                            </div>
-                            <div class="preview-metric highlight">
-                                <span class="metric-label">HARVEST OPPORTUNITIES</span>
-                                <span class="metric-value positive">23 winners</span>
-                                <div class="preview-subtext">Ready to scale at exact match</div>
+                                <span class="metric-label">ROAS Change</span>
+                                <span class="metric-value positive">+1.8x</span>
                             </div>
                             <div class="preview-metric">
-                                <span class="metric-label">BID ADJUSTMENTS</span>
-                                <span class="metric-value">184 targets</span>
-                                <div class="preview-breakdown">
-                                    <span class="breakdown-wins">↑ Increase: 127</span>
-                                    <span class="breakdown-gaps">↓ Decrease: 57</span>
-                                </div>
+                                <span class="metric-label">Actions Validated</span>
+                                <span class="metric-value">847 / 1,024</span>
                             </div>
                         </div>
                     </div>
@@ -208,246 +174,12 @@
         </div>
     </section>
 
-    <!-- IMPACT / DASHBOARD CONTEXT -->
-    <section class="impact-section">
-        <div class="container">
-            <div class="impact-context">
-                <h3>
-                    Metrics Tell You What Happened.
-                    <br />
-                    AdPulse Tells You Why.
-                </h3>
-                <p>
-                    We don't just track performance.
-                    <br />
-                    We compare outcomes against what <em>should</em> have happened —
-                    so you know whether a result came from skill or noise.
-                </p>
-            </div>
-            <div class="section-header">
-                <h2>Finally Know What Worked (And What Didn't)</h2>
-                <p>Close the optimization loop: counterfactual analysis separates your decision quality from market noise</p>
-            </div>
-
-            <!-- Impact Dashboard Preview -->
-            <div class="impact-dashboard">
-                <!-- Dashboard Header -->
-                <div class="impact-header">
-                    <div class="impact-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="impact-icon">
-                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                            <polyline points="17 6 23 6 23 12"></polyline>
-                        </svg>
-                        <h3>14-Day Impact</h3>
-                    </div>
-                    <div class="time-selector">
-                        <button class="time-btn active">14D</button>
-                        <button class="time-btn">30D</button>
-                        <button class="time-btn">60D</button>
-                    </div>
-                </div>
-
-                <!-- Comparison Info -->
-                <div class="comparison-info">
-                    <span class="period-label">Comparing <strong>Nov 26 - Dec 09</strong> (Before) vs. <strong>Dec 10 - Dec 23</strong> (After)</span>
-                    <span class="measured-label">Measured: 272 | Pending: 332</span>
-                </div>
-
-                <!-- Impact Metrics Grid -->
-                <div class="impact-metrics">
-                    <div class="impact-card highlight">
-                        <div class="impact-card-header">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M16 8v8m-4-6v6m-4-4v4"></path>
-                            </svg>
-                            <span class="metric-label">VERIFIED IMPACT VS BASELINE</span>
-                        </div>
-                        <div class="metric-value positive">+$47,291</div>
-                        <div class="metric-breakdown">
-                            <span class="breakdown-item wins">✅ Wins: +$58,120</span>
-                            <span class="breakdown-item gaps">❌ Gaps: -$10,829</span>
-                        </div>
-                        <div class="metric-subtitle">Excludes Market Drag (ambiguous attribution)</div>
-                    </div>
-
-                    <div class="impact-card">
-                        <div class="impact-card-header">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
-                                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                            </svg>
-                            <span class="metric-label">CAPITAL PROTECTED</span>
-                        </div>
-                        <div class="metric-value">$16,571</div>
-                        <div class="metric-subtitle">From 47 confirmed negatives</div>
-                        <div class="confidence-badge">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                            </svg>
-                            Confidence: High
-                        </div>
-                    </div>
-
-                    <div class="impact-card">
-                        <div class="impact-card-header">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                            <span class="metric-label">WIN RATE</span>
-                        </div>
-                        <div class="metric-value strong">68%</div>
-                        <div class="metric-subtitle">Actions in win quadrants</div>
-                        <div class="win-breakdown">
-                            <span class="win-type offensive">Offensive: 45%</span>
-                            <span class="win-type defensive">Defensive: 23%</span>
-                        </div>
-                    </div>
-
-                    <div class="impact-card">
-                        <div class="impact-card-header">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="8" x2="12" y2="16"></line>
-                                <line x1="8" y1="12" x2="16" y2="12"></line>
-                            </svg>
-                            <span class="metric-label">DECISION GAP</span>
-                        </div>
-                        <div class="metric-value warning">23</div>
-                        <div class="metric-subtitle">Actions that missed expectations</div>
-                        <div class="gap-details">Scaled but lost efficiency</div>
-                    </div>
-                </div>
-
-                <!-- Counterfactual Explanation -->
-                <div class="counterfactual-insight">
-                    <div class="insight-icon-large">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                        </svg>
-                    </div>
-                    <div class="insight-content">
-                        <h4>How Counterfactual Analysis Works</h4>
-                        <p>We compare your <strong>actual results</strong> to a baseline: "What would have happened if you maintained old efficiency at the new spend level?"</p>
-                        <ul class="insight-list">
-                            <li><strong>Offensive Win:</strong> Spend increased + beat baseline → Efficient scaling</li>
-                            <li><strong>Defensive Win:</strong> Market shrank, but you beat expected drop → Good defense</li>
-                            <li><strong>Decision Gap:</strong> Spend increased but missed expectations → Learn & adjust</li>
-                            <li><strong>Market Drag:</strong> External headwinds (excluded from attribution)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Decision Matrix Preview -->
-            <div class="matrix-preview">
-                <div class="matrix-header">
-                    <h3>Decision Outcome Matrix</h3>
-                    <p>2x2 quadrant system separates your decision quality from market conditions</p>
-                </div>
-                <div class="matrix-visualization">
-                    <!-- Decision Scatter Plot -->
-                    <svg viewBox="0 0 800 500" class="scatter-chart">
-                        <!-- Axes -->
-                        <line x1="400" y1="50" x2="400" y2="450" stroke="#2B2D42" stroke-width="2"/>
-                        <line x1="80" y1="250" x2="720" y2="250" stroke="#2B2D42" stroke-width="2"/>
-
-                        <!-- Quadrant backgrounds -->
-                        <rect x="400" y="50" width="320" height="200" fill="#10b981" opacity="0.05"/>
-                        <rect x="80" y="50" width="320" height="200" fill="#10b981" opacity="0.05"/>
-                        <rect x="400" y="250" width="320" height="200" fill="#f59e0b" opacity="0.05"/>
-                        <rect x="80" y="250" width="320" height="200" fill="#9CA3AF" opacity="0.08"/>
-
-                        <!-- Quadrant labels -->
-                        <text x="560" y="100" fill="#10b981" font-size="14" font-weight="700" text-anchor="middle">OFFENSIVE WIN</text>
-                        <text x="560" y="120" fill="#10b981" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">Spend ↑ + Beat Baseline</text>
-
-                        <text x="240" y="100" fill="#10b981" font-size="14" font-weight="700" text-anchor="middle">DEFENSIVE WIN</text>
-                        <text x="240" y="120" fill="#10b981" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">Market ↓ + Beat Drop</text>
-
-                        <text x="560" y="320" fill="#f59e0b" font-size="14" font-weight="700" text-anchor="middle">DECISION GAP</text>
-                        <text x="560" y="340" fill="#f59e0b" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">Scaled but Missed</text>
-
-                        <text x="240" y="320" fill="#6B7280" font-size="14" font-weight="700" text-anchor="middle">MARKET DRAG</text>
-                        <text x="240" y="340" fill="#6B7280" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">(Excluded)</text>
-
-                        <!-- Offensive Win dots (top right) -->
-                        <circle cx="680" cy="80" r="8" fill="#10b981" opacity="0.8"/>
-                        <circle cx="640" cy="100" r="10" fill="#10b981" opacity="0.8"/>
-                        <circle cx="700" cy="120" r="7" fill="#10b981" opacity="0.8"/>
-                        <circle cx="620" cy="90" r="9" fill="#10b981" opacity="0.8"/>
-                        <circle cx="660" cy="110" r="8" fill="#10b981" opacity="0.8"/>
-                        <circle cx="590" cy="85" r="7" fill="#10b981" opacity="0.8"/>
-                        <circle cx="650" cy="95" r="9" fill="#10b981" opacity="0.8"/>
-                        <circle cx="690" cy="130" r="8" fill="#10b981" opacity="0.8"/>
-
-                        <!-- Defensive Win dots (top left) -->
-                        <circle cx="180" cy="80" r="8" fill="#10b981" opacity="0.8"/>
-                        <circle cx="220" cy="100" r="9" fill="#10b981" opacity="0.8"/>
-                        <circle cx="160" cy="110" r="7" fill="#10b981" opacity="0.8"/>
-                        <circle cx="200" cy="90" r="8" fill="#10b981" opacity="0.8"/>
-                        <circle cx="240" cy="120" r="10" fill="#10b981" opacity="0.8"/>
-
-                        <!-- Decision Gap dots (bottom right) -->
-                        <circle cx="620" cy="350" r="8" fill="#f59e0b" opacity="0.7"/>
-                        <circle cx="660" cy="370" r="9" fill="#f59e0b" opacity="0.7"/>
-                        <circle cx="590" cy="390" r="7" fill="#f59e0b" opacity="0.7"/>
-                        <circle cx="640" cy="360" r="8" fill="#f59e0b" opacity="0.7"/>
-                        <circle cx="680" cy="380" r="9" fill="#f59e0b" opacity="0.7"/>
-
-                        <!-- Market Drag dots (bottom left - grayed out) -->
-                        <circle cx="150" cy="350" r="8" fill="#9CA3AF" opacity="0.4"/>
-                        <circle cx="180" cy="370" r="9" fill="#9CA3AF" opacity="0.4"/>
-                        <circle cx="130" cy="390" r="7" fill="#9CA3AF" opacity="0.4"/>
-                        <circle cx="200" cy="360" r="8" fill="#9CA3AF" opacity="0.4"/>
-                        <circle cx="160" cy="380" r="9" fill="#9CA3AF" opacity="0.4"/>
-
-                        <!-- Axis labels -->
-                        <text x="400" y="485" fill="#2B2D42" font-size="14" font-weight="600" text-anchor="middle">Expected Trend % →</text>
-                        <text x="35" y="250" fill="#2B2D42" font-size="14" font-weight="600" text-anchor="middle" transform="rotate(-90 35 250)">vs Expectation % →</text>
-
-                        <!-- Origin marker -->
-                        <circle cx="400" cy="250" r="4" fill="#2B2D42"/>
-                        <text x="410" y="245" fill="#2B2D42" font-size="12" font-weight="600">0,0</text>
-
-                        <!-- Legend -->
-                        <g transform="translate(50, 470)">
-                            <circle cx="0" cy="0" r="6" fill="#10b981" opacity="0.8"/>
-                            <text x="15" y="4" fill="#6B7280" font-size="12" font-weight="500">Wins (68%)</text>
-
-                            <circle cx="120" cy="0" r="6" fill="#f59e0b" opacity="0.7"/>
-                            <text x="135" y="4" fill="#6B7280" font-size="12" font-weight="500">Gaps (23%)</text>
-
-                            <circle cx="230" cy="0" r="6" fill="#9CA3AF" opacity="0.4"/>
-                            <text x="245" y="4" fill="#6B7280" font-size="12" font-weight="500">Market Drag (9% excluded)</text>
-                        </g>
-                    </svg>
-                </div>
-            </div>
-
-            <!-- Impact CTA -->
-            <div class="impact-cta">
-                <h3>The Feedback Loop Every PPC Manager Needs</h3>
-                <p>Make smarter decisions next time, based on what actually moved the needle this time</p>
-                <button class="primary-button large">See Your Impact Score →</button>
-            </div>
-        </div>
-    </section>
-
     <!-- Features - Organized by Value -->
     <section id="features" class="features-section-v2">
         <div class="container">
-            <!-- FEATURE REFRAMING LINE -->
-            <div class="features-thesis">
-                <p>
-                    Every feature in AdPulse exists for one reason:
-                    <br />
-                    <strong>to teach your account what worked, what didn't, and why.</strong>
-                </p>
-            </div>
-
             <div class="section-header">
-                <h2>The Optimization Engine That Powers Everything</h2>
-                <p>Automated data analysis drives the Impact Analyzer, Simulator, and client-ready reports</p>
+                <h2>The Complete Amazon PPC Command Center</h2>
+                <p>Everything you need to optimize, analyze, and scale—organized by workflow</p>
             </div>
 
             <!-- Core Optimization Engine -->
@@ -656,67 +388,6 @@
         </div>
     </section>
 
-    <!-- Free Audit CTA -->
-    <section class="free-audit-cta">
-        <div class="container">
-            <!-- AUDIT → PRODUCT BRIDGE -->
-            <div class="audit-bridge">
-                <p>
-                    This is what AdPulse does once.
-                    <br />
-                    <strong>The platform runs this logic continuously.</strong>
-                </p>
-                <p class="audit-bridge-detail">
-                    Daily decisions.
-                    Measured outcomes.
-                    Compounding learning.
-                </p>
-            </div>
-
-            <div class="audit-cta-content">
-                <div class="audit-cta-header">
-                    <div class="audit-badge">100% Free • No Credit Card</div>
-                    <h2>See Your Wasted Spend in 2 Minutes</h2>
-                    <p>Upload your Search Term Report and get an instant breakdown of exactly where you're bleeding money and missing opportunities.</p>
-                </div>
-                <div class="audit-cta-features">
-                    <div class="audit-feature">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="audit-icon">
-                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                        <div>
-                            <h4>Actual Waste Amount</h4>
-                            <p>Not estimates—real $ bleeding from your account</p>
-                        </div>
-                    </div>
-                    <div class="audit-feature">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="audit-icon">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                        </svg>
-                        <div>
-                            <h4>Harvest Opportunities</h4>
-                            <p>Hidden winners ready to scale profitably</p>
-                        </div>
-                    </div>
-                    <div class="audit-feature">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="audit-icon">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                            <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                        <div>
-                            <h4>Competitor ASINs</h4>
-                            <p>Which competitors are stealing your budget</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="audit-cta-button">
-                    <a href="audit.html" class="primary-button large">Get My Free Audit →</a>
-                    <p class="audit-disclaimer">Takes 60 seconds • Instant results • No signup required</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- How It Works -->
     <section id="how-it-works" class="how-it-works">
         <div class="container">
@@ -741,6 +412,218 @@
                     <h3>Export & Track Impact</h3>
                     <p>Download Amazon bulk files, upload to Ads Console, and watch the Impact Dashboard prove your ROI.</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Impact & Results Section -->
+    <section class="impact-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Separate What You Controlled from Market Luck</h2>
+                <p>Counterfactual analysis isolates your decision quality from external market conditions</p>
+            </div>
+
+            <!-- Impact Dashboard Preview -->
+            <div class="impact-dashboard">
+                <!-- Dashboard Header -->
+                <div class="impact-header">
+                    <div class="impact-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="impact-icon">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                            <polyline points="17 6 23 6 23 12"></polyline>
+                        </svg>
+                        <h3>14-Day Impact</h3>
+                    </div>
+                    <div class="time-selector">
+                        <button class="time-btn active">14D</button>
+                        <button class="time-btn">30D</button>
+                        <button class="time-btn">60D</button>
+                    </div>
+                </div>
+
+                <!-- Comparison Info -->
+                <div class="comparison-info">
+                    <span class="period-label">Comparing <strong>Nov 26 - Dec 09</strong> (Before) vs. <strong>Dec 10 - Dec 23</strong> (After)</span>
+                    <span class="measured-label">Measured: 272 | Pending: 332</span>
+                </div>
+
+                <!-- Impact Metrics Grid -->
+                <div class="impact-metrics">
+                    <div class="impact-card highlight">
+                        <div class="impact-card-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M16 8v8m-4-6v6m-4-4v4"></path>
+                            </svg>
+                            <span class="metric-label">VERIFIED IMPACT VS BASELINE</span>
+                        </div>
+                        <div class="metric-value positive">+INR121,371</div>
+                        <div class="metric-breakdown">
+                            <span class="breakdown-item wins">✅ Wins: +INR145,200</span>
+                            <span class="breakdown-item gaps">❌ Gaps: -INR23,829</span>
+                        </div>
+                        <div class="metric-subtitle">Excludes Market Drag (ambiguous attribution)</div>
+                    </div>
+
+                    <div class="impact-card">
+                        <div class="impact-card-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
+                                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                            <span class="metric-label">CAPITAL PROTECTED</span>
+                        </div>
+                        <div class="metric-value">INR16,571</div>
+                        <div class="metric-subtitle">From 47 confirmed negatives</div>
+                        <div class="confidence-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            Confidence: High
+                        </div>
+                    </div>
+
+                    <div class="impact-card">
+                        <div class="impact-card-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span class="metric-label">WIN RATE</span>
+                        </div>
+                        <div class="metric-value strong">68%</div>
+                        <div class="metric-subtitle">Actions in win quadrants</div>
+                        <div class="win-breakdown">
+                            <span class="win-type offensive">Offensive: 45%</span>
+                            <span class="win-type defensive">Defensive: 23%</span>
+                        </div>
+                    </div>
+
+                    <div class="impact-card">
+                        <div class="impact-card-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="metric-icon">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="16"></line>
+                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                            <span class="metric-label">DECISION GAP</span>
+                        </div>
+                        <div class="metric-value warning">23</div>
+                        <div class="metric-subtitle">Actions that missed expectations</div>
+                        <div class="gap-details">Scaled but lost efficiency</div>
+                    </div>
+                </div>
+
+                <!-- Counterfactual Explanation -->
+                <div class="counterfactual-insight">
+                    <div class="insight-icon-large">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                        </svg>
+                    </div>
+                    <div class="insight-content">
+                        <h4>How Counterfactual Analysis Works</h4>
+                        <p>We compare your <strong>actual results</strong> to a baseline: "What would have happened if you maintained old efficiency at the new spend level?"</p>
+                        <ul class="insight-list">
+                            <li><strong>Offensive Win:</strong> Spend increased + beat baseline → Efficient scaling</li>
+                            <li><strong>Defensive Win:</strong> Market shrank, but you beat expected drop → Good defense</li>
+                            <li><strong>Decision Gap:</strong> Spend increased but missed expectations → Learn & adjust</li>
+                            <li><strong>Market Drag:</strong> External headwinds (excluded from attribution)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decision Matrix Preview -->
+            <div class="matrix-preview">
+                <div class="matrix-header">
+                    <h3>Decision Outcome Matrix</h3>
+                    <p>2x2 quadrant system separates your decision quality from market conditions</p>
+                </div>
+                <div class="matrix-visualization">
+                    <!-- Decision Scatter Plot -->
+                    <svg viewBox="0 0 800 500" class="scatter-chart">
+                        <!-- Axes -->
+                        <line x1="400" y1="50" x2="400" y2="450" stroke="#2B2D42" stroke-width="2"/>
+                        <line x1="80" y1="250" x2="720" y2="250" stroke="#2B2D42" stroke-width="2"/>
+
+                        <!-- Quadrant backgrounds -->
+                        <rect x="400" y="50" width="320" height="200" fill="#10b981" opacity="0.05"/>
+                        <rect x="80" y="50" width="320" height="200" fill="#10b981" opacity="0.05"/>
+                        <rect x="400" y="250" width="320" height="200" fill="#f59e0b" opacity="0.05"/>
+                        <rect x="80" y="250" width="320" height="200" fill="#9CA3AF" opacity="0.08"/>
+
+                        <!-- Quadrant labels -->
+                        <text x="560" y="100" fill="#10b981" font-size="14" font-weight="700" text-anchor="middle">OFFENSIVE WIN</text>
+                        <text x="560" y="120" fill="#10b981" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">Spend ↑ + Beat Baseline</text>
+
+                        <text x="240" y="100" fill="#10b981" font-size="14" font-weight="700" text-anchor="middle">DEFENSIVE WIN</text>
+                        <text x="240" y="120" fill="#10b981" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">Market ↓ + Beat Drop</text>
+
+                        <text x="560" y="320" fill="#f59e0b" font-size="14" font-weight="700" text-anchor="middle">DECISION GAP</text>
+                        <text x="560" y="340" fill="#f59e0b" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">Scaled but Missed</text>
+
+                        <text x="240" y="320" fill="#6B7280" font-size="14" font-weight="700" text-anchor="middle">MARKET DRAG</text>
+                        <text x="240" y="340" fill="#6B7280" font-size="11" font-weight="500" text-anchor="middle" opacity="0.7">(Excluded)</text>
+
+                        <!-- Offensive Win dots (top right) -->
+                        <circle cx="680" cy="80" r="8" fill="#10b981" opacity="0.8"/>
+                        <circle cx="640" cy="100" r="10" fill="#10b981" opacity="0.8"/>
+                        <circle cx="700" cy="120" r="7" fill="#10b981" opacity="0.8"/>
+                        <circle cx="620" cy="90" r="9" fill="#10b981" opacity="0.8"/>
+                        <circle cx="660" cy="110" r="8" fill="#10b981" opacity="0.8"/>
+                        <circle cx="590" cy="85" r="7" fill="#10b981" opacity="0.8"/>
+                        <circle cx="650" cy="95" r="9" fill="#10b981" opacity="0.8"/>
+                        <circle cx="690" cy="130" r="8" fill="#10b981" opacity="0.8"/>
+
+                        <!-- Defensive Win dots (top left) -->
+                        <circle cx="180" cy="80" r="8" fill="#10b981" opacity="0.8"/>
+                        <circle cx="220" cy="100" r="9" fill="#10b981" opacity="0.8"/>
+                        <circle cx="160" cy="110" r="7" fill="#10b981" opacity="0.8"/>
+                        <circle cx="200" cy="90" r="8" fill="#10b981" opacity="0.8"/>
+                        <circle cx="240" cy="120" r="10" fill="#10b981" opacity="0.8"/>
+
+                        <!-- Decision Gap dots (bottom right) -->
+                        <circle cx="620" cy="350" r="8" fill="#f59e0b" opacity="0.7"/>
+                        <circle cx="660" cy="370" r="9" fill="#f59e0b" opacity="0.7"/>
+                        <circle cx="590" cy="390" r="7" fill="#f59e0b" opacity="0.7"/>
+                        <circle cx="640" cy="360" r="8" fill="#f59e0b" opacity="0.7"/>
+                        <circle cx="680" cy="380" r="9" fill="#f59e0b" opacity="0.7"/>
+
+                        <!-- Market Drag dots (bottom left - grayed out) -->
+                        <circle cx="150" cy="350" r="8" fill="#9CA3AF" opacity="0.4"/>
+                        <circle cx="180" cy="370" r="9" fill="#9CA3AF" opacity="0.4"/>
+                        <circle cx="130" cy="390" r="7" fill="#9CA3AF" opacity="0.4"/>
+                        <circle cx="200" cy="360" r="8" fill="#9CA3AF" opacity="0.4"/>
+                        <circle cx="160" cy="380" r="9" fill="#9CA3AF" opacity="0.4"/>
+
+                        <!-- Axis labels -->
+                        <text x="400" y="485" fill="#2B2D42" font-size="14" font-weight="600" text-anchor="middle">Expected Trend % →</text>
+                        <text x="35" y="250" fill="#2B2D42" font-size="14" font-weight="600" text-anchor="middle" transform="rotate(-90 35 250)">vs Expectation % →</text>
+
+                        <!-- Origin marker -->
+                        <circle cx="400" cy="250" r="4" fill="#2B2D42"/>
+                        <text x="410" y="245" fill="#2B2D42" font-size="12" font-weight="600">0,0</text>
+
+                        <!-- Legend -->
+                        <g transform="translate(50, 470)">
+                            <circle cx="0" cy="0" r="6" fill="#10b981" opacity="0.8"/>
+                            <text x="15" y="4" fill="#6B7280" font-size="12" font-weight="500">Wins (68%)</text>
+
+                            <circle cx="120" cy="0" r="6" fill="#f59e0b" opacity="0.7"/>
+                            <text x="135" y="4" fill="#6B7280" font-size="12" font-weight="500">Gaps (23%)</text>
+
+                            <circle cx="230" cy="0" r="6" fill="#9CA3AF" opacity="0.4"/>
+                            <text x="245" y="4" fill="#6B7280" font-size="12" font-weight="500">Market Drag (9% excluded)</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Impact CTA -->
+            <div class="impact-cta">
+                <h3>Stop Flying Blind</h3>
+                <p>Know exactly which optimizations work—backed by data, not guesswork</p>
+                <button class="primary-button large">See Impact Tracking in Action →</button>
             </div>
         </div>
     </section>
@@ -786,31 +669,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- PRE-PRICING PHILOSOPHY CLIFF -->
-    <section class="pricing-philosophy">
-        <div class="container">
-            <h3>
-                Every Month, You Make Hundreds of PPC Decisions.
-            </h3>
-            <p>
-                Bid changes.
-                Keyword blocks.
-                Budget shifts.
-                Scaling calls.
-                <br /><br />
-                Most teams never find out which of those decisions actually helped —
-                or which quietly hurt them.
-            </p>
-            <p class="pricing-anchor">
-                <strong>
-                    AdPulse is not priced as a tool.
-                    <br />
-                    It's priced as decision infrastructure.
-                </strong>
-            </p>
         </div>
     </section>
 
@@ -887,14 +745,8 @@
     <section class="final-cta">
         <div class="container">
             <div class="cta-content">
-                <!-- ONE-LINE CLOSER -->
-                <p class="closing-line">
-                    Optimization improves metrics.
-                    <br />
-                    Learning improves systems.
-                </p>
-                <h2>Close The Loop. See What Actually Works.</h2>
-                <p>Join sellers who finally know which optimizations drive revenue—and stop wasting budget on what doesn't.</p>
+                <h2>Stop Guessing. Start Winning.</h2>
+                <p>Join sellers who've reclaimed 8+ hours per week and increased ROAS by 2.3x on average.</p>
                 <div class="cta-buttons">
                     <button class="primary-button large">Start Free 14-Day Trial</button>
                     <p class="cta-subtext">No credit card required • Full access • Cancel anytime</p>
