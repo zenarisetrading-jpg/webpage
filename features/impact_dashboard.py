@@ -50,6 +50,54 @@ IMPACT_WINDOWS = {
 }
 
 # ==========================================
+# HELPER: Ensure Required Impact Columns Exist
+# ==========================================
+def _ensure_impact_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ensure required columns for impact calculation exist in the dataframe.
+    This handles cache compatibility when columns were calculated in postgres_manager
+    but old cached data doesn't have them.
+    
+    Returns a copy of the dataframe with all required columns.
+    """
+    import numpy as np
+    
+    df = df.copy()
+    MIN_CLICKS_FOR_RELIABLE = 5
+    
+    # If market_tag already exists, return as-is
+    if 'market_tag' in df.columns and 'expected_trend_pct' in df.columns:
+        return df
+    
+    # Calculate counterfactual metrics
+    df['spc_before'] = df['before_sales'] / df['before_clicks'].replace(0, np.nan)
+    df['cpc_before'] = df['before_spend'] / df['before_clicks'].replace(0, np.nan)
+    df['expected_clicks'] = df['observed_after_spend'] / df['cpc_before']
+    df['expected_sales'] = df['expected_clicks'] * df['spc_before']
+    
+    df['expected_trend_pct'] = ((df['expected_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
+    df['actual_change_pct'] = ((df['observed_after_sales'] - df['before_sales']) / df['before_sales'] * 100).fillna(0)
+    df['decision_value_pct'] = df['actual_change_pct'] - df['expected_trend_pct']
+    df['decision_impact'] = df['observed_after_sales'] - df['expected_sales']
+    
+    # Apply low-sample guardrail
+    low_sample_mask = df['before_clicks'] < MIN_CLICKS_FOR_RELIABLE
+    df.loc[low_sample_mask, 'decision_impact'] = 0
+    df.loc[low_sample_mask, 'decision_value_pct'] = 0
+    
+    # Assign market_tag
+    conditions = [
+        (df['expected_trend_pct'] >= 0) & (df['decision_value_pct'] >= 0),
+        (df['expected_trend_pct'] < 0) & (df['decision_value_pct'] >= 0),
+        (df['expected_trend_pct'] >= 0) & (df['decision_value_pct'] < 0),
+        (df['expected_trend_pct'] < 0) & (df['decision_value_pct'] < 0),
+    ]
+    choices = ['Offensive Win', 'Defensive Win', 'Gap', 'Market Drag']
+    df['market_tag'] = np.select(conditions, choices, default='Unknown')
+    
+    return df
+
+# ==========================================
 # CONFIDENCE CLASSIFICATION (High/Medium/Low)
 # ==========================================
 from math import sqrt
@@ -741,9 +789,6 @@ def _render_hero_banner(impact_df: pd.DataFrame, currency: str, horizon_label: s
     """
     Render the Hero Section: "Did your optimizations make money?"
     Human-centered design with YES/NO/BREAK EVEN prefix.
-    
-    NOTE: Uses pre-calculated decision_impact and market_tag from get_action_impact()
-    to ensure consistency across all displays (single source of truth).
     """
     import numpy as np
     
@@ -751,16 +796,12 @@ def _render_hero_banner(impact_df: pd.DataFrame, currency: str, horizon_label: s
         st.info("No data for hero calculation")
         return
 
-    df = impact_df.copy()
+    # Ensure required columns exist (handles old cached data)
+    df = _ensure_impact_columns(impact_df)
     
     # ==========================================
-    # USE PRE-CALCULATED VALUES (Single Source of Truth)
+    # QUADRANT AGGREGATION
     # ==========================================
-    # decision_impact, expected_trend_pct, decision_value_pct, and market_tag
-    # are pre-calculated in get_action_impact() with all guardrails applied.
-    # We NO LONGER recalculate them here - this prevents drift between components.
-    
-    # Quadrant Aggregation using pre-calculated market_tag
     offensive_wins = df[df['market_tag'] == 'Offensive Win']
     offensive_val = offensive_wins['decision_impact'].sum()
     
@@ -1039,10 +1080,7 @@ def _render_data_confidence_section(impact_df: pd.DataFrame):
 
 
 def _render_value_breakdown_section(impact_df: pd.DataFrame, currency: str):
-    """Section 6: Where did the value come from? - Impact by action type.
-    
-    NOTE: Uses pre-calculated decision_impact and market_tag from get_action_impact()
-    """
+    """Section 6: Where did the value come from? - Impact by action type."""
     import plotly.graph_objects as go
     
     if impact_df.empty:
@@ -1060,11 +1098,8 @@ def _render_value_breakdown_section(impact_df: pd.DataFrame, currency: str):
     </div>
     """, unsafe_allow_html=True)
     
-    # ==========================================
-    # USE PRE-CALCULATED VALUES (Single Source of Truth)
-    # ==========================================
-    # decision_impact and market_tag are pre-calculated with all guardrails applied
-    df = impact_df.copy()
+    # Ensure required columns exist (handles old cached data)
+    df = _ensure_impact_columns(impact_df)
     
     # Exclude Market Drag (ambiguous attribution)
     df = df[df['market_tag'] != 'Market Drag']
@@ -1251,10 +1286,7 @@ def _render_validation_rate_chart(impact_df: pd.DataFrame):
 
 
 def _render_cumulative_impact_chart(impact_df: pd.DataFrame, currency: str):
-    """Section 4: Is it getting better? - Cumulative Impact Over Time.
-    
-    NOTE: Uses pre-calculated decision_impact and market_tag from get_action_impact()
-    """
+    """Section 4: Is it getting better? - Cumulative Impact Over Time."""
     import plotly.graph_objects as go
     import numpy as np
     
@@ -1282,13 +1314,12 @@ def _render_cumulative_impact_chart(impact_df: pd.DataFrame, currency: str):
     if 'action_date' not in df.columns:
         return
     
-    # ==========================================
-    # USE PRE-CALCULATED VALUES (Single Source of Truth)
-    # ==========================================
-    # Exclude Market Drag (ambiguous attribution) using pre-calculated market_tag
+    # Ensure required columns exist (handles old cached data)
+    df = _ensure_impact_columns(df)
+    
+    # Exclude Market Drag (ambiguous attribution)
     df = df[df['market_tag'] != 'Market Drag']
     
-    # Use pre-calculated decision_impact (already has guardrails applied)
     impact_column = 'decision_impact'
         
     if df.empty:
@@ -1432,8 +1463,9 @@ def _render_new_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFram
     # decision_impact and market_tag are pre-calculated in get_action_impact()
     # with all guardrails (including MIN_CLICKS_FOR_RELIABLE) already applied.
     
-    if not impact_df.empty and 'market_tag' in impact_df.columns:
-        df = impact_df.copy()
+    if not impact_df.empty:
+        # Ensure required columns exist (handles old cached data)
+        df = _ensure_impact_columns(impact_df)
         
         # Exclude Market Drag (ambiguous attribution)
         non_drag = df[df['market_tag'] != 'Market Drag']
@@ -1568,11 +1600,7 @@ def _render_new_impact_analytics(summary: Dict[str, Any], impact_df: pd.DataFram
 
 
 def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, Any]):
-    """Section 3: Did each decision help or hurt? - Decision Outcome Matrix.
-    
-    NOTE: Uses pre-calculated columns from get_action_impact():
-    - expected_trend_pct, decision_value_pct, decision_impact, market_tag
-    """
+    """Section 3: Did each decision help or hurt? - Decision Outcome Matrix."""
     
     import plotly.graph_objects as go
     import numpy as np
@@ -1596,11 +1624,8 @@ def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, 
     df = impact_df.copy()
     df = df[df['before_spend'] > 0]
     
-    # ==========================================
-    # USE PRE-CALCULATED VALUES (Single Source of Truth)
-    # ==========================================
-    # expected_trend_pct, decision_value_pct, decision_impact, and market_tag
-    # are pre-calculated in get_action_impact() with all guardrails applied.
+    # Ensure required columns exist (handles old cached data)
+    df = _ensure_impact_columns(df)
     
     # Clean up infinite/nan values for visualization
     df = df[np.isfinite(df['expected_trend_pct']) & np.isfinite(df['decision_value_pct'])]
@@ -1618,12 +1643,9 @@ def _render_decision_outcome_matrix(impact_df: pd.DataFrame, summary: Dict[str, 
     df['action_clean'] = df['action_type'].str.upper().str.replace('_CHANGE', '').str.replace('_ADD', '')
     df['action_clean'] = df['action_clean'].replace({'BID': 'Bid', 'NEGATIVE': 'Negative', 'HARVEST': 'Harvest'})
     
-    # Color Mapping Logic (unused, but kept for reference)
-    # We split data by quadrant instead for cleaner legend control
-    
     fig = go.Figure()
     
-    # Split data: Non-Market Drag vs Market Drag using pre-calculated market_tag
+    # Split data: Non-Market Drag vs Market Drag
     non_drag = df[df['market_tag'] != 'Market Drag']
     drag = df[df['market_tag'] == 'Market Drag']
     
