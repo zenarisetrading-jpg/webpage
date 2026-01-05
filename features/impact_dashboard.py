@@ -446,11 +446,8 @@ def render_impact_dashboard():
     with st.spinner("Calculating impact..."):
         # Use cached fetcher
         test_mode = st.session_state.get('test_mode', False)
-        # Force cache bust with version + timestamp
-        # Force cache bust with version + timestamp
-        # CRITICAL: Clear st.cache_data to ensure new logic is applied
-        _fetch_impact_data.clear()
-        cache_version = "v15_dampening_" + str(st.session_state.get('data_upload_timestamp', 'init'))
+        # Cache invalidation via version string (changes when data uploaded)
+        cache_version = "v16_perf_" + str(st.session_state.get('data_upload_timestamp', 'init'))
         
         # Get horizon config
         horizon_config = IMPACT_WINDOWS["horizons"].get(horizon, IMPACT_WINDOWS["horizons"]["14D"])
