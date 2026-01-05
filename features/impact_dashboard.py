@@ -861,15 +861,18 @@ def _render_hero_banner(impact_df: pd.DataFrame, currency: str, horizon_label: s
     impact_sign = '+' if attributed_impact >= 0 else ''
     impact_display = f"{impact_sign}{currency}{attributed_impact:,.0f}"
     
-    # Calculate incremental lift percentage
-    # incremental_pct = decision_impact / (observed_sales - decision_impact) * 100
-    # This represents "Your revenue was X% higher because of optimizations"
+    # Calculate incremental contribution percentage
+    # This represents "What % of total account revenue did optimizations contribute?"
+    # Uses before_sales as proxy for total account baseline, then adds attributed impact
     non_drag_mask = df['market_tag'] != 'Market Drag'
-    total_observed_sales = df.loc[non_drag_mask, 'observed_after_sales'].sum()
-    baseline_sales = total_observed_sales - attributed_impact
-    incremental_pct = (attributed_impact / baseline_sales * 100) if baseline_sales > 0 else 0
+    total_before_sales = df.loc[non_drag_mask, 'before_sales'].sum()
+    total_after_sales = df.loc[non_drag_mask, 'observed_after_sales'].sum()
+    # Total account revenue ≈ before_sales + after_sales (covers full measurement period)
+    total_account_sales = total_before_sales + total_after_sales
+    # Contribution = impact / total account sales
+    incremental_pct = (attributed_impact / total_account_sales * 100) if total_account_sales > 0 else 0
     incremental_sign = '+' if incremental_pct >= 0 else ''
-    incremental_badge = f"{incremental_sign}{incremental_pct:.1f}% incremental" if abs(incremental_pct) > 0.1 else ""
+    incremental_badge = f"{incremental_sign}{incremental_pct:.1f}% of revenue" if abs(incremental_pct) > 0.1 else ""
     
     # SVG Icons
     checkmark_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
