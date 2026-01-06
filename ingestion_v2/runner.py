@@ -11,8 +11,21 @@ RULES (LOCKED):
 - Failures leave email UNSEEN for retry
 """
 
-import asyncio
+# Load .env FIRST before any other imports
 import os
+from pathlib import Path
+
+env_path = Path(__file__).parent.parent / ".env"
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                os.environ.setdefault(key.strip(), value.strip())
+
+# Now import everything else
+import asyncio
 from typing import Optional
 
 from .adapters import IMAPAdapter
@@ -202,6 +215,18 @@ class IngestionRunner:
 
 def main():
     """CLI entry point."""
+    # Load .env file
+    from pathlib import Path
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
+        print(f"✅ Loaded .env from {env_path}")
+    
     print("=" * 50)
     print("V2 Ingestion Runner")
     print("=" * 50)
@@ -221,3 +246,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
