@@ -2,40 +2,39 @@
 
 **Product:** Saddle AdPulse  
 **Module:** Dual-Play Ingestion Infrastructure (Email-First, API-Ready)  
-**Document Type:** Foundational Infrastructure PRD  
-**Version:** 1.2 (Fail-Safe, Build-Ready)  
+**Document Type:** Master Infrastructure Spec & Migration Plan  
+**Version:** 1.2 (Frozen for Build)  
 **Owner:** Founder  
-**Status:** Approved for Engineering — Frozen  
+**Status:** **APPROVED FOR EXECUTION**
 
 ---
 
 ## TABLE OF CONTENTS
 
 1. [Purpose & Scope](#1-purpose--scope)
-2. [Guiding Principles (Non-Negotiables)](#2-guiding-principles-non-negotiable)
-3. [Definitions & Terminology](#3-definitions--terminology)
+2. [Guiding Principles](#2-guiding-principles-non-negotiable)
+3. [Definitions](#3-definitions--terminology)
 4. [System Overview & Architecture](#4-system-overview--architecture)
 5. [Supported Ingestion Sources](#5-supported-ingestion-sources)
-6. [Account Identification & Security Model](#6-account-identification--security-model)
+6. [Account Identification & Security](#6-account-identification--security-model)
 7. [Email Ingestion Adapter (Phase 1)](#7-email-ingestion-adapter-phase-1)
 8. [API Ingestion Adapter (Future)](#8-api-ingestion-adapter-future)
-9. [Validation Layer (Source-Agnostic)](#9-validation-layer-source-agnostic)
+9. [Validation Layer](#9-validation-layer-source-agnostic)
 10. [Raw File Storage Layer](#10-raw-file-storage-layer)
-11. [Parsing Engine & Field Mapping (Technical Spec)](#11-parsing-engine--field-mapping)
-12. [Normalized Data Load & Schema (Technical Spec)](#12-normalized-data-load--schema)
+11. [Parsing Engine & Field Mapping (Technical Spec)](#11-parsing-engine--field-mapping-technical-spec)
+12. [Normalized Data Load & Schema (Technical Spec)](#12-normalized-data-load--schema-technical-spec)
 13. [Ingestion History & Auditability](#13-ingestion-history--auditability)
-14. [Ingestion State Machine & Concurrency Control](#14-ingestion-state-machine--concurrency-control)
-15. [Schedule Detection & Monitoring](#15-schedule-detection--monitoring)
-16. [Failure Handling & Quarantine Flow](#16-failure-handling--quarantine)
-17. [Replay, Reprocessing & Backfill Semantics](#17-replay-reprocessing--backfill-semantics)
-18. [Alerting & Notification System](#18-alerting--notification-system)
-19. [Manual Upload (Fallback Path)](#19-manual-upload-fallback-path)
-20. [Data Retention & Purge Policy](#20-data-retention--purge-policy)
-21. [Access Control & User Visibility](#21-access-control--user-visibility)
-22. [Non-Goals](#22-non-goals)
-23. [Phased Delivery Plan](#23-phased-delivery-plan)
-24. [Success Metrics](#24-success-metrics)
-25. [Change Control Rules](#25-change-control-rules)
+14. [Schedule Detection & Monitoring](#14-schedule-detection--monitoring)
+15. [Failure Handling & Quarantine](#15-failure-handling--quarantine)
+16. [Alerting & Notifications](#16-alerting--notifications)
+17. [Manual Upload (Fallback)](#17-manual-upload-fallback-path)
+18. [Data Retention](#18-data-retention--purge-policy)
+19. [Access Control](#19-access-control--user-visibility)
+20. [Non-Goals](#20-non-goals)
+21. [Phased Delivery Plan](#21-phased-delivery-plan)
+22. [Success Metrics](#22-success-metrics)
+23. [Change Control Rules](#23-change-control-rules)
+24. [**APPENDIX: MIGRATION & EXECUTION STRATEGY (MANDATORY)**](#24-appendix-migration--execution-strategy-mandatory)
 
 ---
 
@@ -45,27 +44,23 @@
 To define a single ingestion infrastructure that:
 - Works today via email.
 - Supports Amazon API ingestion later.
-- Avoids re-architecture or logic duplication.
 - Guarantees traceability, replayability, and data integrity.
+- **Coexists safely with the legacy system during migration.**
 
 ### Scope
-**Includes:** Ingestion, Validation, Storage, Parsing, Loading, Alerting, Retention  
-**Excludes:** Optimization logic, Impact modeling, UI design beyond ingestion visibility
+- **Includes:** Ingestion, Validation, Storage, Parsing, Loading, Alerting, Retention.
+- **Excludes:** Optimization logic, Impact modeling, UI design beyond ingestion visibility.
 
 ---
 
 ## 2. GUIDING PRINCIPLES (NON-NEGOTIABLE)
 
-1. **Adapters are swappable. Core logic is not.**
+1. **Adapters are swappable.** Core logic is not.
 2. **No data is ever discarded silently.**
 3. **Failures alert operators before users.**
 4. **Raw data must always be recoverable.**
 5. **Email is a transport, not a dependency.**
 6. **Every ingestion is auditable.**
-7. **Reprocessing must be deterministic and idempotent.**
-
-> [!CAUTION]
-> Any implementation that violates these principles is incorrect.
 
 ---
 
@@ -73,49 +68,59 @@ To define a single ingestion infrastructure that:
 
 | Term | Definition |
 |------|------------|
-| **Ingestion Event** | One attempt to process a report |
-| **Raw File** | Original CSV as received (immutable) |
-| **Adapter** | Source-specific ingestion mechanism |
-| **Validation** | Identity + structural checks before parsing |
-| **Quarantine** | Stored but unprocessed file due to errors |
-| **Operator** | Internal team (Founder/Admin) |
-| **Replay** | Reprocessing an existing raw file |
+| **Ingestion Event** | One attempt to process a report. |
+| **Raw File** | Original CSV as received (immutable). |
+| **Adapter** | Source-specific ingestion mechanism (Email vs API). |
+| **Validation** | Identity + structure checks *before* parsing. |
+| **Quarantine** | Stored but unprocessed file due to errors. |
+| **Shadow Mode** | Running V2 logic without user visibility or database overwrites. |
 
 ---
 
 ## 4. SYSTEM OVERVIEW & ARCHITECTURE
 
 ### Conceptual Flow
-
 ```
 SOURCE → Adapter → Validator → Raw Store → Parser → DB
 ```
 
+### Logic Flow (Sequence Diagram)
+*Developers: Use this logic to structure the async pipeline.*
+
 ```mermaid
 sequenceDiagram
-    participant Source
-    participant Adapter
+    participant User
+    participant EmailAdapter
     participant Validator
-    participant Storage
+    participant RawStore as Storage (Supabase/S3)
     participant Parser
     participant DB
 
-    Source->>Adapter: Deliver Report
-    Adapter->>Validator: Validate Identity + Structure
-
+    User->>EmailAdapter: Sends Email (str-uuid@...)
+    EmailAdapter->>EmailAdapter: Extract Metadata & UUID
+    
+    rect rgb(245, 245, 245)
+    Note over EmailAdapter, Validator: Common Pipeline Starts
+    EmailAdapter->>Validator: Validate(Sender, UUID)
+    
     alt Validation Fails
-        Validator->>DB: Log Event (REJECTED)
-    else Validation Passes
-        Validator->>Storage: Store Raw File
-        Validator->>DB: Log Event (RECEIVED)
+        Validator-->>EmailAdapter: Error
+        EmailAdapter->>DB: Log Event (Status: REJECTED)
+    else Validation Succeeded
+        Validator->>RawStore: put(file_blob)
+        RawStore-->>Validator: returns file_id
+        Validator->>DB: Log Event (Status: RECEIVED)
         Validator->>Parser: Parse(file_id)
-
+        
         alt Parse Error
-            Parser->>DB: Update Event (QUARANTINE)
+            Parser->>DB: Update Event (Status: QUARANTINE)
+            Note right of Parser: Raw file REMAINS in Storage
         else Parse Success
-            Parser->>DB: Atomic Insert
-            Parser->>DB: Update Event (COMPLETED)
+            Parser->>DB: Insert Rows (Normalized)
+            DB-->>Parser: Success
+            Parser->>DB: Update Event (Status: PROCESSED)
         end
+    end
     end
 ```
 
@@ -123,220 +128,168 @@ sequenceDiagram
 
 ## 5. SUPPORTED INGESTION SOURCES
 
-```python
-enum IngestionSource {
-  EMAIL,
-  API,
-  MANUAL
-}
-```
+**Enum (Required):** `IngestionSource`
 
-> [!IMPORTANT]
-> **Rule:** All sources must converge into the same validation, storage, and parsing pipeline.
+```python
+class IngestionSource(Enum):
+    EMAIL = "EMAIL"
+    API = "API"
+    MANUAL = "MANUAL"
+```
 
 ---
 
 ## 6. ACCOUNT IDENTIFICATION & SECURITY MODEL
 
-### Identifiers
-- System-generated UUID per account
-- Email format: `str-{uuid}@ingest.saddle.ai`
+### Identifier Strategy
+- System-generated UUID per account.
+- Used as email local-part.
+- Format: `str-{uuid}@ingest.saddle.ai`
 
-### Validation Logic (LOCKED)
-
+### Validation Logic
 **PASS if:**
-1. UUID maps to an active account
-2. Sender email ∈ `allowed_sender_emails`
-
-> [!WARNING]
-> **DO NOT:**
-> - Infer account from file contents
-> - Allow wildcard sender domains
+1. `recipient_identifier` maps to an active account
+2. **AND** `sender_email` ∈ `allowed_sender_emails` (stored in Account Settings)
 
 ---
 
 ## 7. EMAIL INGESTION ADAPTER (PHASE 1)
 
 ### Responsibilities
-1. Receive email
-2. Extract metadata
-3. Extract attachment
-4. Forward payload to Validation Layer
+1. Receive email.
+2. Extract metadata (Sender, Timestamp, Subject).
+3. Save attachment to memory.
+4. Pass payload to **Validation Layer**.
 
-### Failure Conditions
-| Condition | Action |
-|-----------|--------|
-| No attachment | Log as REJECTED |
-| Multiple attachments | Log as REJECTED |
-| Non-CSV attachment | Log as REJECTED |
+> [!WARNING]
+> ### CRITICAL: The "Email Fork" Rule
+> During migration, V2 must receive a **copy** of the email independent of V1.
+> 
+> **Implementation:** Configure email provider (SES/Gmail) to forward a copy to a dedicated V2 address/alias. V2 must not "steal" emails from the V1 inbox.
 
 ---
 
 ## 8. API INGESTION ADAPTER (FUTURE)
 
 ### Responsibilities
-1. Authenticate with Amazon
-2. Fetch STR data
-3. Emit identical payload as Email Adapter
-
-> [!NOTE]
-> **Constraint:** Validator must be source-agnostic.
+1. Authenticate with Amazon.
+2. Fetch STR data.
+3. Pass payload to **Validation Layer** (Identical structure to Email Adapter).
 
 ---
 
 ## 9. VALIDATION LAYER (SOURCE-AGNOSTIC)
 
 ### Validation Types
-1. **Identity validation** — Account exists and sender is authorized
-2. **Structural validation** — File format and required columns present
-3. **Duplicate detection** — See [§14](#14-ingestion-state-machine--concurrency-control)
+1. **Identity:** (Does UUID exist? Is Sender Whitelisted?)
+2. **Structural:** (Is file empty? Is it UTF-8 readable?)
 
-### Failures
-- Logged
-- Quarantined
-- Alerted to Operator
+> [!IMPORTANT]
+> **Rule:** Validation happens *before* parsing. Failures are Logged, Quarantined, and Alerted.
 
 ---
 
 ## 10. RAW FILE STORAGE LAYER
 
-### Interface (MANDATORY)
+### Abstraction Interface (MANDATORY)
 
 ```python
-put(file_object, metadata) -> file_id
-get(file_id) -> file_object
+# Interface Definition
+def put(file_object, metadata: dict) -> str:
+    """Store file, return file_id"""
+    pass
+
+def get(file_id: str) -> bytes:
+    """Retrieve file by ID"""
+    pass
 ```
 
-| Phase | Provider |
-|-------|----------|
-| Phase 1 | Supabase |
-| Phase 3+ | S3 |
+**Phase 1:** Supabase Storage.
 
 > [!IMPORTANT]
-> Business logic must not reference provider directly.
+> **Rule:** Business logic must not reference the storage provider directly.
 
 ---
 
-## 11. PARSING ENGINE & FIELD MAPPING
+## 11. PARSING ENGINE & FIELD MAPPING (TECHNICAL SPEC)
 
-### CSV Normalization Rules
-- Headers → `snake_case`
-- Strip currency symbols ($, £, €, AED)
-- Strip percent symbols (%)
+> [!WARNING]
+> ### Resource Isolation Rule
+> The Parsing Engine must run on a **separate worker queue** (e.g., `celery_queue_v2`) to ensure CPU/Memory spikes during V2 backfills do not starve the production V1 system.
 
-### Required Header Mapping
+### Mapping Logic (Strict Mode)
+The parser must look for these Amazon Headers. If a **Required** header is missing, fail the file.
 
-| Amazon Header | Internal Field | Type | Required |
-|---------------|----------------|------|----------|
-| Date / Day | `report_date` | DATE | YES |
-| Campaign Name | `campaign_name` | STRING | YES |
-| Ad Group Name | `ad_group_name` | STRING | YES |
-| Customer Search Term | `search_term` | STRING | YES |
-| Impressions | `impressions` | INT | YES |
-| Clicks | `clicks` | INT | YES |
-| Spend | `spend` | DECIMAL | YES |
-
-### Partial Parse Tolerance
-| Condition | Action |
-|-----------|--------|
-| ≤1% malformed rows | Drop rows, continue |
-| >1% malformed rows | QUARANTINE entire file |
-
-### Parser Logging Requirements
-- `dropped_row_count`
-- `warnings[]`
+| Amazon Header (Variations) | Internal Field | Type | Required? |
+|----------------------------|----------------|------|-----------|
+| `Date`, `Day` | `report_date` | DATE | **YES** |
+| `Campaign Name` | `campaign_name` | STRING | **YES** |
+| `Ad Group Name` | `ad_group_name` | STRING | **YES** |
+| `Customer Search Term` | `search_term` | STRING | **YES** |
+| `Impressions` | `impressions` | INT | **YES** |
+| `Clicks` | `clicks` | INT | **YES** |
+| `Spend` | `spend` | DECIMAL(10,2) | **YES** |
+| `7 Day Total Sales` | `sales_7d` | DECIMAL(10,2) | NO (Default 0) |
 
 ---
 
-## 12. NORMALIZED DATA LOAD & SCHEMA
+## 12. NORMALIZED DATA LOAD & SCHEMA (TECHNICAL SPEC)
 
-### Constraints
-- **Atomic inserts** — All or nothing
-- **Idempotent by ingestion_id** — Reprocessing replaces, not appends
+> [!WARNING]
+> ### Table Isolation Rule
+> During migration phases, V2 must write to **distinct tables** (`_v2` suffix) to prevent Unique Constraint collisions and index locking on the live production tables.
 
-### `search_terms` Table (MVP)
+### Target Schema (MVP)
+
+**Table:** `search_terms_v2`
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | UUID | PK |
-| `account_id` | UUID | FK → accounts |
-| `ingestion_id` | UUID | FK → ingestion_events |
-| `report_date` | DATE | |
-| `campaign_name` | VARCHAR | |
-| `ad_group_name` | VARCHAR | |
-| `search_term` | TEXT | |
-| `impressions` | INTEGER | |
-| `clicks` | INTEGER | |
-| `spend` | DECIMAL | |
-| `created_at` | TIMESTAMP | |
+| `id` | UUID | Primary Key |
+| `account_id` | UUID | Foreign Key to `accounts` |
+| `ingestion_id` | UUID | Foreign Key to `ingestion_events` |
+| `report_date` | DATE | From CSV |
+| `campaign_name` | VARCHAR | From CSV |
+| `ad_group_name` | VARCHAR | From CSV |
+| `search_term` | VARCHAR | From CSV |
+| `impressions` | INT | |
+| `clicks` | INT | |
+| `spend` | DECIMAL(10,2) | |
+| `sales_7d` | DECIMAL(10,2) | |
+| `created_at` | TIMESTAMPTZ | Default NOW() |
 
 ---
 
 ## 13. INGESTION HISTORY & AUDITABILITY
 
-### `ingestion_events` Table
+**Table:** `ingestion_events_v2`
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `ingestion_id` | UUID | PK |
-| `account_id` | UUID | FK → accounts |
-| `source` | ENUM | EMAIL, API, MANUAL |
-| `status` | ENUM | See state machine |
-| `received_at` | TIMESTAMP | |
-| `processed_at` | TIMESTAMP | |
+| `account_id` | UUID | FK |
+| `source` | ENUM | `EMAIL`, `API`, `MANUAL` |
+| `status` | ENUM | `RECEIVED`, `PROCESSING`, `COMPLETED`, `FAILED` |
+| `failure_reason` | TEXT | Nullable |
 | `raw_file_path` | VARCHAR | Reference to storage |
-| `failure_reason` | TEXT | |
-| `metadata` | JSONB | Sender, filename, etc. |
+| `received_at` | TIMESTAMPTZ | |
+| `processed_at` | TIMESTAMPTZ | |
+| `metadata` | JSONB | Sender, filename, row counts |
 
 ---
 
-## 14. INGESTION STATE MACHINE & CONCURRENCY CONTROL
+## 14. SCHEDULE DETECTION & MONITORING
 
-### Valid State Transitions
-
-```mermaid
-stateDiagram-v2
-    [*] --> RECEIVED
-    RECEIVED --> PROCESSING
-    PROCESSING --> COMPLETED
-    PROCESSING --> QUARANTINE
-    PROCESSING --> FAILED
-    FAILED --> PROCESSING: manual only
-    QUARANTINE --> PROCESSING: manual only
-```
-
-> [!CAUTION]
-> Invalid transitions are forbidden.
-
-### Duplicate Protection
-```python
-source_fingerprint = hash(sender + filename + date_range)
-```
-
-- Enforce uniqueness per account
-- Duplicates logged as `DUPLICATE_IGNORED`
-- Not parsed
-- No alerts
+- **Learning Mode:** First 3 successful ingestions establish the baseline.
+- **Alert Rule:** Mark "Late" if `Now > (Last_Ingestion + Expected_Interval + 12 Hours)`.
 
 ---
 
-## 15. SCHEDULE DETECTION & MONITORING
+## 15. FAILURE HANDLING & QUARANTINE
 
-### Learning Cadence
-- Learn cadence after **3 successful ingestions**
-- Mark as **LATE** if:
-
+### Failure Flow
 ```
-now > last_ingestion + expected_interval + 12h
-```
-
----
-
-## 16. FAILURE HANDLING & QUARANTINE
-
-### Flow
-```
-FAIL → Store raw → Log QUARANTINE → Alert Operator → Await action
+FAIL → Store raw file → Log event (Status: QUARANTINE) → Alert Operator → Await Action
 ```
 
 ### Operator Actions
@@ -347,110 +300,179 @@ FAIL → Store raw → Log QUARANTINE → Alert Operator → Await action
 
 ---
 
-## 17. REPLAY, REPROCESSING & BACKFILL SEMANTICS
+## 16. ALERTING & NOTIFICATIONS
 
-### Reprocess Contract
-1. `DELETE` normalized rows `WHERE ingestion_id = X`
-2. Re-parse same `raw_file_path`
-3. Reinsert rows
-4. Update `processed_at`
-5. **Do NOT** create new `ingestion_id`
+### Severity Matrix
 
-### Backfill Mode
-- Accept date-range uploads
-- Mark ingestion as `BACKFILL`
-- Skip schedule alerts
+| Severity | Condition | Channel |
+|----------|-----------|---------|
+| **Critical** | System-wide failure | Slack + Email |
+| **High** | Single account ingestion failure | Slack |
+| **Medium** | Data late | In-App |
 
 ---
 
-## 18. ALERTING & NOTIFICATION SYSTEM
+## 17. MANUAL UPLOAD (FALLBACK PATH)
 
-### Alert Routing
-
-| Severity | Operator | User |
-|----------|----------|------|
-| Critical | Slack + Email | — |
-| High | Slack | — |
-| Medium | Slack | In-App |
-| Low | — | In-App |
-
-### Escalation Rule
-- Same `failure_reason` across **≥3 accounts** → Critical
+- Uses same validation pipeline.
+- Writes to same `ingestion_events_v2` table.
+- Source marked as `MANUAL`.
 
 ---
 
-## 19. MANUAL UPLOAD (FALLBACK PATH)
-
-- Same pipeline as Email/API
-- Date range limited (e.g., 60 days max)
-- Explicit overwrite confirmation required
-
----
-
-## 20. DATA RETENTION & PURGE POLICY
+## 18. DATA RETENTION & PURGE POLICY
 
 | Data Type | Retention |
 |-----------|-----------|
-| Raw files | 120 days |
-| Normalized data | Forever |
-
-**Purge Schedule:** Monthly job
+| Raw STR Data | 120 days |
+| Normalized Data | Indefinite |
 
 ---
 
-## 21. ACCESS CONTROL & USER VISIBILITY
+## 19. ACCESS CONTROL & USER VISIBILITY
 
 ### Users CAN See
-- Ingestion status
-- Last updated timestamp
+- Ingestion Status
+- Last Updated Timestamp
 
 ### Users CANNOT See
-- Raw files
-- Internal logs
+- Raw CSV links
+- Internal Logs
 - Operator notes
 
 ---
 
-## 22. NON-GOALS
+## 20. NON-GOALS
 
-- ❌ No real-time ingestion
-- ❌ No auto-retries without visibility
-- ❌ No email scheduling UI
+- ❌ No real-time ingestion guarantees.
+- ❌ No email scheduling UI.
+- ❌ No auto-retries without visibility.
 
 ---
 
-## 23. PHASED DELIVERY PLAN
+## 21. PHASED DELIVERY PLAN
 
 | Phase | Scope | Description |
 |-------|-------|-------------|
-| **Phase 1** | Email MVP | Basic email ingestion, parsing, storage |
-| **Phase 2** | Automation | Schedule detection, alerting |
-| **Phase 3** | Resilience | S3 storage, retry logic |
-| **Phase 4** | API Adapter | Amazon Advertising API integration |
+| **Phase 1** | Email MVP | Adapter, Validation, Storage, Parser, Slack Alerts |
+| **Phase 2** | Automation | Auto DB Load, Schedule Detection |
+| **Phase 3** | Resilience | Manual Upload, Replay |
+| **Phase 4** | API | Adapter only (reuse all other components) |
 
 ---
 
-## 24. SUCCESS METRICS
+## 22. SUCCESS METRICS
 
 | Metric | Target |
 |--------|--------|
-| Ingestion success rate | ≥95% |
-| Manual intervention rate | <5% |
+| Successful ingestions | ≥95% |
+| Manual intervention | <5% after 30 days |
 | Unrecoverable data loss | Zero |
 | New code for API swap | <20% |
 
 ---
 
-## 25. CHANGE CONTROL RULES
+## 23. CHANGE CONTROL RULES
 
 > [!CAUTION]
 > This document is **frozen**.
 
 Any deviation requires:
-1. Written justification
-2. Founder approval
-3. No abstraction boundary violations
+1. Written justification.
+2. Explicit founder sign-off.
+3. **Refactors that break abstraction boundaries are forbidden.**
 
 ---
 
-*Document Version: 1.2 | Last Updated: January 2026*
+## 24. APPENDIX: MIGRATION & EXECUTION STRATEGY (MANDATORY)
+
+> [!IMPORTANT]
+> This appendix defines the **mandatory safety protocols** for migrating from V1 to V2 ingestion. Each phase must be completed and verified before proceeding.
+
+### Phase 0: Preparation (Zero Risk)
+
+| Task | Description |
+|------|-------------|
+| **Freeze V1** | No changes to current ingestion code. |
+| **Namespace** | Add `ingestion_version` ENUM('v1', 'v2') to system. |
+| **Email Fork** | Configure email provider to forward a COPY of incoming mails to V2. V1 continues to receive original mails. |
+
+### Phase 1: The Skeleton
+
+| Task | Description |
+|------|-------------|
+| Create empty interfaces | Adapter, Validator, Store (no logic yet) |
+| Create `ingestion_events_v2` table | Audit trail for V2 |
+| **Safety:** | Do NOT connect to production logic |
+
+### Phase 2: Dark Ingestion
+
+| Task | Description |
+|------|-------------|
+| Turn on V2 Email Adapter | Receives forwarded copy of emails |
+| Log events only | Store Raw Files, log to `ingestion_events_v2` |
+| **Safety Check:** | Verify UUIDs and Senders match expected traffic |
+
+### Phase 3: Parser Dry-Run (Resource Isolated)
+
+| Task | Description |
+|------|-------------|
+| Run parser | On `celery_queue_v2` (Separate Worker) |
+| Parse CSVs | **DO NOT** write to `search_terms` |
+| Log row counts | Track dropped rows, warnings |
+| **Validation:** | Compare V1 row counts vs V2 parsed counts. Variance must be <1%. |
+
+### Phase 4: Dual Write (Table Isolated)
+
+| Task | Description |
+|------|-------------|
+| Create `search_terms_v2` table | Separate from production |
+| Enable V2 writes | For 1 test account only |
+| **Constraint:** | App UI still reads from V1 tables |
+
+### Phase 5: Reconciliation & Cutover
+
+| Task | Description |
+|------|-------------|
+| Run comparison script | Daily V1 vs V2 data comparison |
+| Switch READ | Once data matches for 7 days, switch test account to `search_terms_v2` |
+| Gradual expansion | Roll out to all users over 2 weeks |
+
+### Phase 6: Decommission
+
+| Task | Description |
+|------|-------------|
+| Archive V1 tables | `target_stats` → `target_stats_archived` |
+| Rename V2 tables | `search_terms_v2` → `search_terms` |
+| Remove V1 code | Only after 30 days of stable V2 operation |
+
+---
+
+### Migration State Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Phase0_Prep
+    Phase0_Prep --> Phase1_Skeleton: Freeze V1
+    Phase1_Skeleton --> Phase2_DarkIngestion: Tables created
+    Phase2_DarkIngestion --> Phase3_ParserDryRun: Events logging
+    Phase3_ParserDryRun --> Phase4_DualWrite: Variance <1%
+    Phase4_DualWrite --> Phase5_Cutover: Test account stable
+    Phase5_Cutover --> Phase6_Decommission: All users migrated
+    Phase6_Decommission --> [*]: V1 archived
+```
+
+---
+
+### Safety Protocol Summary
+
+| Protocol | Purpose | Enforcement |
+|----------|---------|-------------|
+| **Email Fork** | V2 receives copy, V1 unaffected | Email provider config |
+| **Table Isolation** | V2 writes to `_v2` tables | Schema naming convention |
+| **Worker Isolation** | V2 parser on separate queue | Celery queue config |
+| **Variance Check** | V1 vs V2 row counts must match | Automated daily script |
+
+---
+
+*Document Version: 1.2 | Last Updated: January 2026 | Status: FROZEN FOR EXECUTION*
