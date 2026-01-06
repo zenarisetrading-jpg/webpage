@@ -1,7 +1,7 @@
 # PPC Optimizer - App Flow Document
 
-**Version**: 1.1  
-**Last Updated**: December 31, 2025
+**Version**: 1.2  
+**Last Updated**: January 6, 2026
 
 ---
 
@@ -225,8 +225,9 @@ Data Hub Page
 │  STEP 7: Results Dashboard (Iterate Freely)                             │
 │  ┌────────────────────────────────────────────────┐                     │
 │  │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐        │                     │
-│  │  │112   │ │215   │ │93    │ │20    │        │                     │
-│  │  │Touched│ │Bids  │ │Negs  │ │Harvest│       │                     │
+│  │  │5,234 │ │215   │ │93    │ │20    │        │                     │
+│  │  │Search│ │Bids  │ │Negs  │ │Harvest│       │                     │
+│  │  │Terms │ │      │ │      │ │       │       │                     │
 │  │  └──────┘ └──────┘ └──────┘ └──────┘        │                     │
 │  │                                                 │                     │
 │  │  ✓ User can change settings and re-run          │                     │
@@ -405,30 +406,53 @@ Impact & Results Page
     │
     ▼
 ┌─────────────────────────────┐
-│ Time Window Selection:      │
-│ ○ 7D  ○ 14D  ● 30D  ○ 60D  │
+│ Horizon Selection:          │
+│ ○ 14D  ● 30D  ○ 60D        │
+│ (Before: always 14D)        │
+│ (After: matches selection)  │
 └─────────────────────────────┘
     │
     ▼
 ┌─────────────────────────────┐
-│ Fetch impact data:          │
-│ • Before period metrics     │
-│ • After period metrics      │
-│ • Calculate deltas          │
+│ Fetch dampened impact data: │
+│ • confidence_weight applied │
+│ • final_decision_impact     │
+│ • Z-score confidence calc   │
 └─────────────────────────────┘
     │
     ▼
-┌─────────────────────────────────────────────────┐
-│ Dashboard:                                       │
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌────────┐ │
-│ │ Actions │ │ ROAS Δ  │ │ Revenue │ │ Impl % │ │
-│ │  268    │ │ -6.6%   │ │ -$2,529 │ │  12%   │ │
-│ └─────────┘ └─────────┘ └─────────┘ └────────┘ │
-│                                                  │
-│ [Waterfall Chart]  [Winners/Losers Chart]       │
-│                                                  │
-│ [Drill-Down Table with individual actions]      │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ HERO BANNER:                                                 │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Did your optimizations make money?                       │ │
+│ │                                                          │ │
+│ │ ✓ YES — +AED20,187  [+7.6% of revenue]                  │ │
+│ │ ████████████████░░░░░░░░ 75% win rate                   │ │
+│ │                                                          │ │
+│ │ 670 decisions • 503 wins • 167 misses                    │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                              │
+│ [ℹ️ How we know this] ─── Expandable                        │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Statistical Confidence: Very High                        │ │
+│ │ Based on 670 validated decisions with 75% win rate.      │ │
+│ │ We're 99% confident this impact is real.                 │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ QUADRANT BREAKDOWN:                                          │
+│ ┌─────────────┐ ┌─────────────┐ ┌───────────┐ ┌───────────┐ │
+│ │ Offensive   │ │ Defensive   │ │ Gaps      │ │ Market    │ │
+│ │ Wins        │ │ Wins        │ │           │ │ Drag      │ │
+│ │ +18,234     │ │ +4,102      │ │ -2,149    │ │ (excl)    │ │
+│ └─────────────┘ └─────────────┘ └───────────┘ └───────────┘ │
+│                                                              │
+│ [Waterfall Chart]  [Action Type Breakdown]                   │
+│                                                              │
+│ [Drill-Down Table with individual actions]                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
