@@ -153,6 +153,14 @@ class IngestionRunner:
             print(f"❌ Adapter error: {e}")
             result["action"] = "ADAPTER_ERROR"
             result["error"] = str(e)
+            
+            # Mark email as read even on error (e.g., no CSV attachment)
+            # to prevent infinite loop on same email
+            try:
+                await self.adapter.acknowledge(None)
+            except:
+                pass
+            
             self.alerter.send_ingestion_failed(
                 account_id="unknown",
                 reason=str(e)
