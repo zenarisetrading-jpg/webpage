@@ -1,7 +1,7 @@
 # PPC Optimizer - Product Requirements Document (PRD)
 
-**Version**: 1.0  
-**Last Updated**: December 25, 2025  
+**Version**: 2.0  
+**Last Updated**: January 6, 2026  
 **Document Owner**: Zayaan Yousuf
 
 ---
@@ -672,9 +672,86 @@ Shown under Decision Impact hero tile: `Confidence: High | Medium | Low`
 **Tooltip**: "Confidence reflects data sufficiency, variance, and market stability."
 
 #### Constraints
-- ❌ Do NOT use "statistically significant" 
-- ❌ Do NOT show σ, Z-scores, or p-values in UI
+- ❌ Do NOT use "statistically significant" in customer-facing copy
+- ✅ Z-scores ARE calculated in backend for confidence (see 4.6.6)
 - ❌ Do NOT add toggles for confidence
+
+### 4.6.6 Confidence Weighting (Jan 2026)
+
+#### Purpose
+Dampen impact attribution for low-click decisions to reduce noise from statistically unreliable samples.
+
+#### Formula
+```
+confidence_weight = min(1.0, before_clicks / 15)
+final_decision_impact = decision_impact × confidence_weight
+```
+
+#### Impact Tiers
+| Tier | Criteria | Treatment |
+|------|----------|----------|
+| **Excluded** | before_clicks < 5 | Not counted in totals |
+| **Directional** | 5 ≤ clicks < 15 | Partial weight (33%-99%) |
+| **Validated** | clicks ≥ 15 | Full weight (100%) |
+
+#### Dampening Effect
+Typically 5-8% reduction in total attributed impact (reduces noise from low-data decisions).
+
+### 4.6.7 Statistical Confidence (Z-Score Based)
+
+#### Purpose
+Provide statistically rigorous confidence measure for aggregate impact values.
+
+#### Backend Calculation
+```python
+mean_impact = impact_values.mean()
+std_error = impact_values.std() / sqrt(n)
+z_score = mean_impact / std_error
+confidence_pct = min(99, stats.norm.cdf(z_score) * 100)
+```
+
+#### Confidence Labels
+| z-score | Label | Meaning |
+|---------|-------|--------|
+| ≥ 2.58 | Very High | 99% confident |
+| ≥ 1.96 | High | 95% confident |
+| ≥ 1.645 | Moderate | 90% confident |
+| < 1.645 | Directional | < 90% confident |
+
+#### Display
+Shown in "How we know this" expander:
+- Confidence label (Very High/High/Moderate/Directional)
+- Number of validated decisions
+- Win rate percentage
+- Confidence percentage (capped at 99%)
+
+### 4.6.8 Maturity Calculation (Fixed Jan 2026)
+
+#### The Bug (Pre-Fix)
+`actual_after_days` used `COUNT(DISTINCT start_date)` which counted **weekly report files** (2-4), not **calendar days** (14-64).
+
+#### The Fix
+```sql
+-- Now uses calendar days
+actual_after_days = latest_date - action_date + 1
+```
+
+#### Impact
+- Oct 28 actions: 2 days → 64 days ✅
+- Correctly identifies 86% of actions as mature
+
+### 4.6.9 Incremental Contribution Badge
+
+#### Purpose
+Show what percentage of total revenue was contributed by optimizations.
+
+#### Formula
+```
+incremental_pct = attributed_impact / (before_sales + after_sales) × 100
+```
+
+#### Display
+Shown as badge next to Hero impact value: `+7.6% of revenue`
 
 ### 4.7 Decision Impact Methodology
 
@@ -976,6 +1053,11 @@ Home (Account Overview)
 | **Decision Impact** | Market-adjusted revenue change attributable to advertiser decisions |
 | **30D Rolling SPC** | 30-day average Sales Per Click, used as stable baseline for counterfactual calculation |
 | **Harvest Launch Multiplier** | 2.0x bid multiplier for new harvest keywords to compete in exact match auctions |
+| **Confidence Weight** | Dampening factor (0-1) based on before_clicks / 15, reduces noise from low-data decisions |
+| **Final Decision Impact** | Weighted impact = decision_impact × confidence_weight |
+| **Impact Tier** | Classification: Excluded (<5 clicks), Directional (5-14), Validated (15+) |
+| **actual_after_days** | Calendar days from action_date to latest data (not report file count) |
+| **Z-Score Confidence** | Statistical confidence based on standard error of mean impact |
 
 ---
 
