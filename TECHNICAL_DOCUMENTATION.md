@@ -1,34 +1,33 @@
 # PPC Optimizer - Technical Documentation
 
-**Version**: 2.0  
-**Last Updated**: December 25, 2025
+**Version**: 3.0  
+**Last Updated**: January 6, 2026
 
 ---
 
 ## 1. Technology Stack
 
 ### 1.1 Current Architecture (V4)
-The current system is a high-performance Python application utilizing server-side rendering for complex data processing and visualization.
+High-performance Python application with server-side rendering.
 
-*   **Language**: Python 3.9+
-*   **UI Framework**: Streamlit (Reactive server-side UI)
-*   **Data Processing**: Pandas (Vectorized operations for large-scale analysis)
-*   **Visualization**: Plotly (Interactive financial & trend charts)
-*   **Database**: PostgreSQL 15+ (Persistent storage for account history & actions)
-*   **DB Interface**: Psycopg2 / SQLAlchemy (Blocking & non-blocking queries)
-*   **External APIs**: Amazon Advertising Bulk API (Via manual upload), Rainforest API (ASIN/Marketplace enrichment)
+| Layer | Technology |
+|-------|------------|
+| **Language** | Python 3.9+ |
+| **UI Framework** | Streamlit (Reactive server-side UI) |
+| **Data Processing** | Pandas (Vectorized operations) |
+| **Visualization** | Plotly (Interactive charts) |
+| **Database** | PostgreSQL 15+ |
+| **DB Interface** | Psycopg2 / SQLAlchemy |
+| **External APIs** | Amazon Bulk API (manual upload), Rainforest API (ASIN enrichment) |
+| **Statistics** | SciPy (z-score confidence calculations) |
 
 ### 1.2 Future Architecture (V5 Roadmap)
-Transitioning to a modern decoupled full-stack architecture for enhanced scalability and multi-user support.
+Decoupled full-stack for scalability and multi-user support.
 
-*   **Frontend**: React.js 18+
-    *   **Styling**: Tailwind CSS & Shadcn/UI (Design System)
-    *   **State Management**: React Query (Data fetching) & Zustand (Global state)
-*   **Backend**: Python (FastAPI)
-    *   **Framework**: FastAPI (Asynchronous, Type-safe REST API)
-    *   **Task Queue**: Celery + Redis (Asynchronous execution for heavy optimization runs)
-*   **Communication**: RESTful API (JSON payloads)
-*   **Infrastructure**: Dockerized microservices
+* **Frontend**: React.js 18+ with Tailwind CSS & Shadcn/UI
+* **Backend**: FastAPI (async, type-safe REST API)
+* **Task Queue**: Celery + Redis
+* **Infrastructure**: Dockerized microservices
 
 ---
 
@@ -36,157 +35,185 @@ Transitioning to a modern decoupled full-stack architecture for enhanced scalabi
 
 ### 2.1 Database Schema (PostgreSQL)
 
-The system utilizes a relational schema optimized for time-series advertising data.
-
 #### **Table: `target_stats` (Granular Performance)**
 Primary storage for aggregated search term and keyword performance.
-| Column | Type | Constraints | Purpose |
-| :--- | :--- | :--- | :--- |
-| `id` | SERIAL | PRIMARY KEY | Unique record ID |
-| `client_id` | VARCHAR | REFERENCES accounts | Account owner |
-| `start_date` | DATE | INDEXED | Week start (Monday) |
-| `campaign_name` | VARCHAR | INDEXED | Raw normalized campaign name |
-| `ad_group_name` | VARCHAR | | Raw normalized ad group name |
-| `target_text` | TEXT | INDEXED | Keyword, Search Term, or PT expression |
-| `match_type` | VARCHAR | | exact, broad, phrase, auto, pt |
-| `spend` | DECIMAL | | Total ad spend |
-| `sales` | DECIMAL | | Attributed sales |
-| `clicks` | INTEGER | | Total clicks |
-| `orders` | INTEGER | | Conversion count |
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | SERIAL | PRIMARY KEY |
+| `client_id` | VARCHAR | Account owner (REFERENCES accounts) |
+| `start_date` | DATE | Week start (Monday), INDEXED |
+| `campaign_name` | VARCHAR | Normalized campaign name, INDEXED |
+| `ad_group_name` | VARCHAR | Normalized ad group name |
+| `target_text` | TEXT | Keyword, Search Term, or PT expression, INDEXED |
+| `customer_search_term` | TEXT | Raw CST for matching (added Jan 2026) |
+| `match_type` | VARCHAR | exact, broad, phrase, auto, pt |
+| `spend` | DECIMAL | Total ad spend |
+| `sales` | DECIMAL | Attributed sales |
+| `clicks` | INTEGER | Total clicks |
+| `orders` | INTEGER | Conversion count |
+| `impressions` | INTEGER | Total impressions |
 
 #### **Table: `actions_log` (Optimizer History)**
-Audit trail for every optimization recommendation implemented.
+Audit trail for every optimization recommendation.
+
 | Column | Type | Purpose |
-| :--- | :--- | :--- |
+|--------|------|---------|
 | `action_id` | UUID | PRIMARY KEY |
 | `client_id` | VARCHAR | Account reference |
 | `action_date` | TIMESTAMP | When action was logged |
-| `action_type` | VARCHAR | NEGATIVE_ISOLATION, BID_ADJUST, etc. |
+| `action_type` | VARCHAR | NEGATIVE, NEGATIVE_ADD, HARVEST, BID_CHANGE |
 | `campaign_name` | VARCHAR | Target campaign |
+| `ad_group_name` | VARCHAR | Target ad group |
 | `target_text` | TEXT | Optimized term |
-| `before_val` | DECIMAL | e.g., Old bid |
-| `after_val` | DECIMAL | e.g., New bid |
+| `match_type` | VARCHAR | Keyword match type |
+| `old_value` | DECIMAL | Previous bid/state |
+| `new_value` | DECIMAL | New bid/state |
+| `reason` | TEXT | Optimization rationale |
 
 #### **Secondary Tables**
-*   **`accounts`**: Client metadata, target ACoS settings, currency.
-*   **`bulk_mappings`**: Synchronization between Campaign Names and Amazon IDs.
-*   **`category_mappings`**: Logical grouping of SKUs for roll-up reporting.
-
-### 2.2 API Communication Layer (Current)
-Currently, communication is handled via Streamlit's internal RPC:
-1.  **Request**: User interacts with UI (slider change, button click).
-2.  **Processing**: Streamlit server triggers Python callback.
-3.  **Data Retrieval**: Python script queries PostgreSQL via `DBManager`.
-4.  **Serialization**: DataFrames are processed and rendered directly to HTML/JS components.
-
-### 2.3 API Communication Layer (Future REST)
-1.  **Auth**: JWT-based authentication via FastAPI.
-2.  **Endpoints**:
-    *   `GET /api/v1/performance`: Returns time-series data for snapshots.
-    *   `POST /api/v1/optimize`: Triggers asynchronous optimization engine.
-    *   `GET /api/v1/actions`: Retrieves implemented action history for impact analysis.
-3.  **Format**: All communication via standard JSON.
+* **`accounts`**: Client metadata, target ACoS, currency
+* **`bulk_mappings`**: Campaign Name ↔ Amazon ID sync
+* **`category_mappings`**: SKU groupings for roll-up reporting
 
 ---
 
-## 3. Core Engine Logic (`features/optimizer.py`)
+## 3. Impact Calculation Engine
 
-### 3.1 Data Preparation Pipeline
-Before optimization, data undergoes strict normalization in `prepare_data()`:
-*   **ASIN Cleaning**: Strips `asin="B0..."` prefixes to unified 10-char strings.
-*   **Match Type Inference**: Detects `pt`, `category`, and `auto` types from targeting expressions.
-*   **Currency Normalization**: Ensures all metrics are cast to floating-point numbers.
-
-### 3.2 Dynamic Benchmarking
-**Function**: `calculate_account_benchmarks()`
-Establishes statistical thresholds based on current account performance rather than static rules.
-*   **Expected Clicks**: Calculated as `1 / Account_CVR`.
-*   **Negation Floors**: `Soft Stop = Expected Clicks * 2`, `Hard Stop = Expected Clicks * 3`.
-
----
-
-## 4. Impact & Measurement Methodology
-
-### 4.1 Before/After Windowing
-The `Impact Dashboard` employs a dynamic windowing algorithm:
-*   **T0**: Reference date of optimization action.
-*   **Baseline**: N-days before T0 (Pre-optimisation).
-*   **Measurement**: N-days after T0 (Post-optimisation).
-*   **Delta**: Realized change in ROAS, Spend, and Sales specifically for affected targets.
-
-### 4.2 CPC-Based Validation
-Actions are validated using a **CPC matching algorithm** to confirm implementation:
-*   **Before CPC**: `before_spend / before_clicks`
-*   **After CPC**: `after_spend / after_clicks`
-*   **Validation**: `after_cpc` must be within ±30% of `suggested_bid` (new_value)
-*   **Minimum Data**: Requires 5+ clicks in both periods for reliable ROAS-based impact
-
-**Validation Statuses:**
-*   `✓ CPC Validated` — After CPC matches suggested bid
-*   `✓ Directional Match` — Spend moved in expected direction
-*   `Not validated` — Changes not confirmed
-
-### 4.3 Incremental Revenue Calculation (ROAS-Based)
-The primary impact metric uses the classic incrementality formula:
+### 3.1 Before/After Windowing
+Dynamic windowing anchored to action date:
 
 ```
-Incremental Revenue = Before_Spend × (ROAS_After - ROAS_Before)
+T0 = action_date
+Baseline = T0 - 14 days (pre-optimization)
+Measurement = T0 + 14 days (post-optimization)
 ```
 
-This measures **efficiency gain** — how much *extra* revenue per AED spent — rather than raw sales delta, which may include organic/seasonal factors.
+**Maturity Calculation** (Fixed Jan 2026):
+```sql
+-- Calendar days from action to latest data (not report count)
+actual_after_days = latest_date - action_date + 1
 
-**Capping**: ROAS-based impact is capped at 2× the actual `delta_sales` to prevent inflation from low-click scenarios.
+-- Action is "mature" if full window is available
+is_mature = actual_after_days >= 14
+```
 
-### 4.4 Dashboard Visualization
+### 3.2 Confidence Weighting (Added Jan 2026)
+Low-click decisions are dampened to prevent noise:
 
-#### Hero Tiles
-| Metric | Calculation |
-|--------|-------------|
-| **Actions** | Total validated optimization runs |
-| **ROAS Lift** | `(roas_after - roas_before) / roas_before × 100%` |
-| **Revenue Impact** | `before_spend × (roas_after - roas_before)` |
-| **Implementation** | `validated_actions / total_actions × 100%` |
+| Column | Formula | Purpose |
+|--------|---------|---------|
+| `confidence_weight` | `min(1.0, before_clicks / 15)` | 0-1 weight based on data volume |
+| `final_decision_impact` | `decision_impact × confidence_weight` | Dampened impact value |
+| `impact_tier` | See below | Classification label |
 
-#### ROAS Contribution Waterfall
-Breaks down incremental revenue by **match type** (AUTO, BROAD, EXACT, etc.):
-*   Each bar shows contribution: `before_spend × (roas_after - roas_before)` per type
-*   Contributions are **scaled proportionally** so the total exactly matches the hero tile
-*   **Colors**: Brand Purple (#5B556F), Slate (#8F8CA3), Cyan for total (#22d3ee)
+**Impact Tier Classification:**
+| Tier | Criteria | Treatment |
+|------|----------|-----------|
+| **Excluded** | before_clicks < 5 | Not counted |
+| **Directional** | 5 ≤ clicks < 15 | Partial weight (33%-99%) |
+| **Validated** | clicks ≥ 15 | Full weight (100%) |
 
-#### Revenue Comparison (Stacked Bar)
-*   **Before**: Baseline revenue from validated actions
-*   **After**: Baseline + ROAS-based Incremental (stacked)
-*   Uses consistent `incremental_revenue` from summary
+### 3.3 Decision Impact Formula
+```
+decision_impact = observed_after_sales - expected_after_sales
 
-### 4.5 Validation Toggle
-A **universal toggle** ("Validated Only") at the top of the dashboard filters:
-*   Hero tile metrics
-*   All charts
-*   Drill-down table
+where:
+  expected_after_sales = before_sales × (after_days / before_days)
+```
 
-When ON: Shows only CPC-validated actions (conservative, attributable)
-When OFF: Shows all actions including unvalidated and pending
+### 3.4 Statistical Confidence (Z-Score Based)
+Proper statistical significance testing:
 
-### 4.6 Deduplication Engine
-When terms appear across multiple campaigns (Bleeders), the impact model uses a **Winner-Take-All** attribution to ensure incremental gains aren't double-counted across account-wide totals.
+```python
+# Calculate z-score
+mean_impact = impact_values.mean()
+std_error = impact_values.std() / sqrt(n)
+z_score = mean_impact / std_error
+
+# Convert to confidence via normal CDF (capped at 99%)
+confidence_pct = min(99, stats.norm.cdf(z_score) * 100)
+```
+
+| z-score | Label | Meaning |
+|---------|-------|---------|
+| ≥ 2.58 | Very High | 99% confident |
+| ≥ 1.96 | High | 95% confident |
+| ≥ 1.645 | Moderate | 90% confident |
+| < 1.645 | Directional | < 90% confident |
+
+### 3.5 Incremental Contribution %
+Shows what percentage of total revenue optimizations contributed:
+
+```python
+incremental_pct = attributed_impact / (before_sales + after_sales) × 100
+```
+
+Displayed as badge: `+7.6% of revenue`
 
 ---
 
-## 5. Security & Maintenance
+## 4. Dashboard Components
 
-*   **Database Security**: Row Level Security (RLS) implementation planned for client_id isolation.
-*   **Environment Config**: Managed via `.env` for DB credentials and API keys.
-*   **Testing**: Unit tests for bid algorithms in `tests/test_optimizer.py`.
+### 4.1 Hero Banner
+| Metric | Source |
+|--------|--------|
+| **Impact Value** | Sum of `final_decision_impact` (dampened) |
+| **Contribution %** | `impact / total_account_sales × 100` |
+| **Confidence** | Z-score based (Very High/High/Moderate/Directional) |
+
+### 4.2 Quadrant Breakdown
+| Quadrant | Definition |
+|----------|------------|
+| **Offensive Win** | Increased spend, increased ROAS |
+| **Defensive Win** | Decreased spend, maintained ROAS |
+| **Gap** | Missed opportunity (lower than expected) |
+| **Market Drag** | External factors (excluded from attributed total) |
+
+### 4.3 Validation Statuses
+| Status | Meaning |
+|--------|---------|
+| `✓ CPC Validated` | After CPC matches suggested bid (±30%) |
+| `✓ Directional` | Spend moved in expected direction |
+| `✓ Volume Match` | Click pattern confirms implementation |
+| `Not validated` | Changes not confirmed |
+
+---
+
+## 5. Optimizer Summary Metrics
+
+| Tile | Metric |
+|------|--------|
+| **Search Terms** | Unique CSTs analyzed from STR data |
+| **Bids** | Total bid change recommendations |
+| **Negatives** | Negative keyword + PT recommendations |
+| **Harvest** | Keywords harvested to exact match |
+
+---
+
+## 6. Security & Maintenance
+
+* **Database Security**: Row Level Security (RLS) planned for client_id isolation
+* **Environment Config**: `.env` for DB credentials and API keys
+* **Testing**: Unit tests in `tests/` directory
+* **Caching**: Streamlit `@st.cache_data` with version-based invalidation
 
 ---
 
 ## Changelog
 
-### December 25, 2024
-*   **Impact Dashboard Redesign**:
-    *   Added CPC-based validation for action confirmation
-    *   Changed incremental revenue to ROAS-based formula
-    *   Added match type breakdown waterfall chart
-    *   Universal validation toggle for all views
-    *   Brand color palette alignment (Purple/Slate/Cyan)
-    *   Consistent numbers across hero tiles, waterfall, and stacked bar
+### January 6, 2026
+* **Confidence Weighting**: Added dampening for low-click decisions
+* **Maturity Fix**: `actual_after_days` now uses calendar days, not report count
+* **Statistical Confidence**: Z-score based confidence with proper CDF calculation
+* **Incremental Badge**: Shows "X% of revenue" contribution in Hero Banner
+* **Search Terms Metric**: Replaced "Touched" with unique CST count
+
+### January 1, 2026
+* **Impact Dashboard UI Redesign**: Separated Performance Overview from Estimated Impact
+* **Query Optimization Revert**: Restored LATERAL joins for accuracy
+
+### December 25, 2025
+* **Impact Dashboard Redesign**: CPC-based validation, ROAS-based formula
+* **Match Type Waterfall**: Breakdown by exact/broad/auto
+* **Brand Colors**: Purple (#5B556F), Slate (#8F8CA3), Cyan (#22d3ee)
