@@ -163,25 +163,31 @@ class ThemeManager:
             }}
             
             /* Primary button styling - Brand Purple Gradient */
-            .stButton > button[kind="primary"] {{
-                background: linear-gradient(135deg, #5B556F 0%, #464156 100%) !important;
-                color: white !important;
+            /* Primary button styling - Brand Purple (Dark Vine) - High Specificity */
+            .stApp .stButton > button[kind="primary"],
+            .stApp div[data-testid="stForm"] button[kind="primary"],
+            .stApp button[data-testid="baseButton-primary"] {{
+                background: linear-gradient(135deg, #464156 0%, #2E2A36 100%) !important;
+                color: #E9EAF0 !important;
                 border: 1px solid rgba(255, 255, 255, 0.1) !important;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
             }}
-            .stButton > button[kind="primary"]:hover {{
-                background: linear-gradient(135deg, #6c6684 0%, #5b556f 100%) !important;
+            .stApp .stButton > button[kind="primary"]:hover,
+            .stApp div[data-testid="stForm"] button[kind="primary"]:hover,
+            .stApp button[data-testid="baseButton-primary"]:hover {{
+                background: linear-gradient(135deg, #5B5670 0%, #464156 100%) !important;
                 box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+                transform: translateY(-1px);
             }}
             
             /* Download button - use Primary styling */
-            .stDownloadButton > button {{
-                background: linear-gradient(135deg, #5B556F 0%, #464156 100%) !important;
+            .stApp .stDownloadButton > button {{
+                background: linear-gradient(135deg, #464156 0%, #2E2A36 100%) !important;
                 color: white !important;
                 border: 1px solid rgba(255, 255, 255, 0.1) !important;
             }}
-            .stDownloadButton > button:hover {{
-                background: linear-gradient(135deg, #6c6684 0%, #5b556f 100%) !important;
+            .stApp .stDownloadButton > button:hover {{
+                background: linear-gradient(135deg, #5B5670 0%, #464156 100%) !important;
             }}
             
             /* Tabs accent and Boldness */
@@ -208,10 +214,17 @@ class ThemeManager:
                 color: var(--text-color) !important;
             }}
             
-            /* Info boxes - subtle cyan tint */
-            .stAlert {{
-                background-color: rgba(8, 145, 178, 0.08) !important;
+            /* Info boxes - Brand Compliant (Dark Vine Transparent) */
+            .stApp div[data-testid="stAlert"] {{
+                background-color: rgba(46, 42, 54, 0.95) !important; /* Higher opacity for visibility */
+                border: 1px solid rgba(154, 154, 170, 0.2) !important;
                 border-left-color: var(--accent) !important;
+                color: #E9EAF0 !important;
+                border-radius: 8px !important;
+            }}
+            .stApp div[data-testid="stAlert"] > div, 
+            .stApp div[data-testid="stAlert"] p {{
+                color: #E9EAF0 !important;
             }}
             
             /* Sidebar title styling */

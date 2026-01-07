@@ -24,6 +24,36 @@ def run_account_settings():
     settings_icon = f'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="{icon_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 10px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'
     st.markdown(f'<h1 style="margin-bottom: 2rem; color: #E9EAF0;">{settings_icon}SETTINGS</h1>', unsafe_allow_html=True)
     
+    # NUCLEAR CSS OVERRIDE - Dark Vine Theme
+    st.markdown("""
+    <style>
+    /* Force Dark Vine on ALL primary buttons */
+    button[kind="primary"],
+    button[data-testid="baseButton-primary"],
+    div[data-testid="stForm"] button[kind="primary"] {
+        background: linear-gradient(135deg, #464156 0%, #2E2A36 100%) !important;
+        color: #E9EAF0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    }
+    button[kind="primary"]:hover,
+    button[data-testid="baseButton-primary"]:hover {
+        background: linear-gradient(135deg, #5B5670 0%, #464156 100%) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    /* Dark Vine Alert/Warning Ribbons */
+    div[data-testid="stAlert"] {
+        background-color: rgba(46, 42, 54, 0.95) !important;
+        border: 1px solid rgba(154, 154, 170, 0.2) !important;
+        color: #E9EAF0 !important;
+    }
+    div[data-testid="stAlert"] * {
+        color: #E9EAF0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # --- Auth Context ---
     auth = AuthService()
     user = auth.get_current_user()
@@ -71,7 +101,9 @@ def _render_profile(user: User, auth: AuthService):
         st.code(user.role.value)
     with c3:
         st.caption("STATUS")
-        icon = "🟢" if user.status == 'ACTIVE' else "🔴"
+        st.caption("STATUS")
+        # Brand compliant status (Neutral Light)
+        icon = "⚪" if user.status == 'ACTIVE' else "⚫"
         st.write(f"{icon} {user.status}")
 
     # 2. Security Section
@@ -84,7 +116,7 @@ def _render_profile(user: User, auth: AuthService):
             new_pwd = st.text_input("New Password", type="password", help="Min 8 chars, 1 number/symbol")
             confirm_pwd = st.text_input("Confirm New Password", type="password")
             
-            if st.form_submit_button("Update Password"):
+            if st.form_submit_button("Update Password", type="primary"):
                 if new_pwd != confirm_pwd:
                     st.error("New passwords do not match.")
                 elif not current_pwd:
@@ -142,7 +174,7 @@ def _render_ad_accounts(user: User):
         ]
         marketplace = st.selectbox("Marketplace", marketplaces)
         
-        if st.form_submit_button("Connect Account"):
+        if st.form_submit_button("Connect Account", type="primary"):
              # Mock creation for now, strictly speaking this should call a service
              # But keeping it consistent with previous file logic request
              if name:

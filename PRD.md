@@ -1014,7 +1014,51 @@ Home (Account Overview)
 
 ---
 
-## 8. Open Issues & Backlog
+---
+
+## 9. User Management & Access Control (Phase 3.5)
+
+### 9.1 Overview (RBAC + Overrides)
+The system implements a robust Role-Based Access Control (RBAC) model with **Account-Level Overrides**. This allows agencies to grant broad team access while restricting specific users from sensitive accounts.
+
+### 9.2 Role Hierarchy (Global)
+Roles are hierarchical and cumulative. Higher roles inherit all permissions of lower roles.
+
+| Role | Access Level | Capabilities |
+|------|--------------|--------------|
+| **OWNER** | Level 4 | Full system control, Billing, Delete Org, Manage Admins. |
+| **ADMIN** | Level 3 | Manage Users, Manage Amazon Accounts, Configure System. |
+| **OPERATOR** | Level 2 | Execute Optimizations, Trigger Ingestion, Write Access. |
+| **VIEWER** | Level 1 | Read-only Reports & Dashboards. |
+
+### 9.3 Account Access Overrides (The "Downgrade" Rule)
+Overrides allow a user's global role to be **downgraded** for specific Amazon accounts.
+
+> **SECURITY PRINCIPLE**: Overrides can ONLY restrict access. They can never grant *more* permission than the Global Role.
+
+**Resolution Logic:**
+```python
+Effective_Permission = MIN(Global_Role, Account_Override_Role)
+```
+
+**Use Cases:**
+- **Intern Safety**: Global Role = `OPERATOR`, but set to `VIEWER` on high-value "Enterprise Client" account.
+- **Client Access**: Global Role = `VIEWER`, but given `VIEWER` on specific account (redundant but explicit).
+- **Agency Partition**: User has `NO_ACCESS` (via Override) to accounts they shouldn't see.
+
+### 9.4 Enforcement Layers
+1.  **UI Layer**: Elements (buttons, inputs) are hidden/disabled based on `has_permission(action)`.
+2.  **Service Layer**: Functions check `require_role()` before execution.
+3.  **Database Layer**: Constraints prevent unauthorized state changes (e.g., Viewers cannot write to `actions_log`).
+
+### 9.5 User Management Features
+- **Invitation**: Admins invite users via email.
+- **Role Management**: Admins adjust Global Roles and Account Overrides.
+- **Security**: Password reset flows, session invalidation on role change.
+
+---
+
+## 10. Open Issues & Backlog
 
 ### 8.1 Known Issues
 

@@ -75,8 +75,42 @@ def render_account_selector():
     # Multi-account mode - full selector
     st.session_state['single_account_mode'] = False
     
-    # Build options: Display "Name (ID)" to be unambiguous
-    options = {f"{name} ({id})": idx for idx, (id, name, _) in enumerate(accounts)}
+    # Phase 3.5: Decorate with Effective Role
+    from core.auth.service import AuthService
+    from core.auth.permissions import get_effective_role
+    
+    auth = AuthService()
+    current_user = auth.get_current_user()
+    
+    options = {}
+    for idx, (id, name, _) in enumerate(accounts):
+        label = f"{name} ({id})"
+        
+        # Calculate role badge
+        if current_user:
+             # Check for overrides
+             override_role = None
+             if hasattr(current_user, 'account_overrides'):
+                 # Ensure UUID match
+                 import uuid
+                 try:
+                     u_id = uuid.UUID(str(id))
+                     if u_id in current_user.account_overrides:
+                         override_role = current_user.account_overrides[u_id].value
+                 except:
+                     pass
+             
+             effective = get_effective_role(current_user.role.value, override_role)
+             
+             # Decoration
+             badge = f"[{effective}]"
+             if override_role:
+                 badge = f"🔒 {badge}" # Lock icon for restricted access
+                 
+             label = f"{name} {badge}"
+             
+        options[label] = idx
+
     options["➕ Add New Account"] = "NEW"
     
     # Get current selection
@@ -156,8 +190,15 @@ def render_account_selector():
         st.session_state['active_account_id'] = account_id
         st.session_state['active_account_name'] = account_name
     
+    
     # No trailing line here to avoid double lines in callers
     pass
+
+
+# Helper for account overrides logic if needed
+def get_current_account_id():
+    """Helper to get currently selected account ID safely."""
+    return st.session_state.get('active_account_id')
 
 
 def _show_account_creation_form():

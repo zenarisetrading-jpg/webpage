@@ -12,12 +12,14 @@ Locked Terminology:
 - User (not Member, Person)
 - Role (OWNER, ADMIN, OPERATOR, VIEWER)
 - AmazonAccount (not Store, Client, Profile)
+- Override (Per-account role restriction)
 - billable (boolean on User)
 - amazon_account_limit (integer on Organization)
 """
 
 from enum import Enum
-from typing import List
+from typing import List, Optional
+from uuid import UUID
 
 
 # =============================================================================
@@ -139,6 +141,57 @@ def can_manage_role(manager_role: str, target_role: str) -> bool:
     manager_level = get_role_level(manager_role)
     target_level = get_role_level(target_role)
     return manager_level > target_level
+
+
+# =============================================================================
+# PHASE 3.5: ACCOUNT CONTEXT AWARENESS (LOCKED logic)
+# =============================================================================
+
+def get_effective_role(user_global_role: str, override_role: Optional[str] = None) -> str:
+    """
+    Determine effective role for a specific account context.
+    
+    Rule (Phase 3.5): downgrade-only.
+    Effective Role = MIN(Global Role, Override Role)
+    """
+    if not override_role:
+        return user_global_role
+        
+    global_level = get_role_level(user_global_role)
+    override_level = get_role_level(override_role)
+    
+    # Return whichever is lower (more restrictive)
+    if override_level < global_level:
+        return override_role
+    return user_global_role
+
+
+def has_permission_for_account(user, permission: str, account_id: Optional[UUID] = None) -> bool:
+    """
+    Check if user has permission for a specific account context.
+    
+    Args:
+        user: User model instance (must have global 'role' and 'account_overrides')
+        permission: Permission key
+        account_id: Context account (optional)
+        
+    Returns:
+        bool
+    """
+    # 1. Get Override if exists
+    override_role_str = None
+    if account_id and hasattr(user, 'account_overrides') and account_id in user.account_overrides:
+        role_obj = user.account_overrides[account_id]
+        if hasattr(role_obj, 'value'): # Handle Enum
+             override_role_str = role_obj.value
+        else:
+             override_role_str = str(role_obj)
+             
+    # 2. Calculate Effective Role
+    effective_role = get_effective_role(user.role.value, override_role_str)
+    
+    # 3. Check Base Permission
+    return has_permission(effective_role, permission)
 
 
 # =============================================================================

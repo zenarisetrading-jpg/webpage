@@ -1046,6 +1046,7 @@ def main():
     # Using strict V2 Auth Service with Type Assertion
     from core.auth.models import User
     from core.auth.service import AuthService  # Explicit local import to guarantee scope
+    from core.auth.permissions import has_permission, has_permission_for_account
     
     auth_service = AuthService()
     user = auth_service.get_current_user() # Gets from session
@@ -1089,9 +1090,32 @@ def main():
     # User is valid V2 user - proceed
     
     # === DATABASE INITIALIZATION ===
+    
+    # Phase 3.5: Set Account Context for Permissions
+    # Must be done after DB init/loading where active_account_id is derived
+    acc_ctx = None
+    if 'active_account_id' in st.session_state:
+        from uuid import UUID
+        try:
+            acc_ctx = UUID(str(st.session_state['active_account_id']))
+        except:
+            pass
+    st.session_state['permission_account_context'] = acc_ctx
+
     # Initialize db_manager right after auth, before any UI that needs it
     if st.session_state.get('db_manager') is None:
         st.session_state['db_manager'] = get_db_manager(st.session_state.get('test_mode', False))
+
+    # Phase 3.5: Set Account Context for Permissions
+    # Must be done after DB init/loading where active_account_id is derived
+    acc_ctx = None
+    if 'active_account_id' in st.session_state:
+        from uuid import UUID
+        try:
+            acc_ctx = UUID(str(st.session_state['active_account_id']))
+        except:
+            pass
+    st.session_state['permission_account_context'] = acc_ctx
     
     # === TOP-RIGHT HEADER (Profile, Account, Logout) ===
     # This renders a fixed-position header component
@@ -1276,14 +1300,15 @@ def main():
         from core.auth.permissions import has_permission
         
         # Optimizer - Requires 'run_optimizer'
-        if has_permission(user.role, 'run_optimizer'):
+        # Phase 3.5: Operator cannot run optimizer if overridden to VIEWER on this account
+        if has_permission_for_account(user, 'run_optimizer', st.session_state.get('permission_account_context')):
             nav_button_chiclet("Actions Review", check_icon, "optimizer")
             
         nav_button_chiclet("What If (Forecast)", sim_icon, "simulator")
         nav_button_chiclet("Impact & Results", impact_icon, "impact")
         
         # Launch - Requires 'run_optimizer' (Creating campaigns)
-        if has_permission(user.role, 'run_optimizer'):
+        if has_permission_for_account(user, 'run_optimizer', st.session_state.get('permission_account_context')):
             nav_button_chiclet("Launch", rocket_icon, "creator")
 
         st.divider()

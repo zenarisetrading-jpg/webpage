@@ -707,4 +707,59 @@ Impact Dashboard ◄─── Reads from actions_log + target_stats
 | Optimizer Overview | Harvest Tab | Tab click or Quick Action |
 | Harvest Tab | Campaign Creator | "Create Campaigns" |
 | Any Tab | Bulk Export | Tab click |
-| Bulk Export | Download | Generate button |
+
+---
+
+## 11. User Management Flow
+
+### 11.1 Invite & Onboarding
+```
+User Management Page (Admin/Owner)
+    │
+    ▼
+Click "Invite User"
+    │
+    ▼
+┌─────────────────────────────┐
+│ Input:                      │
+│ • Email Address             │
+│ • Global Role (e.g. Operator)│
+│ • (Optional) Account Limits │
+└─────────────────────────────┘
+    │
+    ▼
+System sends Invite Email
+    │
+    ▼
+User clicks link ──► Set Password Screen
+    │
+    ▼
+User logs in ──► Dashboard
+```
+
+### 11.2 Managing Permissions (Overrides)
+```
+User Management Detail View
+    │
+    ▼
+Select User: "John Doe (Operator)"
+    │
+    ▼
+┌───────────────────────────────────────┐
+│ Global Role: [ OPERATOR ▼ ]           │
+│                                       │
+│ Account Access Overrides:             │
+│ ┌───────────────────────┬───────────┐ │
+│ │ Account A             │ Default   │ │ (Inherits Operator)
+│ ├───────────────────────┼───────────┤ │
+│ │ Account B (VIP)       │ VIEWER    │ │ (Downgraded)
+│ ├───────────────────────┼───────────┤ │
+│ │ Account C             │ NO ACCESS │ │ (Hidden)
+│ └───────────────────────┴───────────┘ │
+└───────────────────────────────────────┘
+    │
+    ▼
+Save Changes ──► Immediate Effect
+                 (User session updated on next action)
+```
+

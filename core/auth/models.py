@@ -7,10 +7,10 @@ PRD Reference: ORG_USERS_ROLES_PRD.md §5, §6
 These models map 1:1 to the database schema in migrations/002_org_users_schema.sql.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Dict
 from uuid import UUID
 
 from .permissions import Role  # Canonical source for Role enum
@@ -54,6 +54,10 @@ class User:
     # Phase 3 Security
     must_reset_password: bool = False
     password_updated_at: Optional[datetime] = None
+    
+    # Phase 3.5: Account Access Overrides (Downgrade Only)
+    # Mapping: amazon_account_id -> Role (VIEWER or OPERATOR)
+    account_overrides: Dict[UUID, Role] = field(default_factory=dict)
 
 
 @dataclass

@@ -87,6 +87,24 @@ class AuthService:
                 return {"success": False, "error": "Invalid credentials"}
                 
             # Construct User Model
+            # Load Overrides first
+            account_overrides = {}
+            try:
+                cur = conn.cursor() # Re-open cursor if needed or better reuse logic above
+                cur.execute("""
+                    SELECT amazon_account_id, role 
+                    FROM user_account_overrides 
+                    WHERE user_id = %s
+                """, (uid,))
+                for row_ov in cur.fetchall():
+                    # Parse UUID and Role
+                    acc_id = UUID(str(row_ov[0])) # Ensure string if driver returns uuid
+                    ov_role = Role(row_ov[1])
+                    account_overrides[acc_id] = ov_role
+            except Exception as e:
+                print(f"Warning: Failed to load overrides: {e}")
+                # Non-critical, continue login
+            
             user = User(
                 id=uid,
                 organization_id=org_id,
@@ -97,7 +115,8 @@ class AuthService:
                 status=status,
                 created_at=None, # Not needed for session usually
                 must_reset_password=must_reset,
-                password_updated_at=pwd_updated
+                password_updated_at=pwd_updated,
+                account_overrides=account_overrides
             )
             
             # SESSION STORAGE (Canonical)
@@ -220,6 +239,115 @@ class AuthService:
             return {"success": False, "error": str(e)}
 
     # =========================================================================
+    # PHASE 3.5: ACCOUNT ACCESS OVERRIDES
+    # =========================================================================
+
+    def update_user_role(self, user_id: str, new_role: Role, updated_by_user_id: str) -> Dict[str, Any]:
+        """
+        Update user's global role and auto-cleanup invalid overrides.
+        
+        Logic:
+        1. Update global role.
+        2. Clean up any overrides that violate "Override <= Global" rule.
+           (e.g. if downgraded to VIEWER, remove OPERATOR overrides).
+        """
+        try:
+            conn = self._get_connection()
+            cur = conn.cursor()
+            
+            # 1. Update Global Role
+            cur.execute("""
+                UPDATE users 
+                SET role = %s 
+                WHERE id = %s
+            """, (new_role.value, str(user_id)))
+            
+            # 2. Auto-cleanup: invalid overrides logic
+            # If new role is VIEWER, they cannot have OPERATOR overrides.
+            if new_role == Role.VIEWER:
+                cur.execute("""
+                    DELETE FROM user_account_overrides
+                    WHERE user_id = %s AND role = 'OPERATOR'
+                """, (str(user_id),))
+            
+            # Note: If new role is OPERATOR/ADMIN/OWNER, existing VIEWER overrides remain valid.
+            
+            conn.commit()
+            conn.close()
+            return {"success": True}
+            
+        except Exception as e:
+            print(f"Update Role Error: {e}")
+            return {"success": False, "error": str(e)}
+
+    def set_account_override(self, user_id: str, account_id: str, override_role: Role, set_by_user_id: str) -> Dict[str, Any]:
+        """
+        Set or update an account access override.
+        """
+        # Validate allowed override roles (Phase 3.5: VIEWER/OPERATOR only)
+        if override_role not in [Role.VIEWER, Role.OPERATOR]:
+            return {"success": False, "error": "Overrides can only be VIEWER or OPERATOR"}
+
+        try:
+            conn = self._get_connection()
+            cur = conn.cursor()
+            
+            # 1. Fetch user's global role validation (Application level double-check)
+            cur.execute("SELECT role FROM users WHERE id = %s", (str(user_id),))
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return {"success": False, "error": "User not found"}
+                
+            global_role_str = row[0]
+            from core.auth.permissions import ROLE_HIERARCHY_STR
+            
+            global_level = ROLE_HIERARCHY_STR.get(global_role_str, 0)
+            override_level = ROLE_HIERARCHY_STR.get(override_role.value, 0)
+            
+            # Verify downgrade-only rule
+            if override_level > global_level:
+                conn.close()
+                return {"success": False, "error": "Cannot set override higher than global role"}
+            
+            # 2. Upsert Override
+            cur.execute("""
+                INSERT INTO user_account_overrides (user_id, amazon_account_id, role, created_by)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (user_id, amazon_account_id)
+                DO UPDATE SET role = EXCLUDED.role;
+            """, (str(user_id), str(account_id), override_role.value, str(set_by_user_id)))
+            
+            conn.commit()
+            conn.close()
+            return {"success": True}
+            
+        except Exception as e:
+            print(f"Set Override Error: {e}")
+            # Catch DB constraint violations
+            if "check_override_downgrade" in str(e):
+                 return {"success": False, "error": "Database rejected: Override cannot exceed global role"}
+            return {"success": False, "error": str(e)}
+
+    def remove_account_override(self, user_id: str, account_id: str) -> Dict[str, Any]:
+        """Remove an access override, reverting to global role."""
+        try:
+            conn = self._get_connection()
+            cur = conn.cursor()
+            
+            cur.execute("""
+                DELETE FROM user_account_overrides 
+                WHERE user_id = %s AND amazon_account_id = %s
+            """, (str(user_id), str(account_id)))
+            
+            conn.commit()
+            conn.close()
+            return {"success": True}
+        except Exception as e:
+            print(f"Remove Override Error: {e}")
+            return {"success": False, "error": str(e)}
+
+    # =========================================================================
     # PHASE 3: SECURITY & PASSWORD MANAGEMENT
     # =========================================================================
 
@@ -303,10 +431,15 @@ class AuthService:
                 
             target_role = row[0]
             
-            # RULE: Admin cannot reset Owner
-            if admin_user.role == Role.ADMIN and target_role == 'OWNER':
+            # RULE: STRICT HIERARCHY CHECK
+            from core.auth.permissions import can_manage_role
+            
+            # handle enum vs string mismatch if any
+            manager_role_str = admin_user.role.value if hasattr(admin_user.role, 'value') else str(admin_user.role)
+            
+            if not can_manage_role(manager_role_str, target_role):
                 conn.close()
-                return PasswordChangeResult(False, "Admins cannot reset Owners.")
+                return PasswordChangeResult(False, f"Insufficient privileges. {manager_role_str} cannot manage {target_role}.")
             
             # 2. Update
             new_hash = hash_password(temp_password)
@@ -325,3 +458,29 @@ class AuthService:
         except Exception as e:
             print(f"Admin Reset Error: {e}")
             return PasswordChangeResult(False, str(e))
+
+    def request_password_reset(self, email: str) -> bool:
+        """
+        Public endpoint for 'Forgot Password'.
+        In a real system, this would generate a token and email it.
+        Here, we just verify existence (silently) and return True to prevent enumeration (or simulated success).
+        """
+        if not email:
+            return False
+            
+        try:
+            conn = self._get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM users WHERE email = %s", (email.lower().strip(),))
+            exists = cur.fetchone() is not None
+            conn.close()
+            
+            if exists:
+                # TODO: Trigger email sending logic here
+                print(f"Password reset requested for {email}")
+                
+            return True
+            
+        except Exception as e:
+            print(f"Reset Request Error: {e}")
+            return False
