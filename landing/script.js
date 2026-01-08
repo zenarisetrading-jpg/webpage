@@ -1,7 +1,8 @@
 // ========================================
 // PERSONA STATE MANAGEMENT
+// DISABLED FOR PRIVATE BETA - Uncomment when ICP section is reactivated
 // ========================================
-
+/*
 // Global persona state (default: 'seller')
 let userPersona = 'seller';
 
@@ -55,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set default persona
     setUserPersona('seller');
 });
+*/
 
 // Smooth scroll for navigation links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -231,7 +233,11 @@ pricingCards.forEach(card => {
 console.log('%cSaddle AdPulse', 'font-size: 20px; font-weight: bold; color: #0891B2;');
 console.log('%cLooking for a career opportunity? Email us at careers@saddle.io', 'font-size: 12px; color: #5F6368;');
 
-// Pricing Toggle Functionality
+// ========================================
+// PRICING TOGGLE & ICP FUNCTIONALITY
+// DISABLED FOR PRIVATE BETA - Uncomment when pricing/ICP sections are reactivated
+// ========================================
+/*
 const pricingToggleButtons = document.querySelectorAll('.pricing-toggle-option');
 const sellerPricing = document.getElementById('seller-pricing');
 const agencyPricing = document.getElementById('agency-pricing');
@@ -343,6 +349,7 @@ allPricingSwitchLinks.forEach(link => {
         switchPricingView(targetPlan);
     });
 });
+*/
 
 // ========================================
 // AUDIT MODAL FUNCTIONALITY
@@ -416,3 +423,99 @@ if (proceedToUploadBtn) {
         }
     });
 }
+
+// ========================================
+// BETA SIGNUP MODAL FUNCTIONALITY
+// ========================================
+
+const betaModal = document.getElementById('betaSignupModal');
+const closeBetaModalBtn = document.getElementById('closeBetaModal');
+const betaSignupForm = document.getElementById('betaSignupForm');
+const betaSuccessMessage = document.getElementById('betaSuccessMessage');
+const closeBetaSuccess = document.getElementById('closeBetaSuccess');
+
+// Open beta modal when any beta-signup-trigger is clicked
+document.querySelectorAll('.beta-signup-trigger').forEach(trigger => {
+    trigger.addEventListener('click', function(e) {
+        e.preventDefault();
+        openBetaModal();
+    });
+});
+
+function openBetaModal() {
+    betaModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Reset form and show it
+    betaSignupForm.reset();
+    betaSignupForm.style.display = 'block';
+    betaSuccessMessage.classList.add('hidden');
+    
+    // Scroll modal to top
+    const modalContainer = betaModal.querySelector('.modal-container');
+    if (modalContainer) {
+        modalContainer.scrollTop = 0;
+    }
+}
+
+function closeBetaModal() {
+    betaModal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close button click
+closeBetaModalBtn.addEventListener('click', closeBetaModal);
+
+// Close success message button
+closeBetaSuccess.addEventListener('click', closeBetaModal);
+
+// Click outside modal to close
+betaModal.addEventListener('click', function(e) {
+    if (e.target === betaModal) {
+        closeBetaModal();
+    }
+});
+
+// ESC key to close beta modal
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && betaModal.classList.contains('active')) {
+        closeBetaModal();
+    }
+});
+
+// Handle beta signup form submission
+betaSignupForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Collect form data
+    const formData = {
+        name: document.getElementById('betaName').value,
+        email: document.getElementById('betaEmail').value,
+        role: document.getElementById('betaRole').value,
+        accounts: document.getElementById('betaAccounts').value,
+        spend: document.getElementById('betaSpend').value,
+        goal: document.getElementById('betaGoal').value,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Log to console (in production, send to backend/API)
+    console.log('Beta Signup Data:', formData);
+    
+    // TODO: Send to backend API
+    // fetch('/api/beta-signup', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(formData)
+    // });
+    
+    // Show success message
+    betaSignupForm.style.display = 'none';
+    betaSuccessMessage.classList.remove('hidden');
+    
+    // Scroll to top of modal
+    const modalContainer = betaModal.querySelector('.modal-container');
+    if (modalContainer) {
+        modalContainer.scrollTop = 0;
+    }
+});
+

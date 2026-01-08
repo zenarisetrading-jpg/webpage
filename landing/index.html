@@ -13,17 +13,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Schema Markup -->
+    <!-- PRICING REMOVED FROM SCHEMA FOR PRIVATE BETA -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "Saddle AdPulse",
       "applicationCategory": "BusinessApplication",
-      "offers": {
-        "@type": "Offer",
-        "price": "49.00",
-        "priceCurrency": "USD"
-      },
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "4.9",
@@ -105,12 +101,12 @@
             <p class="hero-subtitle">AdPulse is the <strong>White Box Engine—the only one that proves every decision</strong>. We validate every bid change, separate "Market Luck" from "Decision Impact," and show exactly what's working with counterfactual analysis.</p>
 
             <div class="hero-ctas">
-                <button class="primary-button large">Start Free 14-Day Trial</button>
+                <button class="primary-button large beta-signup-trigger">Request Private Beta Access</button>
                 <button class="secondary-button large audit-trigger">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                         <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    Audit My Current Tool
+                    Run a Free Ad Impact Audit
                 </button>
             </div>
 
@@ -120,14 +116,14 @@
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
-                    No credit card required
+                    Limited beta slots available
                 </span>
                 <span class="proof-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
-                    Results in 2 minutes
+                    Quick, no-obligation diagnostic
                 </span>
                 <span class="proof-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -223,7 +219,12 @@
         </div>
     </section>
 
-    <!-- ICP Selector -->
+    <!-- ============================================================
+         ICP SELECTOR - COMMENTED OUT FOR PRIVATE BETA
+         Persona selection now happens in beta signup form
+         Uncomment when ready to reactivate persona routing
+         ============================================================ -->
+    <!--
     <section class="icp-section">
         <div class="container">
             <h2 class="section-title">What best describes you?</h2>
@@ -264,6 +265,10 @@
             </div>
         </div>
     </section>
+    -->
+    <!-- ============================================================
+         END COMMENTED ICP SELECTOR
+         ============================================================ -->
 
     <!-- Problem Section -->
     <section class="problem-section-v2">
@@ -695,12 +700,17 @@
     </section>
 
     <!-- Pricing Section -->
+    <!-- ============================================================
+         PRICING SECTION - COMMENTED OUT FOR PRIVATE BETA
+         Uncomment this section when ready to launch public pricing
+         ============================================================ -->
+    <!--
     <section id="pricing" class="pricing-section-v2">
         <div class="container">
             <h2 class="section-title">Pays for Itself in the First Week</h2>
             <p class="section-subtitle">The average account finds $2,400/month in wasted spend. That's 24x the cost of AdPulse.</p>
 
-            <!-- Pricing Toggle -->
+            <!-- Pricing Toggle --
             <div class="pricing-toggle-container">
                 <button class="pricing-toggle-option active" data-plan="seller" type="button" aria-pressed="true">
                     I Manage My Own Brand
@@ -710,7 +720,7 @@
                 </button>
             </div>
 
-            <!-- Seller Pricing -->
+            <!-- Seller Pricing --
             <div class="pricing-view" id="seller-pricing" data-persona="seller">
                 <div class="pricing-grid-v2">
                     <div class="pricing-card-v2">
@@ -849,6 +859,47 @@
             </div>
         </div>
     </section>
+    -->
+    <!-- ============================================================
+         END COMMENTED PRICING SECTION
+         ============================================================ -->
+
+    <!-- Private Beta Signup Section -->
+    <section id="pricing" class="beta-signup-section">
+        <div class="container">
+            <h2 class="section-title">Join the Saddl AdPulse Private Beta</h2>
+            <p class="section-subtitle">Saddl AdPulse helps sellers and agencies move from<br>"we optimized for better ROAS" to<br>"here's the incremental revenue our decisions delivered."</p>
+
+            <div class="beta-value-props">
+                <div class="beta-value-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <p>Understand which optimizations actually made money</p>
+                </div>
+                <div class="beta-value-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <p>Identify performance that looks good but didn't truly move the needle</p>
+                </div>
+                <div class="beta-value-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <p>Defend decisions with clear, explainable impact</p>
+                </div>
+            </div>
+
+            <p class="beta-agency-note">Agencies use AdPulse to support performance conversations with revenue-backed context.</p>
+
+            <button class="primary-button large beta-signup-trigger">Request Private Beta Access</button>
+            <p class="beta-cta-note">Limited beta slots available</p>
+        </div>
+    </section>
 
     <!-- FAQ Teaser -->
     <section class="faq-teaser-section">
@@ -881,8 +932,8 @@
         <div class="container">
             <h2>Every Week You Wait Is Another Week of Decisions You Can't Measure</h2>
             <p>Stop flying blind. Start seeing what actually works.</p>
-            <button class="primary-button large">Start Free 14-Day Trial</button>
-            <p class="cta-subtext">No credit card required • Full access • Cancel anytime</p>
+            <button class="primary-button large beta-signup-trigger">Request Private Beta Access</button>
+            <p class="cta-subtext">Limited beta slots available</p>
         </div>
     </section>
 
@@ -1052,6 +1103,95 @@
                     <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">
                         Your data is processed locally in your browser and never stored on our servers.
                     </p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Beta Signup Modal -->
+    <div id="betaSignupModal" class="modal-overlay">
+        <div class="modal-container">
+            <button class="modal-close" id="closeBetaModal" aria-label="Close beta signup">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+
+            <section class="modal-section">
+                <div class="beta-form-card">
+                    <h2 style="font-size: 2rem; margin-bottom: 0.5rem;">Request Private Beta Access</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Join sellers and agencies getting early access to decision intelligence for Amazon PPC.</p>
+
+                    <form id="betaSignupForm" class="beta-form">
+                        <div class="form-group">
+                            <label for="betaName">Name</label>
+                            <input type="text" id="betaName" name="name" required placeholder="Your full name">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="betaEmail">Work Email</label>
+                            <input type="email" id="betaEmail" name="email" required placeholder="you@company.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="betaRole">What best describes you?</label>
+                            <select id="betaRole" name="role" required>
+                                <option value="">Select one...</option>
+                                <option value="seller">Amazon Seller</option>
+                                <option value="agency">Agency / Consultant</option>
+                                <option value="inhouse">In-house Brand Operator</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="betaAccounts">How many Amazon ad accounts do you manage?</label>
+                            <select id="betaAccounts" name="accounts" required>
+                                <option value="">Select one...</option>
+                                <option value="1">1</option>
+                                <option value="2-5">2–5</option>
+                                <option value="6-20">6–20</option>
+                                <option value="20+">20+</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="betaSpend">Approx. monthly Amazon ad spend</label>
+                            <select id="betaSpend" name="spend" required>
+                                <option value="">Select one...</option>
+                                <option value="<10k"><$10k</option>
+                                <option value="10k-50k">$10k–$50k</option>
+                                <option value="50k-200k">$50k–$200k</option>
+                                <option value="200k+">$200k+</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="betaGoal">What are you hoping to understand or prove with AdPulse?</label>
+                            <textarea id="betaGoal" name="goal" rows="3" placeholder="Tell us what you're looking to accomplish..."></textarea>
+                        </div>
+
+                        <button type="submit" class="primary-button large" style="width: 100%; margin-top: 1.5rem;">
+                            Request Private Beta Access
+                        </button>
+
+                        <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">
+                            We'll review your application and reach out within 1-2 business days.
+                        </p>
+                    </form>
+
+                    <div id="betaSuccessMessage" class="beta-success-message hidden">
+                        <div class="success-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="48" height="48">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </div>
+                        <h3>Application Received!</h3>
+                        <p>Thanks for your interest in AdPulse. We'll review your application and reach out within 1-2 business days.</p>
+                        <button class="secondary-button" id="closeBetaSuccess">Close</button>
+                    </div>
                 </div>
             </section>
         </div>
