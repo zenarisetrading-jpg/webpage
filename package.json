@@ -1,9 +1,0 @@
-{
-    "name": "saddle-adpulse-landing",
-    "version": "1.0.0",
-    "description": "Saddle AdPulse Landing Page",
-    "private": true,
-    "dependencies": {
-        "nodemailer": "^6.9.0"
-    }
-}
