@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,22 +14,26 @@
             padding: 8rem 0 6rem;
             background: var(--bg-primary);
         }
+
         .privacy-header {
             text-align: center;
             margin-bottom: 4rem;
         }
+
         .privacy-header h1 {
             font-size: 3rem;
             font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 1rem;
         }
+
         .privacy-header p {
             font-size: 1.2rem;
             color: var(--text-secondary);
             max-width: 700px;
             margin: 0 auto;
         }
+
         .privacy-content {
             max-width: 900px;
             margin: 0 auto;
@@ -37,12 +42,15 @@
             border-radius: 20px;
             box-shadow: var(--shadow-lg);
         }
+
         .privacy-section {
             margin-bottom: 3rem;
         }
+
         .privacy-section:last-child {
             margin-bottom: 0;
         }
+
         .privacy-section h2 {
             font-size: 1.8rem;
             font-weight: 700;
@@ -51,26 +59,31 @@
             padding-bottom: 0.5rem;
             border-bottom: 2px solid var(--accent-primary);
         }
+
         .privacy-section h3 {
             font-size: 1.3rem;
             font-weight: 600;
             color: var(--text-primary);
             margin: 1.5rem 0 0.8rem;
         }
+
         .privacy-section p {
             font-size: 1.05rem;
             color: var(--text-secondary);
             line-height: 1.8;
             margin-bottom: 1rem;
         }
+
         .privacy-section ul {
             margin: 1rem 0 1rem 1.5rem;
             color: var(--text-secondary);
             line-height: 1.8;
         }
+
         .privacy-section li {
             margin-bottom: 0.5rem;
         }
+
         .security-badge {
             display: inline-flex;
             align-items: center;
@@ -83,6 +96,7 @@
             font-weight: 600;
             margin: 0.5rem 0.5rem 0.5rem 0;
         }
+
         .highlight-box {
             background: rgba(8, 145, 178, 0.05);
             border-left: 4px solid var(--accent-primary);
@@ -90,38 +104,47 @@
             border-radius: 8px;
             margin: 1.5rem 0;
         }
+
         .highlight-box strong {
             color: var(--accent-primary);
         }
+
         @media (max-width: 768px) {
             .privacy-page {
                 padding: 6rem 0 4rem;
             }
+
             .privacy-header h1 {
                 font-size: 2rem;
             }
+
             .privacy-content {
                 padding: 2rem 1.5rem;
             }
+
             .privacy-section h2 {
                 font-size: 1.5rem;
             }
         }
     </style>
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
             <div class="nav-content">
                 <div class="logo">
-                    <img src="logo.png" alt="Saddle">
+                    <a href="index.html"><img src="logo.png" alt="Saddle"></a>
                 </div>
                 <div class="nav-links">
-                    <a href="index.html">Home</a>
-                    <a href="index.html#features">Features</a>
-                    <a href="index.html#pricing">Pricing</a>
-                    <a href="audit.html" class="cta-button">Run a Free Ad Impact Audit</a>
+                    <a href="features.html">Features</a>
+                    <a href="how-it-works.html">How It Works</a>
+                    <a href="agencies.html">Agencies</a>
+                    <a href="compare.html">Compare</a>
+                    <a href="about.html">About</a>
+                    <a href="faq.html">FAQ</a>
+                    <a href="audit.html" class="cta-button">Run Impact Check</a>
                 </div>
             </div>
         </div>
@@ -140,23 +163,28 @@
                 <div class="privacy-section">
                     <h2>Our Commitment</h2>
                     <p>
-                        Saddle AdPulse is built with enterprise-grade security and privacy controls. We understand that your Amazon advertising data is business-critical and sensitive. Our platform is designed to ensure your data remains secure, private, and under your control at all times.
+                        Saddle AdPulse is built with enterprise-grade security and privacy controls. We understand that
+                        your Amazon advertising data is business-critical and sensitive. Our platform is designed to
+                        ensure your data remains secure, private, and under your control at all times.
                     </p>
                     <div class="security-badge">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
+                            height="20">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                         </svg>
                         SOC 2 Type II Compliant
                     </div>
                     <div class="security-badge">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
+                            height="20">
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                         </svg>
                         256-bit Encryption
                     </div>
                     <div class="security-badge">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
+                            height="20">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                         </svg>
                         GDPR & CCPA Compliant
@@ -167,16 +195,21 @@
                 <div class="privacy-section">
                     <h2>What Data We Access</h2>
                     <p>
-                        AdPulse requires read-only access to your Amazon Advertising data via the Amazon Advertising API. This includes:
+                        AdPulse requires read-only access to your Amazon Advertising data via the Amazon Advertising
+                        API. This includes:
                     </p>
                     <ul>
-                        <li><strong>Campaign Performance Data:</strong> Clicks, impressions, spend, sales, and conversion metrics</li>
+                        <li><strong>Campaign Performance Data:</strong> Clicks, impressions, spend, sales, and
+                            conversion metrics</li>
                         <li><strong>Search Term Reports:</strong> Customer search queries and their performance</li>
-                        <li><strong>Keyword and Product Targeting Data:</strong> Targeting settings and bid information</li>
+                        <li><strong>Keyword and Product Targeting Data:</strong> Targeting settings and bid information
+                        </li>
                         <li><strong>Campaign Structure:</strong> Campaign, ad group, and keyword organization</li>
                     </ul>
                     <div class="highlight-box">
-                        <strong>Important:</strong> We NEVER access customer personally identifiable information (PII), order details, buyer contact information, or any data outside your Amazon Advertising account. All API access is read-only and limited to advertising metrics only.
+                        <strong>Important:</strong> We NEVER access customer personally identifiable information (PII),
+                        order details, buyer contact information, or any data outside your Amazon Advertising account.
+                        All API access is read-only and limited to advertising metrics only.
                     </div>
                 </div>
 
@@ -185,9 +218,12 @@
                     <h2>How We Use Your Data</h2>
                     <p>Your advertising data is used exclusively for the following purposes:</p>
                     <ul>
-                        <li><strong>Optimization Analysis:</strong> Identify negative keywords, harvest opportunities, and bid optimization recommendations</li>
-                        <li><strong>Impact Measurement:</strong> Calculate before/after performance to validate decision quality</li>
-                        <li><strong>Forecasting:</strong> Simulate potential outcomes using your historical performance data</li>
+                        <li><strong>Optimization Analysis:</strong> Identify negative keywords, harvest opportunities,
+                            and bid optimization recommendations</li>
+                        <li><strong>Impact Measurement:</strong> Calculate before/after performance to validate decision
+                            quality</li>
+                        <li><strong>Forecasting:</strong> Simulate potential outcomes using your historical performance
+                            data</li>
                         <li><strong>Reporting:</strong> Generate account health reports and performance dashboards</li>
                     </ul>
                     <p>
@@ -207,7 +243,8 @@
 
                     <h3>Data Encryption</h3>
                     <p>
-                        All data is encrypted both in transit and at rest using industry-standard AES-256 encryption. API connections use TLS 1.3 for secure data transmission.
+                        All data is encrypted both in transit and at rest using industry-standard AES-256 encryption.
+                        API connections use TLS 1.3 for secure data transmission.
                     </p>
 
                     <h3>Access Controls</h3>
@@ -238,7 +275,8 @@
                 <div class="privacy-section">
                     <h2>Data Retention & Deletion</h2>
                     <p>
-                        Your advertising data is retained for as long as your account is active. We retain historical data to enable:
+                        Your advertising data is retained for as long as your account is active. We retain historical
+                        data to enable:
                     </p>
                     <ul>
                         <li>Multi-horizon impact tracking (14D, 30D, 60D measurements)</li>
@@ -261,7 +299,8 @@
 
                     <h3>Amazon Advertising API Terms</h3>
                     <p>
-                        AdPulse is fully compliant with Amazon's Advertising API Terms of Service and Data Protection requirements. We maintain:
+                        AdPulse is fully compliant with Amazon's Advertising API Terms of Service and Data Protection
+                        requirements. We maintain:
                     </p>
                     <ul>
                         <li>Read-only API access with no data modification capabilities</li>
@@ -311,7 +350,8 @@
                 <div class="privacy-section">
                     <h2>Questions or Concerns?</h2>
                     <p>
-                        If you have any questions about our data privacy and security practices, or need to exercise your data rights, please contact us:
+                        If you have any questions about our data privacy and security practices, or need to exercise
+                        your data rights, please contact us:
                     </p>
                     <p>
                         <strong>Email:</strong> privacy@saddleadpulse.com<br>
@@ -359,4 +399,5 @@
         </div>
     </footer>
 </body>
+
 </html>
