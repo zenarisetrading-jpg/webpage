@@ -1,15 +1,8 @@
 [build]
   publish = "."
-  functions = "netlify/functions"
 
-[functions]
-  node_bundler = "esbuild"
+# Uncomment below if using Netlify Functions
+# [functions]
+#   directory = "netlify/functions"
+#   node_bundler = "esbuild"
 
-# Environment variables needed (set in Netlify dashboard):
-# SMTP_HOST - SMTP server hostname
-# SMTP_PORT - SMTP port (usually 587 or 465)
-# SMTP_USER - SMTP username
-# SMTP_PASS - SMTP password
-# SMTP_FROM - From email address
-# NOTIFICATION_EMAIL - Where to send notifications (aslam.yousuf@saddl.io)
-# WEBHOOK_SECRET - Secret to verify webhook calls from Supabase
