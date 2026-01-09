@@ -76,18 +76,94 @@
         </div>
     </section>
 
-    <!-- SECTION 3: PRODUCT -->
-    <section class="product-section-minimal">
+    <!-- SECTION 3: PRODUCT - SPLIT SCREEN -->
+    <section class="product-section-split">
         <div class="container">
-            <h2 class="section-title-cold">This is what knowing looks like.</h2>
+            <div class="product-grid">
+                <!-- LEFT SIDE: MacBook with Video -->
+                <div class="product-left">
+                    <h2 class="section-title-cold">This is what <span class="highlight-green">knowing</span> looks like.
+                    </h2>
 
-            <div class="screenshot-container">
-                <img src="impact-dashboard.png" alt="AdPulse Decision Impact Dashboard showing +$20,187 net impact" class="hero-screenshot" style="max-width: 100%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);">
+                    <div class="macbook-video-wrapper">
+                        <div class="macbook-frame-video">
+                            <div class="macbook-notch"></div>
+                            <div class="macbook-screen">
+                                <video autoplay loop muted playsinline class="dashboard-video">
+                                    <source src="mock-dash.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                        <div class="macbook-base"></div>
+                    </div>
+
+                    <p class="below-screenshot-text">Every number traces back to the decision that caused it.</p>
+                </div>
+
+                <!-- RIGHT SIDE: Feature Cards -->
+                <div class="product-right">
+                    <!-- Card 1: Decision Impact -->
+                    <div class="feature-card">
+                        <div class="feature-icon icon-green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 20V10M12 20V4M6 20v-6"></path>
+                            </svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>+AED 20,187 proven impact</h3>
+                            <p>Your optimizations drove <strong>+7.6% revenue increase</strong> — that's AED 20,187 more
+                                than if you'd done nothing.</p>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: ROAS Attribution -->
+                    <div class="feature-card">
+                        <div class="feature-icon icon-blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                <polyline points="17 6 23 6 23 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>653 decisions, clear ROAS lift</h3>
+                            <p><strong>Offensive wins: +AED 23,265</strong> from 372 actions. <strong>Defensive wins:
+                                    +AED 18,236</strong> from 281 actions.</p>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Decision Quality -->
+                    <div class="feature-card">
+                        <div class="feature-icon icon-purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Decision Score: +94 (Excellent)</h3>
+                            <p><strong>97% helped</strong>, only 3% hurt. Your decisions outperform market baseline.</p>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Trust (Dark) -->
+                    <div class="feature-card feature-card-dark">
+                        <div class="feature-icon icon-dark">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                <polyline points="9 12 11 14 15 10"></polyline>
+                            </svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Can you trust these numbers?</h3>
+                            <p>Every impact claim passes <strong>normalized validation</strong> against market baseline.
+                                No guessing, no false positives.</p>
+                        </div>
+                    </div>
+
+                    <a href="features.html" class="text-link-arrow feature-link">See all features <span
+                            class="arrow">→</span></a>
+                </div>
             </div>
-
-            <p class="below-screenshot-text">Every number traces back to the decision that caused it.</p>
-
-            <a href="features.html" class="text-link-arrow">See all features →</a>
         </div>
     </section>
 
