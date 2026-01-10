@@ -89,7 +89,16 @@ Baseline = T0 - 14 days (pre-optimization)
 Measurement = T0 + 14 days (post-optimization)
 ```
 
-**Maturity Calculation** (Fixed Jan 2026):
+### 3.2 Refined Attribution Framework (Decomposition)
+Implemented in [`desktop/scripts/refined_attribution.py`](file:///Users/zayaanyousuf/Documents/Amazon%20PPC/saddle/saddle/desktop/scripts/refined_attribution.py).
+Decomposes total ROAS change into:
+1.  **Decision Impact**: From `actions_log` (sum of validated impacts).
+2.  **Market Forces**: Calculated via CPC/CVR shifts (`calculate_cpc_impact`, `calculate_cvr_impact`).
+3.  **Scale Effect**: `estimate_scale_effect` (approx -0.5% ROAS per +10% Spend).
+4.  **Portfolio Effect**: `estimate_portfolio_effect` (efficiency drag from new campaigns).
+5.  **Residual**: `Total Δ - (Sum of Above)`.
+
+### 3.3 Maturity Calculation (Fixed Jan 2026):
 ```sql
 -- Calendar days from action to latest data (not report count)
 actual_after_days = latest_date - action_date + 1
@@ -98,7 +107,7 @@ actual_after_days = latest_date - action_date + 1
 is_mature = actual_after_days >= 14
 ```
 
-### 3.2 Confidence Weighting (Added Jan 2026)
+### 3.4 Confidence Weighting (Added Jan 2026)
 Low-click decisions are dampened to prevent noise:
 
 | Column | Formula | Purpose |
@@ -114,7 +123,7 @@ Low-click decisions are dampened to prevent noise:
 | **Directional** | 5 ≤ clicks < 15 | Partial weight (33%-99%) |
 | **Validated** | clicks ≥ 15 | Full weight (100%) |
 
-### 3.3 Decision Impact Formula
+### 3.5 Decision Impact Formula
 ```
 decision_impact = observed_after_sales - expected_after_sales
 
@@ -122,7 +131,7 @@ where:
   expected_after_sales = before_sales × (after_days / before_days)
 ```
 
-### 3.4 Statistical Confidence (Z-Score Based)
+### 3.6 Statistical Confidence (Z-Score Based)
 Proper statistical significance testing:
 
 ```python
@@ -142,7 +151,7 @@ confidence_pct = min(99, stats.norm.cdf(z_score) * 100)
 | ≥ 1.645 | Moderate | 90% confident |
 | < 1.645 | Directional | < 90% confident |
 
-### 3.5 Incremental Contribution %
+### 3.7 Incremental Contribution %
 Shows what percentage of total revenue optimizations contributed:
 
 ```python

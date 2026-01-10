@@ -239,3 +239,39 @@ A 2x2 matrix that plots each action based on:
 | **Win Rate** | % of actions in Win quadrants | Measure decision quality |
 | **Decision Gap** | Actions that scaled but missed efficiency | Identify optimization errors |
 | **Market Drag** | Actions confounded by external conditions | Transparent exclusion |
+
+---
+
+## 8. Refined Attribution Framework (ROAS Decomposition)
+
+While **Decision Impact** measures the micro-level success of individual optimization actions, **ROAS Decomposition** explains the macro-level movement of the entire account's efficiency.
+
+We decompose the total change in Account ROAS into 5 distinct components:
+
+### 1. Decision Impact (Internal - Controlled)
+The verified outcomes of our specific optimization actions (Bids, Harvests, Negatives).
+*   **Formula**: `Sum(Validated Action Impacts) / Total Spend`
+*   **Meaning**: How much value did *we* add through direct intervention?
+
+### 2. Market Forces (External - Uncontrolled)
+Changes driven by external market conditions (CPC inflation, conversion rate shifts, AOV changes).
+*   **CPC Impact**: `(Prior ROAS) × (CPC_Change_Pct * -1)` (Higher CPC = Lower ROAS)
+*   **CVR Impact**: `(Prior ROAS) × (CVR_Change_Pct)` (Higher CVR = Higher ROAS)
+*   **AOV Impact**: `(Prior ROAS) × (AOV_Change_Pct)` (Higher AOV = Higher ROAS)
+
+### 3. Scale Effect (Internal - Strategic)
+The natural efficiency loss that comes from aggressively scaling spend.
+*   **Logic**: "Diminishing Returns" curve.
+*   **Formula**: `If Spend increases >20%, assume 0.5% ROAS drop for every 10% spend hike.`
+*   **Meaning**: If we spent 50% more, ROAS *should* drop slightly. This isn't "bad performance," it's the cost of growth.
+
+### 4. Portfolio Effect (Internal - Structural)
+Changes driven by launching new campaigns or shifting budget mix.
+*   **Logic**: New campaigns (Launch Phase) typically run at 60-70% of the efficiency of mature campaigns.
+*   **Formula**: `(New Campaign Spend % of Total) × (1 - New_Campaign_Efficiency_Factor) × Baseline_ROAS`
+*   **Meaning**: Launching 10 new products will drag down account ROAS temporarily. This isolates that structural drag.
+
+### 5. Unexplained Residual
+The mathematical variance left over.
+*   **Formula**: `Total ROAS Change - (Decision + Market + Scale + Portfolio)`
+*   **Target**: Should be <20% of the total change for a high-confidence model.
