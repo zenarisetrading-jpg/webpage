@@ -181,70 +181,14 @@
                     </ul>
                 </div>
             </div>
-            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">© 2025 Saddle AdPulse. All rights
+            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">© 2025 Saddl AdPulse. All rights
                 reserved.</div>
         </div>
     </footer>
 
-    <!-- Supabase Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        // Supabase configuration
-        const SUPABASE_URL = 'https://wuakeiwxkjvhsnmkzywz.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1YWtlaXd4a2p2aHNubWt6eXd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMjE4MzYsImV4cCI6MjA4MTY5NzgzNn0.4n-RdlBEE-zGOxp3NsI8mKOcm10mEXUc9Fcz4-AyVe0';
-
-        let supabase = null;
-        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-
-        document.getElementById('betaSignupForm').addEventListener('submit', async function (e) {
-            e.preventDefault();
-
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting...';
-            submitBtn.disabled = true;
-
-            const formData = new FormData(this);
-            const data = {
-                name: formData.get('name'),
-                email: formData.get('email'),
-                role: formData.get('role'),
-                accounts: formData.get('accounts'),
-                monthly_spend: formData.get('spend'),
-                goal: formData.get('goal') || null,
-                source: 'landing_page'
-            };
-
-            try {
-                if (supabase) {
-                    const { error } = await supabase.from('beta_signups').insert([data]);
-
-                    if (error) {
-                        if (error.code === '23505') {
-                            alert('This email is already registered for beta access. We\'ll be in touch soon!');
-                            submitBtn.textContent = originalText;
-                            submitBtn.disabled = false;
-                            return;
-                        }
-                        throw error;
-                    }
-                } else {
-                    console.log('Supabase not configured. Beta signup data:', data);
-                }
-
-                this.classList.add('hidden');
-                document.getElementById('betaSuccessMessage').classList.remove('hidden');
-
-            } catch (error) {
-                console.error('Error saving beta signup:', error);
-                alert('There was an error submitting your request. Please try again.');
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-    </script>
+    <!-- Fixed (explicit UMD browser bundle) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="beta.js"></script>
 </body>
 
 </html>
