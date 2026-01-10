@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Beta Access - Saddle AdPulse</title>
+    <meta name="description"
+        content="Join sellers and agencies getting early access to decision intelligence for Amazon PPC.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-white text-slate-900">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="index.html" class="text-2xl font-bold text-slate-900">SADDLE</a>
+                <div class="flex items-center gap-8">
+                    <a href="compare.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Compare</a>
+                    <a href="features.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Features</a>
+                    <a href="how-it-works.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">How It
+                        Works</a>
+                    <a href="agencies.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Agencies</a>
+                    <a href="about.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">About</a>
+                    <a href="faq.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">FAQ</a>
+                    <a href="audit.html"
+                        class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700">Run
+                        Impact Check</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Beta Signup Section -->
+    <section class="pt-32 pb-24 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 min-h-screen">
+        <div class="max-w-xl mx-auto px-6">
+
+            <div class="text-center mb-10">
+                <h1 class="text-4xl font-bold mb-4">Request Private<br><span class="text-emerald-600">Beta Access</span>
+                </h1>
+                <p class="text-xl text-slate-600">Join sellers and agencies getting early access to decision
+                    intelligence for Amazon PPC.</p>
+            </div>
+
+            <div class="bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
+                <form id="betaSignupForm" class="space-y-6">
+
+                    <div>
+                        <label for="betaName" class="block text-sm font-medium text-slate-700 mb-2">Name</label>
+                        <input type="text" id="betaName" name="name" required placeholder="Your full name"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label for="betaEmail" class="block text-sm font-medium text-slate-700 mb-2">Work Email</label>
+                        <input type="email" id="betaEmail" name="email" required placeholder="you@company.com"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label for="betaRole" class="block text-sm font-medium text-slate-700 mb-2">What best describes
+                            you?</label>
+                        <select id="betaRole" name="role" required
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all bg-white">
+                            <option value="">Select one...</option>
+                            <option value="seller">Amazon Seller</option>
+                            <option value="agency">Agency / Consultant</option>
+                            <option value="inhouse">In-house Brand Operator</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="betaAccounts" class="block text-sm font-medium text-slate-700 mb-2">How many Amazon
+                            ad accounts do you manage?</label>
+                        <select id="betaAccounts" name="accounts" required
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all bg-white">
+                            <option value="">Select one...</option>
+                            <option value="1">1</option>
+                            <option value="2-5">2–5</option>
+                            <option value="6-20">6–20</option>
+                            <option value="20+">20+</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="betaSpend" class="block text-sm font-medium text-slate-700 mb-2">Approx. monthly
+                            Amazon ad spend</label>
+                        <select id="betaSpend" name="spend" required
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all bg-white">
+                            <option value="">Select one...</option>
+                            <option value="<10k">&lt;$10k</option>
+                            <option value="10k-50k">$10k–$50k</option>
+                            <option value="50k-200k">$50k–$200k</option>
+                            <option value="200k+">$200k+</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="betaGoal" class="block text-sm font-medium text-slate-700 mb-2">What are you hoping
+                            to understand or prove with AdPulse? <span class="text-slate-400">(Optional)</span></label>
+                        <textarea id="betaGoal" name="goal" rows="3"
+                            placeholder="Tell us what you're looking to accomplish..."
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-emerald-600 text-white px-6 py-4 rounded-xl text-lg font-semibold hover:bg-emerald-700 transition-colors shadow-lg">
+                        Request Private Beta Access
+                    </button>
+
+                    <p class="text-sm text-slate-500 text-center">We'll review your application and reach out within 1-2
+                        business days.</p>
+                </form>
+
+                <!-- Success Message -->
+                <div id="betaSuccessMessage" class="hidden text-center py-8">
+                    <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 mb-4">Application Received!</h3>
+                    <p class="text-slate-600 mb-8">Thanks for your interest in AdPulse. We'll review your application
+                        and reach out within 1-2 business days.</p>
+                    <a href="index.html"
+                        class="bg-slate-900 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-800 inline-block">Back
+                        to Home</a>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-16">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-12">
+                <div>
+                    <div class="text-white font-bold text-xl mb-4">SADDLE</div>
+                    <p class="text-sm">Decision intelligence for Amazon PPC</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="features.html" class="hover:text-white">Features</a></li>
+                        <li><a href="how-it-works.html" class="hover:text-white">How It Works</a></li>
+                        <li><a href="compare.html" class="hover:text-white">Compare</a></li>
+                        <li><a href="audit.html" class="hover:text-white">Run Impact Check</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Solutions</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="agencies.html" class="hover:text-white">For Agencies</a></li>
+                        <li><a href="features.html" class="hover:text-white">For Sellers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="about.html" class="hover:text-white">About</a></li>
+                        <li><a href="faq.html" class="hover:text-white">FAQ</a></li>
+                        <li><a href="privacy.html" class="hover:text-white">Privacy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">© 2025 Saddle AdPulse. All rights
+                reserved.</div>
+        </div>
+    </footer>
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://wuakeiwxkjvhsnmkzywz.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        let supabase = null;
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        document.getElementById('betaSignupForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting...';
+            submitBtn.disabled = true;
+
+            const formData = new FormData(this);
+            const data = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                role: formData.get('role'),
+                accounts: formData.get('accounts'),
+                monthly_spend: formData.get('spend'),
+                goal: formData.get('goal') || null,
+                source: 'landing_page'
+            };
+
+            try {
+                if (supabase) {
+                    const { error } = await supabase.from('beta_signups').insert([data]);
+
+                    if (error) {
+                        if (error.code === '23505') {
+                            alert('This email is already registered for beta access. We\'ll be in touch soon!');
+                            submitBtn.textContent = originalText;
+                            submitBtn.disabled = false;
+                            return;
+                        }
+                        throw error;
+                    }
+                } else {
+                    console.log('Supabase not configured. Beta signup data:', data);
+                }
+
+                this.classList.add('hidden');
+                document.getElementById('betaSuccessMessage').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error saving beta signup:', error);
+                alert('There was an error submitting your request. Please try again.');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

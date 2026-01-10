@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Ad Impact Check - Saddle AdPulse</title>
+    <meta name="description" content="Assess how clearly you can explain the value created by your Amazon ad decisions.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .quiz-option { cursor: pointer; transition: all 0.3s ease; }
+        .quiz-option.selected { background: rgb(236 253 245); border-color: rgb(16 185 129); }
+        .quiz-option:hover { border-color: rgb(16 185 129); }
+        .progress-fill { transition: width 0.5s ease; }
+        .hidden { display: none; }
+    </style>
+</head>
+
+<body class="bg-white text-slate-900">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="index.html" class="text-2xl font-bold text-slate-900">SADDLE</a>
+                <div class="flex items-center gap-8">
+                    <a href="compare.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Compare</a>
+                    <a href="features.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Features</a>
+                    <a href="how-it-works.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">How It Works</a>
+                    <a href="agencies.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Agencies</a>
+                    <a href="about.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">About</a>
+                    <a href="faq.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">FAQ</a>
+                    <a href="audit.html" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700">Run Impact Check</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pt-32 pb-12 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <h1 class="text-4xl lg:text-5xl font-bold mb-6">Your Ad Impact<br><span class="text-emerald-600">Snapshot</span></h1>
+            <p class="text-xl text-slate-600 leading-relaxed">Assess how clearly you can explain the value created by your ad decisions.</p>
+        </div>
+    </section>
+
+    <!-- Quiz Section -->
+    <section id="quizSection" class="py-16 bg-white">
+        <div class="max-w-3xl mx-auto px-6">
+            
+            <!-- Quiz Header -->
+            <div class="bg-slate-50 rounded-2xl p-8 border border-slate-200 mb-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Answer 5 quick questions</h2>
+                <p class="text-slate-600 mb-6">Assess how clearly you can explain the value created by your ad decisions.</p>
+                
+                <!-- Progress -->
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="text-sm text-slate-500"><span id="progressPercent" class="font-bold text-slate-900">0</span> of 5</span>
+                    <span class="text-slate-300">•</span>
+                    <span class="text-sm text-slate-500">~60 seconds</span>
+                </div>
+                <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div id="progressFill" class="progress-fill h-full bg-emerald-500 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Questions Container -->
+            <div id="questionsContainer" class="space-y-6"></div>
+
+            <!-- CTA Button -->
+            <div class="mt-8 text-center">
+                <button id="getScoreBtn" disabled class="bg-emerald-600 text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-emerald-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                    Get My Impact Score
+                </button>
+                <p class="text-sm text-slate-500 mt-4">100% free • No credit card • Instant results</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="resultsSection" class="py-16 bg-slate-50 hidden">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="grid md:grid-cols-2 gap-8">
+                
+                <!-- Score Card -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
+                    <h2 class="text-xl font-bold text-slate-900 mb-4">Impact Readiness Score</h2>
+                    <div id="healthScore" class="text-6xl font-bold text-emerald-600 mb-4">68</div>
+                    <p class="text-slate-600">Measures how clearly you can explain what your ad decisions actually contributed — beyond market movement.</p>
+                </div>
+
+                <!-- Opportunity Card -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
+                    <h2 class="text-xl font-bold text-slate-900 mb-4">Estimated Unexplained Value</h2>
+                    <div id="opportunityAmount" class="text-3xl font-bold text-amber-600 mb-4">$900 – $1,800</div>
+                    <p class="text-slate-600">per month in performance you can't confidently attribute to your actions.</p>
+                </div>
+
+                <!-- Breakdown Card -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
+                    <h2 class="text-xl font-bold text-slate-900 mb-4">Why the Score Is Limited</h2>
+                    <div id="breakdownList" class="space-y-3"></div>
+                </div>
+
+                <!-- Improvement Card -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
+                    <h2 class="text-xl font-bold text-slate-900 mb-4">How High-Performing Teams Improve</h2>
+                    <ul class="space-y-3 text-slate-600">
+                        <li class="flex items-start gap-3"><span class="text-emerald-500">✓</span>Separate the impact of actions from market movement</li>
+                        <li class="flex items-start gap-3"><span class="text-emerald-500">✓</span>Measure which decisions actually added value</li>
+                        <li class="flex items-start gap-3"><span class="text-emerald-500">✓</span>Build clear, defensible performance narratives</li>
+                    </ul>
+                </div>
+
+                <!-- CTA Card -->
+                <div class="md:col-span-2 bg-emerald-50 rounded-2xl p-8 border border-emerald-200 text-center">
+                    <h3 class="text-xl font-bold text-slate-900 mb-4">Move from metric improvement to provable impact</h3>
+                    <a href="beta.html" class="bg-emerald-600 text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-emerald-700 shadow-lg inline-block">Request Private Beta Access</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-16">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-12">
+                <div><div class="text-white font-bold text-xl mb-4">SADDLE</div><p class="text-sm">Decision intelligence for Amazon PPC</p></div>
+                <div><h4 class="text-white font-semibold mb-4">Product</h4><ul class="space-y-2 text-sm"><li><a href="features.html" class="hover:text-white">Features</a></li><li><a href="how-it-works.html" class="hover:text-white">How It Works</a></li><li><a href="compare.html" class="hover:text-white">Compare</a></li><li><a href="audit.html" class="hover:text-white">Run Impact Check</a></li></ul></div>
+                <div><h4 class="text-white font-semibold mb-4">Solutions</h4><ul class="space-y-2 text-sm"><li><a href="agencies.html" class="hover:text-white">For Agencies</a></li><li><a href="features.html" class="hover:text-white">For Sellers</a></li></ul></div>
+                <div><h4 class="text-white font-semibold mb-4">Company</h4><ul class="space-y-2 text-sm"><li><a href="about.html" class="hover:text-white">About</a></li><li><a href="faq.html" class="hover:text-white">FAQ</a></li><li><a href="privacy.html" class="hover:text-white">Privacy</a></li></ul></div>
+            </div>
+            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">© 2025 Saddle AdPulse. All rights reserved.</div>
+        </div>
+    </footer>
+
+    <script>
+        // Quiz questions
+        const questions = [
+            {
+                id: 1,
+                question: "When a client asks 'What did we get for that $15k?', can you answer with specific dollar amounts?",
+                options: [
+                    { text: "Yes, with verified incremental revenue figures", score: 20 },
+                    { text: "Partially - I can show ROAS/ACoS improvements", score: 12 },
+                    { text: "Not really - I show metrics but not dollars", score: 5 },
+                    { text: "No - I can't prove specific dollar impact", score: 0 }
+                ]
+            },
+            {
+                id: 2,
+                question: "Can you separate the impact of your decisions from overall market trends?",
+                options: [
+                    { text: "Yes, I calculate counterfactual baselines", score: 20 },
+                    { text: "Somewhat - I compare to account averages", score: 10 },
+                    { text: "Not really - I just show before/after", score: 5 },
+                    { text: "No - I can't separate the two", score: 0 }
+                ]
+            },
+            {
+                id: 3,
+                question: "How do you know which of your optimizations actually worked?",
+                options: [
+                    { text: "I track each decision and measure impact over 30-60 days", score: 20 },
+                    { text: "I check 7-day performance after changes", score: 10 },
+                    { text: "I look at overall account trends", score: 5 },
+                    { text: "I don't really know which specific changes helped", score: 0 }
+                ]
+            },
+            {
+                id: 4,
+                question: "Do you know which of your past optimizations hurt performance?",
+                options: [
+                    { text: "Yes, I track both wins and losses", score: 20 },
+                    { text: "Sometimes, if the impact was obvious", score: 10 },
+                    { text: "Rarely - I mainly focus on wins", score: 5 },
+                    { text: "No - I don't track failed optimizations", score: 0 }
+                ]
+            },
+            {
+                id: 5,
+                question: "How long does it take to build a client-ready impact report?",
+                options: [
+                    { text: "Minutes - it's automated with verified numbers", score: 20 },
+                    { text: "An hour or two of spreadsheet work", score: 10 },
+                    { text: "Half a day pulling data from multiple sources", score: 5 },
+                    { text: "I don't create impact reports", score: 0 }
+                ]
+            }
+        ];
+
+        let answers = {};
+
+        // Render questions
+        function renderQuestions() {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = questions.map(q => `
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-900 mb-4">${q.id}. ${q.question}</h3>
+                    <div class="space-y-3">
+                        ${q.options.map((opt, idx) => `
+                            <div class="quiz-option p-4 rounded-xl border border-slate-200 hover:border-emerald-500" 
+                                 data-question="${q.id}" data-score="${opt.score}" data-index="${idx}">
+                                <span class="text-slate-700">${opt.text}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.addEventListener('click', function() {
+                    const qId = this.dataset.question;
+                    const score = parseInt(this.dataset.score);
+                    
+                    // Remove selected from siblings
+                    document.querySelectorAll(`[data-question="${qId}"]`).forEach(el => el.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    answers[qId] = score;
+                    updateProgress();
+                });
+            });
+        }
+
+        function updateProgress() {
+            const answered = Object.keys(answers).length;
+            document.getElementById('progressPercent').textContent = answered;
+            document.getElementById('progressFill').style.width = `${(answered / 5) * 100}%`;
+            document.getElementById('getScoreBtn').disabled = answered < 5;
+        }
+
+        function calculateResults() {
+            const totalScore = Object.values(answers).reduce((a, b) => a + b, 0);
+            const maxScore = 100;
+            
+            document.getElementById('healthScore').textContent = totalScore;
+            
+            // Calculate opportunity
+            let opportunity = '$500 – $1,000';
+            if (totalScore < 40) opportunity = '$2,000 – $5,000';
+            else if (totalScore < 60) opportunity = '$1,000 – $2,000';
+            else if (totalScore < 80) opportunity = '$500 – $1,500';
+            document.getElementById('opportunityAmount').textContent = opportunity;
+            
+            // Build breakdown
+            const breakdowns = [];
+            if (answers['1'] < 15) breakdowns.push("Can't prove dollar impact to clients");
+            if (answers['2'] < 15) breakdowns.push("Can't separate decisions from market trends");
+            if (answers['3'] < 15) breakdowns.push("Not tracking individual optimization impact");
+            if (answers['4'] < 15) breakdowns.push("Not learning from failed optimizations");
+            if (answers['5'] < 15) breakdowns.push("Manual reporting process");
+            
+            document.getElementById('breakdownList').innerHTML = breakdowns.map(b => 
+                `<div class="flex items-start gap-3 text-slate-600"><span class="text-red-500">✗</span>${b}</div>`
+            ).join('');
+            
+            // Show results
+            document.getElementById('quizSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Initialize
+        renderQuestions();
+        document.getElementById('getScoreBtn').addEventListener('click', calculateResults);
+    </script>
+</body>
+</html>
