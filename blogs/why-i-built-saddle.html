@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-4M4FDX7KPV"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-4M4FDX7KPV');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why I Built SADDL: Bringing Marketing Science to the Mid-Market PPC Gap | Saddl AdPulse</title>
+    <meta name="description"
+        content="The story of bridging the gap between enterprise-grade attribution and mid-market Amazon PPC.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Specific overrides for blog readability */
+        .prose h2 {
+            color: #0B0B0D;
+            font-weight: 700;
+            margin-top: 2.5em;
+        }
+
+        .prose strong {
+            color: #0B0B0D;
+        }
+
+        .prose a {
+            color: #5B5670;
+            text-decoration: underline;
+            text-decoration-color: rgba(91, 86, 112, 0.3);
+            text-underline-offset: 2px;
+        }
+
+        .prose a:hover {
+            color: #2A8EC9;
+            text-decoration-color: #2A8EC9;
+        }
+    </style>
+</head>
+
+<body class="bg-white text-slate-900">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="../index.html" class="text-2xl font-bold text-slate-900">SADDL</a>
+                <div class="flex items-center gap-8">
+                    <a href="../compare.html"
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium">Compare</a>
+                    <a href="../features.html"
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium">Features</a>
+                    <a href="../how-it-works.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">How
+                        It
+                        Works</a>
+                    <a href="../agencies.html"
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium">Agencies</a>
+                    <a href="../about.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">About</a>
+                    <a href="../faq.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">FAQ</a>
+                    <a href="../audit.html"
+                        class="bg-[#2A8EC9] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2276A8]">
+                        Run Impact Check
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header / Hero -->
+    <header class="pt-32 pb-16 bg-slate-50 border-b border-slate-100">
+        <div class="max-w-3xl mx-auto px-6">
+            <div class="mb-6">
+                <a href="index.html" class="text-[#2A8EC9] font-medium text-sm mb-4 inline-block hover:underline">← Back
+                    to Blog</a>
+                <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 leading-tight mb-6">
+                    Why I Built SADDL: Bringing Marketing Science to the Mid-Market PPC Gap
+                </h1>
+                <div class="flex items-center gap-4 text-sm text-slate-500">
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold text-slate-900">Aslam Yousuf</span>
+                        <span>•</span>
+                        <span>Jan 12, 2026</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <article class="py-16 bg-white">
+        <div class="max-w-3xl mx-auto px-6">
+            <div class="prose prose-slate prose-lg max-w-none">
+
+                <p>I spent 15 years building incrementality measurement systems for enterprise advertisers.</p>
+
+                <p>I worked on TV attribution, consulted with ad platforms on measurement studies, and led analytics
+                    teams where Marketing Mix Modeling was table stakes — not a premium add-on.</p>
+
+                <p>Then I became a 7-figure Amazon seller.</p>
+
+                <p>And I expected the same measurement rigor I'd spent my career building.</p>
+
+                <p><strong>I found a gap.</strong></p>
+
+                <p>Not because anyone did anything wrong. But because the economics of tool-building and the reality of
+                    operator needs had diverged.</p>
+
+                <p>Here's what I discovered: The channel that represented <strong>40% of my total revenue</strong> — my
+                    single biggest growth driver — had fundamentally different measurement infrastructure than the
+                    traditional advertising channels I'd spent my career working on.</p>
+
+                <p><strong>SADDL was born from understanding why that gap exists — and who it hurts most.</strong></p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>1. The Standards I Took for Granted</h2>
+
+                <p>In my previous world, these weren't controversial statements — they were simply how measurement
+                    worked:</p>
+
+                <p><strong>Correlation ≠ Causation</strong><br>
+                    If sales went up after a TV campaign, we didn't just assume the campaign caused it. We ran
+                    incrementality studies with geo-based holdout groups to measure true lift.</p>
+
+                <p><strong>Counterfactual Analysis is Standard Practice</strong><br>
+                    Before claiming 'our optimization worked,' you had to answer: 'What would have happened if we did
+                    nothing?' That's not philosophy — that's basic scientific method.</p>
+
+                <p><strong>Multi-Touch Attribution Requires Multi-Horizon Windows</strong><br>
+                    We didn't just look at last-click. We measured 14-day, 30-day, 60-day windows to understand how
+                    different touchpoints contributed over time.</p>
+
+                <p><strong>Marketing Mix Modeling Separates Signal from Noise</strong><br>
+                    MMM decomposed results into: baseline trends, seasonality, competitive effects, external shocks, and
+                    YOUR actual impact. You couldn't claim credit for market forces.</p>
+
+                <p>These were the <strong>basics</strong>. The price of admission for serious advertising measurement.
+                </p>
+
+                <p>Clients spending $5M on TV got this level of rigor automatically. Clients spending $500K on display
+                    got this.</p>
+
+                <p>So when I started running Amazon PPC at scale — spending $250K+ annually, driving over $1M in
+                    revenue, representing 40% of my business — I naturally looked for the same standards.</p>
+
+                <p><strong>What I found was something different. And once I understood why, it made perfect
+                        sense.</strong></p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>2. The Gap I Found — And Why It Existed</h2>
+
+                <p>Here's what I found in the Amazon PPC tool landscape:</p>
+
+                <div class="grid md:grid-cols-2 gap-8 my-8 not-prose">
+                    <div class="bg-green-50 p-6 rounded-xl border border-green-100">
+                        <ul class="space-y-2 text-green-900 font-medium">
+                            <li class="flex items-center gap-2"><span class="text-green-600">✅</span> Bid optimization
+                                algorithms (excellent)</li>
+                            <li class="flex items-center gap-2"><span class="text-green-600">✅</span> Keyword research
+                                tools (sophisticated)</li>
+                            <li class="flex items-center gap-2"><span class="text-green-600">✅</span> Campaign
+                                automation (powerful)</li>
+                            <li class="flex items-center gap-2"><span class="text-green-600">✅</span> Workflow
+                                efficiency (genuinely helpful)</li>
+                        </ul>
+                    </div>
+                    <div class="bg-red-50 p-6 rounded-xl border border-red-100">
+                        <ul class="space-y-2 text-red-900 font-medium">
+                            <li class="flex items-center gap-2"><span class="text-red-500">❌</span> Incrementality
+                                testing (largely absent)</li>
+                            <li class="flex items-center gap-2"><span class="text-red-500">❌</span> Counterfactual
+                                analysis (not common)</li>
+                            <li class="flex items-center gap-2"><span class="text-red-500">❌</span> Multi-horizon
+                                attribution (7-day last-click is typical)</li>
+                            <li class="flex items-center gap-2"><span class="text-red-500">❌</span> Statistical
+                                significance testing at decision level (rare)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>The tools weren't designed to answer causal questions. And honestly? That makes sense given how the
+                    industry evolved.</p>
+
+                <p><strong>The Economics Problem:</strong></p>
+
+                <p>When I was building measurement systems for TV and display advertising:</p>
+                <ul>
+                    <li>Single clients spending $5M-$50M annually</li>
+                    <li>Agency teams of 10-20 managing each account</li>
+                    <li>Clients paying $500K+ for measurement platforms</li>
+                    <li>Clear ROI: 1% improvement on $20M = $200K value</li>
+                </ul>
+
+                <p>Amazon PPC is fundamentally different:</p>
+                <ul>
+                    <li>100,000 sellers spending $50K-$500K each (vs. 1,000 brands spending $10M)</li>
+                    <li>Individual operators or 2-3 person teams</li>
+                    <li>Tool budgets of $50-$500/month</li>
+                    <li>Need operational efficiency first</li>
+                </ul>
+
+                <p><strong>From a tool builder's perspective:</strong> Investing $500K+ in sophisticated incrementality
+                    infrastructure for customers paying $200/month doesn't work — especially when their burning problem
+                    is "How do I manage 500 keywords efficiently?"</p>
+
+                <p><strong>So the market evolved logically:</strong></p>
+                <ul>
+                    <li>Enterprise ($5M+ PPC) → White-glove managed services with custom measurement</li>
+                    <li>Small sellers (<$50K) → Efficient, affordable automation</li>
+                    <li><strong>Mid-market operators ($250K-$1M PPC) → Fall in the gap</strong></li>
+                </ul>
+
+                <p><strong>Here's where it gets personal:</strong></p>
+
+                <p>For a tool builder, a seller spending $250K annually on PPC might not justify custom measurement
+                    infrastructure.</p>
+
+                <p><strong>But for an operator spending $250K on PPC?</strong></p>
+
+                <p>That typically represents:</p>
+                <ul>
+                    <li><strong>$1M - $1.25M in PPC-attributed revenue</strong> (based on 4-5 ROAS, common for
+                        established sellers)</li>
+                    <li>Often <strong>40-50% of total business revenue</strong> for mid-market operators</li>
+                    <li><strong>Their single largest controllable growth lever and expense</strong></li>
+                </ul>
+
+                <p>When I was at the agency, we'd deploy full MMM for brands spending $2M on TV — representing maybe
+                    5-10% of their revenue.</p>
+
+                <p>As an Amazon operator, I was spending $250K on PPC — representing <strong>40% of my business</strong>
+                    — with significantly less measurement rigor.</p>
+
+                <p><strong>Not because of ignorance. Because of market structure.</strong></p>
+
+                <p><strong>Here's what that means in practice:</strong></p>
+
+                <p>You make an optimization: restructure campaigns, adjust 200 keywords, reallocate budget.</p>
+
+                <p>Two months later:</p>
+                <ul>
+                    <li>Revenue up 8%</li>
+                    <li>ACoS down 3 points</li>
+                    <li>Organic rank improved</li>
+                </ul>
+
+                <p><strong>Your tool says:</strong> "Great job!"</p>
+
+                <p><strong>What you actually need to know:</strong></p>
+                <ul>
+                    <li>How much was your optimization vs. external factors?</li>
+                    <li>Did a competitor stock out?</li>
+                    <li>Was there seasonal lift?</li>
+                    <li>Did Amazon's algorithm change?</li>
+                    <li>Would revenue have grown 6% anyway?</li>
+                </ul>
+
+                <p><strong>Why it matters:</strong></p>
+
+                <p>Without answers, you might:</p>
+                <ul>
+                    <li>Scale spending on false positives (expensive)</li>
+                    <li>Abandon strategies that worked (missed opportunity)</li>
+                    <li>Make million-dollar decisions on correlation, not causation</li>
+                </ul>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>3. Why This Matters Now More Than Ever</h2>
+
+                <p>The Amazon PPC landscape is hitting an inflection point.</p>
+
+                <p><strong>The competitive reality has fundamentally shifted.</strong></p>
+
+                <p>Amazon's seller base grows daily. What was a land grab five years ago is now trench warfare. More
+                    sellers means:</p>
+                <ul>
+                    <li><strong>Relentless price compression</strong> — someone's always willing to go lower</li>
+                    <li><strong>Shrinking margins</strong> — the race to the bottom is real</li>
+                    <li><strong>Increasing PPC dependency</strong> — organic visibility gets harder as competition
+                        multiplies</li>
+                </ul>
+
+                <p><strong>Here's what most sellers miss: PPC isn't just a growth strategy anymore. It's a defense
+                        strategy.</strong></p>
+
+                <p>You're not just using PPC to acquire new customers. You're using it to:</p>
+                <ul>
+                    <li><strong>Defend your market share</strong> against new entrants bidding on your keywords</li>
+                    <li><strong>Protect your margins</strong> by maintaining visibility without having to drop prices
+                    </li>
+                    <li><strong>Hold your volume</strong> when competitors undercut you on price</li>
+                </ul>
+
+                <p><strong>In this environment, PPC measurement isn't about maximizing growth. It's about not bleeding
+                        out.</strong></p>
+
+                <p>When someone's undercutting your price by 15%, your PPC efficiency is what determines whether you
+                    maintain volume or spiral downward. When five new competitors launch in your category this month,
+                    your ability to optimize effectively is the difference between holding position and losing ground.
+                </p>
+
+                <p><strong>You can't afford to waste 30% of your PPC budget on false positives. That's not leaving money
+                        on the table — that's actively funding your decline.</strong></p>
+
+                <p><strong>Plus, the operational stakes just got higher:</strong></p>
+
+                <ul>
+                    <li><strong>CPCs rising 15-30% YoY</strong> in many categories</li>
+                    <li><strong>Margins compressing</strong> from competition and fees</li>
+                    <li><strong>Attribution windows lengthening</strong> (14-30 days for Amazon's learning algorithms)
+                    </li>
+                    <li><strong>Auction complexity increasing</strong> with algorithm updates</li>
+                </ul>
+
+                <p><strong>The cost of being wrong:</strong></p>
+
+                <p>For a seller spending $250K on PPC:</p>
+                <ul>
+                    <li>A single wrong strategic decision (scaling something that didn't work) can cost $50K-$100K</li>
+                    <li>Confusing market lift with optimization impact leads to over-investment</li>
+                    <li>Missing what actually works means leaving money on the table</li>
+                </ul>
+
+                <div class="my-8 p-6 bg-slate-100 rounded-lg border-l-4 border-[#2A8EC9]">
+                    <p class="text-slate-900 font-semibold italic text-lg mb-0">"According to a 2025 Teikametrics
+                        report, only 18% of sellers accurately track full-funnel attribution."</p>
+                    <p class="text-slate-600 mt-2 text-sm">The other 82% are making high-stakes decisions based on
+                        correlation, hoping it's causation.</p>
+                </div>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>4. What Bringing Measurement Rigor to Mid-Market PPC Actually Looks Like</h2>
+
+                <p>SADDL isn't revolutionary. It's <strong>applied marketing science</strong> — the same principles I
+                    spent 15 years building for TV, display, and brand campaigns.</p>
+
+                <p>The difference: We're bringing these standards to the mid-market Amazon PPC segment that's been
+                    underserved.</p>
+
+                <p>Here's what that means:</p>
+
+                <div class="space-y-6 my-8 not-prose">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">Counterfactual Analysis</h3>
+                        <p class="text-slate-600">For every optimization, we model 'What would have happened if you did
+                            nothing?' using time-series forecasting and statistical controls. This separates your impact
+                            from baseline trends.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">Multi-Horizon Measurement</h3>
+                        <p class="text-slate-600">We track impact across 14-day, 30-day, and 60-day windows to account
+                            for Amazon's auction learning algorithms and delayed attribution.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">Market Decomposition</h3>
+                        <p class="text-slate-600">We separate your optimization effects from: baseline trends,
+                            seasonality, competitive dynamics, external shocks, and Amazon algorithm changes.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">Decision-Level Statistical Significance</h3>
+                        <p class="text-slate-600">We don't claim 'wins' based on random variation. Every significant
+                            decision gets significance testing. Sometimes the best insight is "not enough data yet —
+                            wait another week."</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">Revenue Protected</h3>
+                        <p class="text-slate-600">We measure impact even when revenue drops — because preventing a
+                            bigger decline is often the real win during market downturns.</p>
+                    </div>
+                </div>
+
+                <p><strong>This is table-stakes measurement in traditional advertising. It should be accessible to
+                        mid-market Amazon operators too.</strong></p>
+
+                <p>Let me be concrete about ROI:</p>
+
+                <div class="bg-[#EDF6FB] p-8 rounded-xl my-8 not-prose border border-[#A8D4ED]">
+                    <h3 class="font-bold text-xl text-slate-900 mb-4">Scenario: You're spending $20K/month on PPC ($240K
+                        annually)</h3>
+
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <p class="font-semibold text-red-600 mb-2">Without incrementality measurement:</p>
+                            <ul class="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                                <li>You make 50 optimization decisions per quarter</li>
+                                <li>You assume ~70% were wins based on dashboard metrics</li>
+                                <li>You scale spending on perceived winners</li>
+                                <li>Reality: Maybe 40% actually drove incremental value</li>
+                                <li>The other 30% were false positives</li>
+                            </ul>
+                            <p class="mt-4 font-bold text-slate-900">Cost of false positives: <span
+                                    class="text-red-600">$50K-$100K/year</span></p>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-[#2A8EC9] mb-2">With incrementality measurement:</p>
+                            <ul class="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                                <li>Same 50 optimization decisions</li>
+                                <li>You know which 20 actually drove incremental lift</li>
+                                <li>You scale only on proven winners</li>
+                            </ul>
+                            <p class="mt-4 font-bold text-slate-900">ROI on measurement: <span
+                                    class="text-[#2A8EC9]">20-40x the tool cost</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <p>For an operator spending $250K annually on PPC, sophisticated measurement isn't a luxury.
+                    <strong>It's one of the highest-ROI investments you can make.</strong>
+                </p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>5. The Mission: Solving for the Underserved Middle</h2>
+
+                <p>SADDL exists because I lived both worlds.</p>
+
+                <p>I spent 15 years building incrementality measurement for enterprise advertisers with massive budgets.
+                </p>
+
+                <p>Then I became a mid-market Amazon operator and discovered: <strong>The segment that needs this most
+                        has access to it least.</strong></p>
+
+                <p>Not because of ignorance. Because of market economics.</p>
+
+                <p><strong>But market economics are changing:</strong></p>
+
+                <p>The mid-market segment is now:</p>
+                <ul>
+                    <li>Large enough to matter (tens of thousands of sellers in the $250K-$1M PPC range)</li>
+                    <li>Sophisticated enough to value it (operators asking causal questions)</li>
+                    <li>Competitive enough to need it (margins don't allow for 30% waste)</li>
+                </ul>
+
+                <p><strong>That's the gap we're closing.</strong></p>
+
+                <p>We're not inventing new science. We're making existing measurement standards <strong>accessible and
+                        affordable</strong> for the operators who've been stuck in the middle.</p>
+
+                <p>We're bringing the rigor that $5M TV campaigns get to the $250K PPC budgets that often matter more to
+                    business outcomes.</p>
+
+                <p>Because if you're spending $20K/month on PPC — representing 40% of your business, defending against
+                    daily price wars — you deserve better than 'trust the dashboard and hope for the best.'</p>
+
+                <p><strong>You deserve decision intelligence, not just automation.</strong></p>
+
+                <p>You deserve to know which of your optimizations actually moved the needle.</p>
+
+                <p>You deserve to separate your impact from market noise.</p>
+
+                <p>You deserve the same measurement standards that enterprise brands take for granted.</p>
+
+                <p><strong>That's what SADDL delivers.</strong></p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>Closing: An Invitation</h2>
+
+                <p>If you're a mid-market operator spending $250K+ annually on PPC:</p>
+
+                <p>You're in the gap. Your budget is too large for basic automation to be enough, but the market hasn't
+                    prioritized building the measurement layer you need.</p>
+
+                <p>You're making decisions worth hundreds of thousands of dollars based on correlation, not causation.
+                </p>
+
+                <p>You're probably wondering: "Did my optimization actually work, or did something else change?"</p>
+
+                <p><strong>You're asking the right question. Now there's finally a tool built to answer it.</strong></p>
+
+            </div>
+
+            <div class="mt-16 bg-slate-50 border border-slate-200 rounded-2xl p-8 md:p-12 text-center">
+                <h3 class="text-2xl font-bold text-slate-900 mb-4">Want to see what real incrementality measurement
+                    looks like for your PPC?</h3>
+                <p class="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">We'll walk you through the Impact
+                    Dashboard and show you exactly which of your past optimizations actually moved the needle vs. which
+                    rode external trends.</p>
+
+                <a href="../bookdemo.html"
+                    class="inline-block bg-[#2A8EC9] text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-[#2276A8] shadow-lg transition-all hover:transform hover:-translate-y-1">
+                    Book a Demo
+                </a>
+            </div>
+
+        </div>
+    </article>
+
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-16">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-12">
+                <div>
+                    <div class="text-white font-bold text-xl mb-4">SADDL</div>
+                    <p class="text-sm">Decision intelligence for Amazon PPC</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="../features.html" class="hover:text-white">Features</a></li>
+                        <li><a href="../how-it-works.html" class="hover:text-white">How It Works</a></li>
+                        <li><a href="../compare.html" class="hover:text-white">Compare</a></li>
+                        <li><a href="../audit.html" class="hover:text-white">Run Impact Check</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Solutions</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="../agencies.html" class="hover:text-white">For Agencies</a></li>
+                        <li><a href="../features.html" class="hover:text-white">For Sellers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="../about.html" class="hover:text-white">About</a></li>
+                        <li><a href="../faq.html" class="hover:text-white">FAQ</a></li>
+                        <li><a href="../privacy.html" class="hover:text-white">Privacy</a></li>
+                        <li><a href="index.html" class="hover:text-white">Blog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">
+                © 2025 Saddl AdPulse. All rights reserved.
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>

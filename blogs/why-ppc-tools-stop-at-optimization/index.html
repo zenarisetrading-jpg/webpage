@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-4M4FDX7KPV"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-4M4FDX7KPV');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Every PPC Tool Stops at Optimization (And Why We Didn't) | SADDL</title>
+    <meta name="description"
+        content="Every Amazon PPC tool shows you what happened. None tell you if your optimizations actually caused it. Here's why the entire category stops at the same line—and why SADDL crosses it.">
+    <meta name="keywords"
+        content="Amazon PPC attribution, PPC incrementality, counterfactual analysis, Amazon PPC measurement, PPC impact analysis">
+
+    <!-- Open Graph / Social -->
+    <meta property="og:title" content="Why Every PPC Tool Stops at Optimization (And Why We Didn't)">
+    <meta property="og:description"
+        content="The line no PPC tool will cross—and why attribution matters more than optimization.">
+    <meta property="og:type" content="article">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            color: #0F172A;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Typography overrides */
+        .prose h2 {
+            color: #0F172A;
+            font-weight: 800;
+            margin-top: 3em;
+            font-size: 1.875rem;
+            letter-spacing: -0.025em;
+        }
+
+        .prose h3 {
+            color: #0F172A;
+            font-weight: 700;
+            margin-top: 2em;
+        }
+
+        .prose strong {
+            color: #0F172A;
+            font-weight: 700;
+        }
+
+        .chart-card strong {
+            color: inherit;
+        }
+
+        .prose p {
+            line-height: 1.8;
+            margin-bottom: 1.5em;
+            color: #334155;
+        }
+
+        .prose li {
+            color: #334155;
+        }
+
+        .prose a {
+            color: #2A8EC9;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .prose a:hover {
+            color: #2276A8;
+            text-decoration: underline;
+        }
+
+        /* Interactive Charts & Components */
+        .chart-card {
+            background: #0F172A;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 2rem 0;
+            color: white;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+            border: 1px solid #1E293B;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chart-header {
+            border-bottom: 1px solid #1E293B;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Waterfall Chart */
+        .waterfall-container {
+            position: relative;
+            height: 250px;
+            padding: 0 10px;
+            width: 100%;
+        }
+
+        .waterfall-bar-group {
+            position: absolute;
+            width: 18%;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .waterfall-bar {
+            width: 100%;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .bar-label {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: #94A3B8;
+            text-align: center;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .bar-value {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.875rem;
+            top: -25px;
+            color: white;
+        }
+
+        .bar-value.bottom {
+            top: auto;
+            bottom: -25px;
+        }
+
+        .bar-connector {
+            position: absolute;
+            border-top: 1px dashed #475569;
+            width: 250%;
+            /* Span across gap */
+            left: 50%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Gauge */
+        .gauge-container {
+            position: relative;
+            width: 160px;
+            height: 80px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .gauge-bg {
+            stroke: #1E293B;
+            stroke-width: 20;
+            fill: none;
+        }
+
+        .gauge-fill {
+            stroke: #10B981;
+            stroke-width: 20;
+            fill: none;
+            stroke-dasharray: 251;
+            /* pi * 80 */
+            stroke-dashoffset: 100;
+            /* (100-60)/100 * 251 approx */
+            transition: stroke-dashoffset 1.5s ease;
+            stroke-linecap: round;
+        }
+
+        .gauge-value {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #10B981;
+        }
+
+        /* Callout Boxes */
+        .callout {
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .callout-purple {
+            background-color: #F8FAFC;
+            border-left: 4px solid #6366F1;
+        }
+
+        .callout-blue {
+            background-color: #F0F9FF;
+            border-left: 4px solid #2A8EC9;
+        }
+
+        .callout-green {
+            background-color: #F0FDF4;
+            border: 1px solid #DCFCE7;
+        }
+
+        .callout-red {
+            background-color: #FEF2F2;
+            border: 1px solid #FEE2E2;
+        }
+
+        /* Custom Buttons */
+        .btn-primary-glow {
+            background: linear-gradient(135deg, #2A8EC9 0%, #175e8a 100%);
+            box-shadow: 0 4px 14px 0 rgba(42, 142, 201, 0.39);
+            color: white !important;
+        }
+
+        /* Tooltip Animation */
+        .tooltip-card {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-white text-slate-900">
+
+    <!-- Navigation -->
+    <nav
+        class="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 z-50 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="../../index.html" class="text-2xl font-bold text-slate-900 tracking-tight">SADDL</a>
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="../../compare.html"
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">Compare</a>
+                    <a href="../../features.html"
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">Features</a>
+                    <a href="../../how-it-works.html"
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">How It
+                        Works</a>
+                    <a href="../../agencies.html"
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">Agencies</a>
+                    <a href="../../audit.html"
+                        class="bg-[#2A8EC9] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#2276A8] transition-all hover:shadow-lg">
+                        Run Impact Check
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header / Hero -->
+    <header class="pt-40 pb-20 bg-slate-50 border-b border-slate-100">
+        <div class="max-w-3xl mx-auto px-6">
+            <div class="mb-8">
+                <a href="../index.html"
+                    class="text-[#2A8EC9] font-medium text-sm mb-6 inline-flex items-center hover:underline">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
+                        </path>
+                    </svg>
+                    Back to Blog
+                </a>
+                <h1
+                    class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-[1.15] mb-8 tracking-tight">
+                    Why Every PPC Tool Stops at Optimization (And Why We Didn't)
+                </h1>
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-[#2A8EC9] flex items-center justify-center text-white font-bold text-lg">
+                            A</div>
+                        <div>
+                            <span class="block font-bold text-slate-900">Aslam Yousuf</span>
+                            <span class="text-slate-500">Jan 19, 2026 · 8 min read</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <article class="py-20 bg-white">
+        <div class="max-w-3xl mx-auto px-6">
+            <div class="prose prose-slate prose-lg max-w-none">
+
+                <p class="lead text-xl text-slate-600 mb-8">You restructured campaigns last month. Spent $75K on new bid
+                    strategies. Revenue jumped 12%.</p>
+
+                <p><strong>Question: Did your optimization cause that lift, or did your biggest competitor run out of
+                        stock?</strong></p>
+
+                <p>Most operators can't answer that question with confidence. And when you're managing what's likely
+                    your largest expense line—part of the <strong class="text-[#2A8EC9]">$56 billion Amazon pulls in
+                        annually</strong> from advertising—that's a problem.</p>
+
+                <p>Here's the pattern every Amazon PPC tool follows:</p>
+
+                <div class="grid md:grid-cols-2 gap-6 not-prose mb-12">
+                    <div class="callout-green rounded-xl p-6">
+                        <ul class="space-y-3">
+                            <li class="flex items-center text-green-900 font-medium"><span class="mr-2">✅</span>
+                                Automate bid adjustments</li>
+                            <li class="flex items-center text-green-900 font-medium"><span class="mr-2">✅</span> Find
+                                negative keywords</li>
+                            <li class="flex items-center text-green-900 font-medium"><span class="mr-2">✅</span>
+                                Restructure campaigns</li>
+                            <li class="flex items-center text-green-900 font-medium"><span class="mr-2">✅</span> Show
+                                you performance dashboards</li>
+                        </ul>
+                    </div>
+                    <div class="callout-red rounded-xl p-6 flex items-center">
+                        <ul class="space-y-3">
+                            <li class="flex items-center text-red-900 font-bold text-lg"><span
+                                    class="mr-2 text-2xl">❌</span> Tell you if any of it actually worked</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>They all stop at the same line: <strong>Optimization delivered.</strong></p>
+
+                <p>But they never cross into: <strong>Impact measured.</strong></p>
+
+                <div class="callout callout-purple">
+                    <p class="m-0 font-medium text-slate-800">
+                        "Not because they can't. Because their founding philosophy was <strong>activity, not
+                            achievement.</strong>"
+                    </p>
+                </div>
+
+                <!-- CHART: ROAS WATERFALL (TRUE WATERFALL) -->
+                <div class="chart-card not-prose" id="roas-chart">
+                    <div class="chart-header flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-[#2A8EC9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                            <span class="font-semibold text-lg">ROAS Attribution</span>
+                        </div>
+                        <span class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">Real SADDL Data</span>
+                    </div>
+
+                    <div class="waterfall-container">
+                        <!-- Connector Lines (Background) -->
+                        <div
+                            style="position: absolute; bottom: 191.5px; left: 15%; width: 28%; border-top: 1px dashed #64748B; z-index: 0;">
+                        </div>
+                        <div
+                            style="position: absolute; bottom: 142px; left: 40%; width: 28%; border-top: 1px dashed #64748B; z-index: 0;">
+                        </div>
+                        <div
+                            style="position: absolute; bottom: 177.5px; left: 65%; width: 28%; border-top: 1px dashed #64748B; z-index: 0;">
+                        </div>
+
+                        <!-- 1. Baseline -->
+                        <div class="waterfall-bar-group" style="left: 5%; height: 191.5px;">
+                            <div class="waterfall-bar bg-slate-500 h-full">
+                                <div class="bar-value">3.83</div>
+                            </div>
+                            <div class="bar-label">Baseline</div>
+                        </div>
+
+                        <!-- 2. Market Forces -->
+                        <div class="waterfall-bar-group" style="left: 30%; height: 49.5px; bottom: 142px;">
+                            <div class="waterfall-bar bg-red-500 h-full">
+                                <div class="bar-value bottom text-red-400">-0.99</div>
+                            </div>
+                            <div class="bar-label" style="position: absolute; bottom: -155px;">Market Forces</div>
+                        </div>
+
+                        <!-- 3. Decisions -->
+                        <div class="waterfall-bar-group" style="left: 55%; height: 35.5px; bottom: 142px;">
+                            <div class="waterfall-bar bg-emerald-500 h-full">
+                                <div class="bar-value text-emerald-400">+0.71</div>
+                            </div>
+                            <div class="bar-label" style="position: absolute; bottom: -155px;">Decisions</div>
+                        </div>
+
+                        <!-- 4. Actual -->
+                        <div class="waterfall-bar-group" style="left: 80%; height: 177.5px;">
+                            <div class="waterfall-bar bg-[#2A8EC9] h-full">
+                                <div class="bar-value text-[#2A8EC9]">3.55</div>
+                            </div>
+                            <div class="bar-label">Actual</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 bg-slate-800/50 p-4 rounded-lg text-sm text-slate-300">
+                        <strong class="text-white">Analysis:</strong> Market forces hurt you (-0.99 ROAS), but your
+                        optimization decisions protected +0.71 ROAS worth of value. Without your actions, ROAS would
+                        have been 2.84. <span class="text-emerald-400">You improved performance by 25%.</span>
+                    </div>
+                </div>
+
+                <!-- CTA BLOCK -->
+                <div class="my-12 p-8 bg-slate-50 border border-slate-200 rounded-2xl text-center not-prose">
+                    <h3 class="text-xl font-bold text-slate-900 mb-6">See your own data like this</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="https://saddl.io/bookdemo"
+                            class="btn-primary-glow bg-[#2A8EC9] text-white px-8 py-3 rounded-lg font-bold hover:translate-y-[-2px] transition-transform">Book
+                            a Demo</a>
+                        <a href="https://saddl.io/audit"
+                            class="border-2 border-[#2A8EC9] text-[#2A8EC9] px-8 py-3 rounded-lg font-bold hover:bg-slate-50 transition-colors">Run
+                            Impact Check</a>
+                    </div>
+                </div>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>The Line Every Tool Stops At</h2>
+
+                <p>In traditional advertising, this problem was solved decades ago. TV campaigns measure incremental
+                    lift through geo-based holdout tests: "$2.8M incremental revenue (±$200K, 95% confidence)." Display
+                    advertising tracks view-through attribution. Paid search separates branded protection from net new
+                    acquisition.</p>
+
+                <p>Every channel evolved to answer one fundamental question: <strong>Compared to what?</strong></p>
+
+                <div class="callout callout-blue">
+                    <p class="mb-0 font-medium text-slate-800">For mid-market Amazon sellers, PPC often represents
+                        40-50% of total revenue—the single largest marketing budget line and most controllable growth
+                        lever. Yet it gets measured with less rigor than channels representing a fraction of traditional
+                        brand budgets.</p>
+                </div>
+
+                <p>The question isn't "how does PPC attribution compare to TV attribution?" The question is: <strong>Why
+                        does your largest revenue driver have the least measurement rigor?</strong></p>
+
+                <p>The answer reveals why the entire category stops at the same line.</p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>Why Mid-Market Was Left in the Gap</h2>
+
+                <p>The PPC tool market evolved around the extremes, leaving mid-market operators with a critical choice:
+                    overpay for enterprise infrastructure or under-measure with basic automation.</p>
+
+                <div class="not-prose my-8 overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+                    <table class="w-full text-left text-sm">
+                        <thead
+                            class="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-xs font-semibold text-slate-600">
+                            <tr>
+                                <th class="p-4 pl-6">Segment</th>
+                                <th class="p-4">Spend</th>
+                                <th class="p-4 pr-6">Tool Reality</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr class="bg-white">
+                                <td class="p-4 pl-6 font-bold text-slate-500">SMB</td>
+                                <td class="p-4 text-slate-500">&lt;$50K</td>
+                                <td class="p-4 pr-6 text-slate-600">Basic automation. Efficiency, not measurement.</td>
+                            </tr>
+                            <tr class="bg-white">
+                                <td class="p-4 pl-6 font-bold text-slate-500">Enterprise</td>
+                                <td class="p-4 text-slate-500">$1M+</td>
+                                <td class="p-4 pr-6 text-slate-600">Custom science teams. Attribution is table stakes.
+                                </td>
+                            </tr>
+                            <tr class="bg-[#F0F9FF] ring-1 ring-inset ring-[#2A8EC9]/20 relative z-10">
+                                <td class="p-4 pl-6 font-bold text-[#2A8EC9]">Mid-Market</td>
+                                <td class="p-4 text-[#2A8EC9] font-semibold">$250K-$1M</td>
+                                <td class="p-4 pr-6 font-semibold text-[#1e293b]">Stuck with SMB tools. Automation
+                                    without attribution.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="font-medium text-slate-800">The unit economics of enterprise measurement never trickled down.
+                    Until SADDL.</p>
+
+                <div class="callout callout-red">
+                    <p><strong>Here's where it gets existential:</strong> When you're spending $250K annually on PPC,
+                        that typically represents $1M+ in attributed revenue and often 40-50% of your total business.
+                    </p>
+                    <p class="mb-0">Average CPC has climbed to <strong>$1.12 in 2025</strong>—a 15.5% year-over-year
+                        increase—with projections hitting <strong>$1.25 by 2026</strong>. Competitive categories are
+                        already at $5+ per click.</p>
+                </div>
+
+                <p>Sponsored Products alone accounts for <strong>68% of Amazon's $56 billion ad
+                        revenue</strong>—representing the vast majority of where mid-market operators deploy capital.
+                    Every wasted dollar compounds. Every false positive scales loss. Every abandoned winner costs
+                    opportunity.</p>
+
+                <p>When Amazon now accounts for 77% of all US digital retail media ad spending, PPC isn't optional—it's
+                    the price of entry. But "pay-to-play" shouldn't mean "pay and hope."</p>
+
+                <p>SADDL was built specifically for this gap: <strong>Enterprise-grade attribution at mid-market
+                        scale.</strong></p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>What Optimization Tools Actually Show You</h2>
+
+                <p>Most PPC tools show performance metrics. Campaign revenue up 12%. Keyword conversions up 156. ACoS
+                    down to 24%. These numbers are accurate for what they measure: what happened.</p>
+
+                <p>But they don't show you why it happened. Or what would have happened anyway.</p>
+
+                <!-- CHART: DECISION IMPACT CARD -->
+                <div
+                    class="chart-card not-prose flex flex-col md:flex-row gap-8 items-center justify-between p-8 bg-gradient-to-br from-slate-900 to-slate-800">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2 text-emerald-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="font-medium">Did your optimizations make money?</span>
+                        </div>
+                        <div class="text-5xl font-extrabold text-emerald-400 mb-2">YES</div>
+                        <div class="text-4xl font-bold text-white mb-4">+$14,986</div>
+                        <div class="h-2 bg-slate-700 rounded-full overflow-hidden w-full max-w-sm">
+                            <div class="h-full bg-emerald-500 w-[96%]"></div>
+                        </div>
+                        <p class="text-slate-400 text-sm mt-2">That's $14,986 more than if you'd done nothing.</p>
+                    </div>
+
+                    <div class="flex-1 w-full border-t md:border-t-0 md:border-l border-slate-700 pt-6 md:pt-0 md:pl-8">
+                        <h4 class="text-slate-400 font-bold uppercase text-xs tracking-wider mb-4">Measured Impact
+                            Details</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                                <div class="text-xs text-emerald-400 font-bold mb-1">✔ WHAT WORKED</div>
+                                <div class="text-xl font-bold text-white">+$20,733</div>
+                                <div class="text-xs text-slate-500 mt-1">700 decisions helped</div>
+                            </div>
+                            <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                                <div class="text-xs text-red-400 font-bold mb-1">✖ WHAT DIDN'T</div>
+                                <div class="text-xl font-bold text-white">-$5,747</div>
+                                <div class="text-xs text-slate-500 mt-1">26 decisions hurt</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p>That's the gap. Performance metrics tell you the score. Attribution tells you whether you actually
+                    scored or whether the other team just missed.</p>
+
+                <p>The distinction becomes critical in today's environment. With paid search ads capturing 27.6% of new
+                    visitor traffic and established brands targeting 25% ACoS while new launches accept 40-50% to build
+                    visibility, precision matters. The cost of being wrong is measured in tens of thousands of dollars.
+                </p>
+
+                <div class="callout callout-blue">
+                    <p class="mb-2"><strong>Performance metrics</strong> tell you what changed, by how much, and when.
+                        Clean numbers. Green arrows. Looks authoritative.</p>
+                    <p class="mb-0"><strong>Attribution analysis</strong> tells you whether it was your action or
+                        external factors, how much was baseline versus your lift, and whether you should scale or wait
+                        for more data. Less clean. More honest. Actually useful for decisions.</p>
+                </div>
+
+                <p>Both are valuable. But decisions require the second layer, not just the first.</p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>What Measurement Actually Means</h2>
+
+                <p>SADDL measures impact through counterfactual analysis—the same methodology used in traditional
+                    advertising for decades. For every optimization you make, we model what would have happened if you
+                    did nothing.</p>
+
+                <p>That baseline becomes your comparison point. Not last month's performance. Not your gut feeling. A
+                    statistically calculated counterfactual using your 30-day historical baseline to model expected
+                    performance.</p>
+
+                <!-- CHART: CONFIDENCE GAUGE -->
+                <div class="chart-card not-prose">
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div class="text-center md:border-r border-slate-800">
+                            <div class="gauge-container">
+                                <svg width="160" height="80" viewBox="0 0 160 80">
+                                    <path class="gauge-bg" d="M 10 80 A 70 70 0 0 1 150 80" />
+                                    <path class="gauge-fill" d="M 10 80 A 70 70 0 0 1 150 80" />
+                                </svg>
+                                <div class="gauge-value">60.4%</div>
+                            </div>
+                            <div class="text-sm font-medium text-slate-300 mt-2">Measurement Coverage</div>
+                            <div class="mt-6 flex justify-center gap-6 text-left">
+                                <div>
+                                    <div class="text-xs text-slate-500">Total Decisions</div>
+                                    <div class="text-lg font-bold">1,974</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-slate-500">Proven Impact</div>
+                                    <div class="text-lg font-bold text-emerald-400">1,192</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-4">Recent Winning
+                                Decisions</h4>
+                            <div class="space-y-3">
+                                <div
+                                    class="flex justify-between items-center bg-slate-800 p-3 rounded border-l-2 border-emerald-500">
+                                    <div class="text-sm font-medium">substitutes <span
+                                            class="text-slate-500 text-xs block">Dec 30 • Bid Change</span></div>
+                                    <div class="text-emerald-400 font-bold">+$76</div>
+                                </div>
+                                <div
+                                    class="flex justify-between items-center bg-slate-800 p-3 rounded border-l-2 border-emerald-500">
+                                    <div class="text-sm font-medium">category="dish drying" <span
+                                            class="text-slate-500 text-xs block">Dec 30 • Bid Change</span></div>
+                                    <div class="text-emerald-400 font-bold">+$9</div>
+                                </div>
+                                <div
+                                    class="flex justify-between items-center bg-slate-800 p-3 rounded border-l-2 border-emerald-500">
+                                    <div class="text-sm font-medium">kids water bottles <span
+                                            class="text-slate-500 text-xs block">Dec 30 • Bid Change</span></div>
+                                    <div class="text-emerald-400 font-bold">+$307</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="my-10 not-prose">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-8 text-center">Multi-Horizon
+                        Verification</h4>
+                    <div class="relative flex justify-between max-w-lg mx-auto">
+                        <!-- Connecting Line -->
+                        <div class="absolute top-4 left-0 w-full h-0.5 bg-slate-200 -z-10"></div>
+
+                        <!-- 14 Days -->
+                        <div class="bg-white px-2 flex flex-col items-center">
+                            <div
+                                class="w-8 h-8 rounded-full bg-slate-100 border-2 border-[#2A8EC9] flex items-center justify-center text-[#2A8EC9] font-bold text-xs mb-3 shadow-sm">
+                                14</div>
+                            <div class="text-center">
+                                <div class="text-xs font-bold text-slate-800">Early Signals</div>
+                                <div class="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">Directional</div>
+                            </div>
+                        </div>
+
+                        <!-- 30 Days -->
+                        <div class="bg-white px-2 flex flex-col items-center">
+                            <div
+                                class="w-8 h-8 rounded-full bg-[#2A8EC9] shadow-lg shadow-[#2A8EC9]/30 flex items-center justify-center text-white font-bold text-xs mb-3">
+                                30</div>
+                            <div class="text-center">
+                                <div class="text-xs font-bold text-slate-800">Attribution Limit</div>
+                                <div class="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">Settled</div>
+                            </div>
+                        </div>
+
+                        <!-- 60 Days -->
+                        <div class="bg-white px-2 flex flex-col items-center">
+                            <div
+                                class="w-8 h-8 rounded-full bg-slate-100 border-2 border-slate-300 flex items-center justify-center text-slate-400 font-bold text-xs mb-3">
+                                60</div>
+                            <div class="text-center">
+                                <div class="text-xs font-bold text-slate-800">LTV & Retention</div>
+                                <div class="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">Durable</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p>We separate your actions from baseline trends by comparing your target's performance to account-wide
+                    averages. We can't always tell you WHY the baseline moved—competitor stockout? Seasonality?
+                    Algorithm change? But we can tell you whether your specific optimization beat whatever was happening
+                    account-wide. That's the question your decisions actually need answered.</p>
+
+                <p>This is what we mean by <strong>Decision Infrastructure</strong> versus optimization tactics.</p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>Why This Matters More Than Ever</h2>
+
+                <p>The environment has fundamentally shifted. Amazon PPC is no longer a growth strategy—it's a defense
+                    strategy.</p>
+
+                <p><strong>In 2020:</strong> Growing TAM, lower CPCs, expanding margins. "Optimization probably worked"
+                    was good enough.</p>
+                <p><strong>In 2025:</strong> Saturated categories, CPCs climbing toward $1.25, and Amazon capturing $56B
+                    annually in ad spend. Every wasted dollar funds your competition.</p>
+
+                <div class="callout-red font-medium text-red-900 border-l-4 border-red-500 bg-red-50 p-4 rounded r-0">
+                    "When you're spending $250K/year on PPC, 30% false positives equals $75K wasted annually. That's not
+                    'leaving money on the table.' That's actively losing to competitors who measure better."
+                </div>
+
+                <p>The question shifts from "how much can we scale?" to "are we solving the right problems?" And you
+                    can't answer that without attribution.</p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>How We Crossed the Line</h2>
+
+                <p>When you've spent years in channels where attribution is standard, you develop an instinct for when
+                    it's missing. In TV advertising, if someone claimed a 12% lift without a holdout test, you'd
+                    immediately ask: "Compared to what?"</p>
+
+                <p>Most PPC tools evolved from campaign automation, trying to add measurement later. SADDL started from
+                    the opposite direction: <strong>measurement methodology first, applied to campaign
+                        decisions.</strong></p>
+
+                <p><strong>Dashboard-first thinking:</strong> "Here's what happened. Here are 47 metrics. You figure out
+                    what to do."</p>
+
+                <p><strong>Decision-first thinking:</strong> "Should you scale this campaign? Here's the measured
+                    impact: +2.4% lift vs. baseline. Validation status: Confirmed. Recommendation: Scale confidently."
+                </p>
+
+                <p>It's not a better dashboard. It's a different philosophy.</p>
+
+                <hr class="my-12 border-slate-200">
+
+                <div class="callout-blue border-l-0 border-t-4 rounded-xl shadow-lg my-12 p-8 bg-slate-50">
+                    <h3 class="font-bold text-slate-900 mt-0 mb-6 text-xl">Case Study: The "False Positive" Trap</h3>
+
+                    <p class="text-slate-700"><strong>Scenario:</strong> You restructure campaigns. Revenue jumps 8%.
+                        Dashboards show green arrows. The obvious move? Scale immediately.</p>
+
+                    <p class="text-slate-700"><strong>The Reality:</strong> Attribution reveals account-wide revenue was
+                        also up 6%. Your biggest competitor went out of stock. That traffic spike was displaced demand,
+                        not your optimization.</p>
+
+                    <!-- CHART: TIMELINE (TRUE CURVE) -->
+                    <div class="chart-card not-prose" style="min-height: 380px;">
+                        <div class="chart-header">
+                            <span class="font-bold text-xl">Decision Impact Timeline</span>
+                            <div class="text-emerald-400 mt-2 font-mono">Total Attributed Impact: +$14,986</div>
+                        </div>
+
+                        <div class="relative w-full h-[250px] mt-8 overflow-visible">
+                            <svg width="100%" height="100%" viewBox="0 0 800 250" preserveAspectRatio="none"
+                                style="overflow: visible;">
+
+                                <!-- Grid Lines -->
+                                <line x1="0" y1="50" x2="800" y2="50" stroke="#1E293B" stroke-dasharray="4" />
+                                <line x1="0" y1="125" x2="800" y2="125" stroke="#1E293B" stroke-dasharray="4" />
+                                <line x1="0" y1="200" x2="800" y2="200" stroke="#1E293B" stroke-dasharray="4" />
+
+                                <path
+                                    d="M0,230 C100,220 150,160 200,160 S 300,200 360,200 S 450,50 520,50 S 650,230 800,240"
+                                    fill="none" stroke="#2A8EC9" stroke-width="3" />
+                            </svg>
+
+                            <!-- Action Points -->
+                            <div class="absolute w-4 h-4 rounded-full bg-emerald-400 border-2 border-slate-900 shadow-[0_0_0_2px_white] cursor-pointer group hover:scale-125 transition-transform"
+                                style="left: 25%; top: 64%; margin-top: -8px; margin-left: -8px;">
+                            </div>
+
+                            <div class="absolute w-4 h-4 rounded-full bg-blue-500 border-2 border-slate-900 shadow-[0_0_0_2px_white] cursor-pointer group hover:scale-125 transition-transform z-20"
+                                style="left: 45%; top: 80%; margin-top: -8px; margin-left: -8px;">
+
+                                <div
+                                    class="tooltip-card absolute bottom-6 left-1/2 -translate-x-1/2 w-64 bg-[#0F172A] text-white text-xs p-0 rounded-lg shadow-2xl border border-slate-600 z-50 overflow-hidden">
+                                    <div class="bg-slate-800/50 p-2 border-b border-slate-700 font-bold mb-1">
+                                        Action Window: Dec 08, 2025<br>
+                                        <span class="text-white font-normal">181 actions</span>
+                                    </div>
+                                    <div class="p-2 space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 rounded-full bg-green-500"></div> <span>Offensive Win:
+                                                <strong>$314</strong></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 rounded-full bg-blue-500"></div> <span>Defensive Win:
+                                                <strong>$1,900</strong></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 rounded-full bg-yellow-500"></div> <span>Gap Action:
+                                                <strong>-$954</strong></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 rounded-full border border-slate-400 bg-transparent">
+                                            </div> <span class="text-slate-400">Market Drag: -$2,070</span>
+                                        </div>
+                                    </div>
+                                    <div class="bg-slate-800/80 p-2 mt-1 border-t border-slate-700 font-bold">
+                                        Attributed: +$1,260
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="absolute w-4 h-4 rounded-full bg-red-500 border-2 border-slate-900 shadow-[0_0_0_2px_white] cursor-pointer group hover:scale-125 transition-transform"
+                                style="left: 65%; top: 20%; margin-top: -8px; margin-left: -8px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-slate-700 mt-6"><strong>The Outcome:</strong> Two weeks later, the competitor
+                        restocks. Revenue drops from the peak—but stays above baseline.</p>
+                    <p class="text-slate-700 mb-0"><strong>Standard tools</strong> would have you scaling hard on the
+                        artificial high, then panicking during the dip. <strong>SADDL</strong> measured a "Defensive
+                        Win"—you didn't create the spike, but you protected value.</p>
+                </div>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>Decision Infrastructure, Not Dashboard Theater</h2>
+
+                <p>Most PPC tools give you tactics. Bid this keyword at $2.30. Add these 47 negatives. All valuable. But
+                    tactics without measurement is activity without achievement.</p>
+
+                <p>SADDL gives you Decision Infrastructure. The foundation that lets you confidently answer:
+                    <strong>Should I do this? Did it work? What do I do next?</strong>
+                </p>
+
+                <p>You can't afford to confuse correlation with causation. You can't afford to scale on false positives.
+                    You can't afford to abandon strategies that are quietly protecting value and building organic
+                    momentum.</p>
+
+                <hr class="my-12 border-slate-200">
+
+                <h2>The Line No One Else Will Cross</h2>
+
+                <p>Every PPC tool will tell you: <strong>"We optimized your campaigns."</strong></p>
+                <p>SADDL tells you: <strong>"Here's the measured impact of what we optimized, separated from baseline
+                        trends, with statistical validation."</strong></p>
+
+                <div class="my-12"></div>
+
+                <p class="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                    Stop settling for tactics when you need truth. Take the Saddl.</p>
+
+                <p>There's a reason attribution is standard in every other ad channel. Now it's standard in yours.</p>
+
+                <hr class="my-12 border-slate-200">
+
+                <!-- CONCLUSION -->
+                <div class="bg-slate-50 p-8 rounded-2xl border border-slate-200 text-center not-prose">
+                    <h2 class="text-3xl font-bold text-slate-900 mb-4 mt-0">Ready to measure what actually works?</h2>
+                    <p class="text-lg text-slate-600 mb-8">SADDL brings enterprise-grade attribution to mid-market
+                        Amazon PPC. Stop guessing whether your optimizations worked. Start knowing.</p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="https://saddl.io/bookdemo"
+                            class="btn-primary-glow bg-[#2A8EC9] text-white px-8 py-3 rounded-lg font-bold">Book a
+                            Demo</a>
+                        <a href="https://saddl.io/audit"
+                            class="border-2 border-[#2A8EC9] text-[#2A8EC9] px-8 py-3 rounded-lg font-bold hover:bg-white">Run
+                            Impact Check</a>
+                    </div>
+                </div>
+
+                <hr class="my-12 border-slate-200">
+
+
+
+                <div class="mt-8 text-sm text-slate-500">
+                    <strong>Related Reading:</strong> <a href="../why-i-built-saddle.html"
+                        class="text-[#2A8EC9] font-semibold hover:underline">Why I Built SADDL</a>
+                </div>
+
+            </div>
+        </div>
+    </article>
+
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-16">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-12">
+                <div>
+                    <div class="text-white font-bold text-xl mb-4">SADDL</div>
+                    <p class="text-sm">Decision intelligence for Amazon PPC</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="../../features.html" class="hover:text-white">Features</a></li>
+                        <li><a href="../../how-it-works.html" class="hover:text-white">How It Works</a></li>
+                        <li><a href="../../compare.html" class="hover:text-white">Compare</a></li>
+                        <li><a href="../../audit.html" class="hover:text-white">Run Impact Check</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Solutions</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="../../agencies.html" class="hover:text-white">For Agencies</a></li>
+                        <li><a href="../../features.html" class="hover:text-white">For Sellers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="../../about.html" class="hover:text-white">About</a></li>
+                        <li><a href="../../faq.html" class="hover:text-white">FAQ</a></li>
+                        <li><a href="../../privacy.html" class="hover:text-white">Privacy</a></li>
+                        <li><a href="../index.html" class="hover:text-white">Blog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">
+                © 2025 Saddl AdPulse. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Track CTA clicks
+            document.querySelectorAll('a[href*="beta"]').forEach(link => {
+                link.addEventListener('click', function () {
+                    if (typeof gtag === 'function') {
+                        gtag('event', 'conversion', { 'send_to': 'G-4M4FDX7KPV/demo_click' });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

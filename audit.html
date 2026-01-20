@@ -1,21 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Free Ad Impact Check - Saddl AdPulse</title>
-    <meta name="description" content="Assess how clearly you can explain the value created by your Amazon ad decisions.">
+    <meta name="description"
+        content="Assess how clearly you can explain the value created by your Amazon ad decisions.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .quiz-option { cursor: pointer; transition: all 0.3s ease; }
-        .quiz-option.selected { background: rgb(236 253 245); border-color: rgb(16 185 129); }
-        .quiz-option:hover { border-color: rgb(16 185 129); }
-        .progress-fill { transition: width 0.5s ease; }
-        .hidden { display: none; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .quiz-option {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quiz-option.selected {
+            background: rgb(236 253 245);
+            border-color: rgb(16 185 129);
+        }
+
+        .quiz-option:hover {
+            border-color: rgb(16 185 129);
+        }
+
+        .progress-fill {
+            transition: width 0.5s ease;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 
@@ -29,41 +52,49 @@
                 <div class="flex items-center gap-8">
                     <a href="compare.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Compare</a>
                     <a href="features.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Features</a>
-                    <a href="how-it-works.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">How It Works</a>
+                    <a href="how-it-works.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">How It
+                        Works</a>
                     <a href="agencies.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Agencies</a>
                     <a href="about.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">About</a>
                     <a href="faq.html" class="text-slate-600 hover:text-slate-900 text-sm font-medium">FAQ</a>
-                    <a href="audit.html" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700">Run Impact Check</a>
+                    <a href="audit.html"
+                        class="bg-[#2A8EC9] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2276A8]">Run
+                        Impact Check</a>
                 </div>
             </div>
         </div>
     </nav>
 
     <!-- Hero -->
-    <section class="pt-32 pb-12 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+    <section class="pt-32 pb-12 bg-gradient-to-br from-slate-50 via-white to-sky-50/30">
         <div class="max-w-4xl mx-auto px-6 text-center">
-            <h1 class="text-4xl lg:text-5xl font-bold mb-6">Your Ad Impact<br><span class="text-emerald-600">Snapshot</span></h1>
-            <p class="text-xl text-slate-600 leading-relaxed">Assess how clearly you can explain the value created by your ad decisions.</p>
+            <h1 class="text-4xl lg:text-5xl font-bold mb-6">Your Ad Impact<br><span
+                    class="text-[#2A8EC9]">Snapshot</span></h1>
+            <p class="text-xl text-slate-600 leading-relaxed">Assess how clearly you can explain the value created by
+                your ad decisions.</p>
         </div>
     </section>
 
     <!-- Quiz Section -->
     <section id="quizSection" class="py-16 bg-white">
         <div class="max-w-3xl mx-auto px-6">
-            
+
             <!-- Quiz Header -->
             <div class="bg-slate-50 rounded-2xl p-8 border border-slate-200 mb-8">
                 <h2 class="text-2xl font-bold text-slate-900 mb-2">Answer 5 quick questions</h2>
-                <p class="text-slate-600 mb-6">Assess how clearly you can explain the value created by your ad decisions.</p>
-                
+                <p class="text-slate-600 mb-6">Assess how clearly you can explain the value created by your ad
+                    decisions.</p>
+
                 <!-- Progress -->
                 <div class="flex items-center gap-4 mb-4">
-                    <span class="text-sm text-slate-500"><span id="progressPercent" class="font-bold text-slate-900">0</span> of 5</span>
+                    <span class="text-sm text-slate-500"><span id="progressPercent"
+                            class="font-bold text-slate-900">0</span> of 5</span>
                     <span class="text-slate-300">•</span>
                     <span class="text-sm text-slate-500">~60 seconds</span>
                 </div>
                 <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div id="progressFill" class="progress-fill h-full bg-emerald-500 rounded-full" style="width: 0%"></div>
+                    <div id="progressFill" class="progress-fill h-full bg-sky-500 rounded-full" style="width: 0%">
+                    </div>
                 </div>
             </div>
 
@@ -72,7 +103,8 @@
 
             <!-- CTA Button -->
             <div class="mt-8 text-center">
-                <button id="getScoreBtn" disabled class="bg-emerald-600 text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-emerald-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                <button id="getScoreBtn" disabled
+                    class="bg-[#2A8EC9] text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-[#2276A8] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                     Get My Impact Score
                 </button>
                 <p class="text-sm text-slate-500 mt-4">100% free • No credit card • Instant results</p>
@@ -84,19 +116,21 @@
     <section id="resultsSection" class="py-16 bg-slate-50 hidden">
         <div class="max-w-4xl mx-auto px-6">
             <div class="grid md:grid-cols-2 gap-8">
-                
+
                 <!-- Score Card -->
                 <div class="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
                     <h2 class="text-xl font-bold text-slate-900 mb-4">Impact Readiness Score</h2>
-                    <div id="healthScore" class="text-6xl font-bold text-emerald-600 mb-4">68</div>
-                    <p class="text-slate-600">Measures how clearly you can explain what your ad decisions actually contributed — beyond market movement.</p>
+                    <div id="healthScore" class="text-6xl font-bold text-[#2A8EC9] mb-4">68</div>
+                    <p class="text-slate-600">Measures how clearly you can explain what your ad decisions actually
+                        contributed — beyond market movement.</p>
                 </div>
 
                 <!-- Opportunity Card -->
                 <div class="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
                     <h2 class="text-xl font-bold text-slate-900 mb-4">Estimated Unexplained Value</h2>
                     <div id="opportunityAmount" class="text-3xl font-bold text-amber-600 mb-4">$900 – $1,800</div>
-                    <p class="text-slate-600">per month in performance you can't confidently attribute to your actions.</p>
+                    <p class="text-slate-600">per month in performance you can't confidently attribute to your actions.
+                    </p>
                 </div>
 
                 <!-- Breakdown Card -->
@@ -109,16 +143,22 @@
                 <div class="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
                     <h2 class="text-xl font-bold text-slate-900 mb-4">How High-Performing Teams Improve</h2>
                     <ul class="space-y-3 text-slate-600">
-                        <li class="flex items-start gap-3"><span class="text-emerald-500">✓</span>Separate the impact of actions from market movement</li>
-                        <li class="flex items-start gap-3"><span class="text-emerald-500">✓</span>Measure which decisions actually added value</li>
-                        <li class="flex items-start gap-3"><span class="text-emerald-500">✓</span>Build clear, defensible performance narratives</li>
+                        <li class="flex items-start gap-3"><span class="text-[#2A8EC9]">✓</span>Separate the impact of
+                            actions from market movement</li>
+                        <li class="flex items-start gap-3"><span class="text-[#2A8EC9]">✓</span>Measure which
+                            decisions actually added value</li>
+                        <li class="flex items-start gap-3"><span class="text-[#2A8EC9]">✓</span>Build clear,
+                            defensible performance narratives</li>
                     </ul>
                 </div>
 
                 <!-- CTA Card -->
-                <div class="md:col-span-2 bg-emerald-50 rounded-2xl p-8 border border-emerald-200 text-center">
-                    <h3 class="text-xl font-bold text-slate-900 mb-4">Move from metric improvement to provable impact</h3>
-                    <a href="beta.html" class="bg-emerald-600 text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-emerald-700 shadow-lg inline-block">Request Private Beta Access</a>
+                <div class="md:col-span-2 bg-sky-50 rounded-2xl p-8 border border-sky-200 text-center">
+                    <h3 class="text-xl font-bold text-slate-900 mb-4">Move from metric improvement to provable impact
+                    </h3>
+                    <a href="bookdemo.html"
+                        class="bg-[#2A8EC9] text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-[#2276A8] shadow-lg inline-block">Book
+                        a Demo</a>
                 </div>
             </div>
         </div>
@@ -128,12 +168,38 @@
     <footer class="bg-slate-900 text-slate-400 py-16">
         <div class="max-w-7xl mx-auto px-6">
             <div class="grid md:grid-cols-4 gap-12">
-                <div><div class="text-white font-bold text-xl mb-4">SADDL</div><p class="text-sm">Decision intelligence for Amazon PPC</p></div>
-                <div><h4 class="text-white font-semibold mb-4">Product</h4><ul class="space-y-2 text-sm"><li><a href="features.html" class="hover:text-white">Features</a></li><li><a href="how-it-works.html" class="hover:text-white">How It Works</a></li><li><a href="compare.html" class="hover:text-white">Compare</a></li><li><a href="audit.html" class="hover:text-white">Run Impact Check</a></li></ul></div>
-                <div><h4 class="text-white font-semibold mb-4">Solutions</h4><ul class="space-y-2 text-sm"><li><a href="agencies.html" class="hover:text-white">For Agencies</a></li><li><a href="features.html" class="hover:text-white">For Sellers</a></li></ul></div>
-                <div><h4 class="text-white font-semibold mb-4">Company</h4><ul class="space-y-2 text-sm"><li><a href="about.html" class="hover:text-white">About</a></li><li><a href="faq.html" class="hover:text-white">FAQ</a></li><li><a href="privacy.html" class="hover:text-white">Privacy</a></li></ul></div>
+                <div>
+                    <div class="text-white font-bold text-xl mb-4">SADDL</div>
+                    <p class="text-sm">Decision intelligence for Amazon PPC</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="features.html" class="hover:text-white">Features</a></li>
+                        <li><a href="how-it-works.html" class="hover:text-white">How It Works</a></li>
+                        <li><a href="compare.html" class="hover:text-white">Compare</a></li>
+                        <li><a href="audit.html" class="hover:text-white">Run Impact Check</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Solutions</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="agencies.html" class="hover:text-white">For Agencies</a></li>
+                        <li><a href="features.html" class="hover:text-white">For Sellers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="about.html" class="hover:text-white">About</a></li>
+                        <li><a href="faq.html" class="hover:text-white">FAQ</a></li>
+                        <li><a href="privacy.html" class="hover:text-white">Privacy</a></li>
+                        <li><a href="blogs/index.html" class="hover:text-white">Blog</a></li>
+                    </ul>
+                </div>
             </div>
-            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">© 2025 Saddl AdPulse. All rights reserved.</div>
+            <div class="border-t border-slate-800 mt-12 pt-8 text-center text-sm">© 2025 Saddl AdPulse. All rights
+                reserved.</div>
         </div>
     </footer>
 
@@ -202,7 +268,7 @@
                     <h3 class="text-lg font-bold text-slate-900 mb-4">${q.id}. ${q.question}</h3>
                     <div class="space-y-3">
                         ${q.options.map((opt, idx) => `
-                            <div class="quiz-option p-4 rounded-xl border border-slate-200 hover:border-emerald-500" 
+                            <div class="quiz-option p-4 rounded-xl border border-slate-200 hover:border-[#2A8EC9]" 
                                  data-question="${q.id}" data-score="${opt.score}" data-index="${idx}">
                                 <span class="text-slate-700">${opt.text}</span>
                             </div>
@@ -213,14 +279,14 @@
 
             // Add click handlers
             document.querySelectorAll('.quiz-option').forEach(opt => {
-                opt.addEventListener('click', function() {
+                opt.addEventListener('click', function () {
                     const qId = this.dataset.question;
                     const score = parseInt(this.dataset.score);
-                    
+
                     // Remove selected from siblings
                     document.querySelectorAll(`[data-question="${qId}"]`).forEach(el => el.classList.remove('selected'));
                     this.classList.add('selected');
-                    
+
                     answers[qId] = score;
                     updateProgress();
                 });
@@ -237,16 +303,16 @@
         function calculateResults() {
             const totalScore = Object.values(answers).reduce((a, b) => a + b, 0);
             const maxScore = 100;
-            
+
             document.getElementById('healthScore').textContent = totalScore;
-            
+
             // Calculate opportunity
             let opportunity = '$500 – $1,000';
             if (totalScore < 40) opportunity = '$2,000 – $5,000';
             else if (totalScore < 60) opportunity = '$1,000 – $2,000';
             else if (totalScore < 80) opportunity = '$500 – $1,500';
             document.getElementById('opportunityAmount').textContent = opportunity;
-            
+
             // Build breakdown
             const breakdowns = [];
             if (answers['1'] < 15) breakdowns.push("Can't prove dollar impact to clients");
@@ -254,11 +320,11 @@
             if (answers['3'] < 15) breakdowns.push("Not tracking individual optimization impact");
             if (answers['4'] < 15) breakdowns.push("Not learning from failed optimizations");
             if (answers['5'] < 15) breakdowns.push("Manual reporting process");
-            
-            document.getElementById('breakdownList').innerHTML = breakdowns.map(b => 
+
+            document.getElementById('breakdownList').innerHTML = breakdowns.map(b =>
                 `<div class="flex items-start gap-3 text-slate-600"><span class="text-red-500">✗</span>${b}</div>`
             ).join('');
-            
+
             // Show results
             document.getElementById('quizSection').classList.add('hidden');
             document.getElementById('resultsSection').classList.remove('hidden');
@@ -270,4 +336,5 @@
         document.getElementById('getScoreBtn').addEventListener('click', calculateResults);
     </script>
 </body>
+
 </html>
