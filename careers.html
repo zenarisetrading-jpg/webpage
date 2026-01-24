@@ -2,11 +2,19 @@
 <html lang="en">
 
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-4M4FDX7KPV"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-4M4FDX7KPV');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Careers | Saddl AdPulse</title>
     <meta name="description"
-        content="Join the team building the white box for Amazon Ads. We are looking for an AI Full-Stack Developer.">
+        content="Join the team building the white box for Amazon Ads. Explore open roles in engineering, product, and growth.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,7 +33,7 @@
     </style>
 </head>
 
-<body class="bg-white text-slate-900">
+<body class="bg-white text-slate-900 flex flex-col min-h-screen">
 
     <!-- Navigation -->
     <nav class="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50">
@@ -49,131 +57,65 @@
         </div>
     </nav>
 
-    <!-- Use a simple hero section for Careers -->
-    <section class="min-h-[50vh] flex items-center pt-20 bg-gradient-to-br from-slate-50 via-white to-sky-50/30">
-        <div class="max-w-7xl mx-auto px-6 py-20">
-            <div class="max-w-4xl mx-auto text-center">
-                <h1 class="text-5xl lg:text-6xl font-bold leading-tight mb-6">
-                    Join the team building the <br>
-                    <span class="text-[#2A8EC9]">White Box</span> for Amazon Ads.
-                </h1>
-                <p class="text-xl text-slate-600 mb-4 leading-relaxed">
-                    We're looking for builders who want to solve hard problems with AI and data.
-                </p>
-            </div>
+    <!-- Header / Hero -->
+    <header class="pt-40 pb-20 bg-slate-50 border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
+                Join the team building the <br> <span class="text-[#2A8EC9]">White Box</span> for Amazon Ads.
+            </h1>
+            <p class="text-xl text-slate-600 max-w-2xl mx-auto">
+                We're looking for builders who want to solve hard problems with AI and data.
+            </p>
         </div>
-    </section>
+    </header>
 
-    <!-- Job Opening Section -->
-    <section class="py-24 bg-white">
-        <div class="max-w-4xl mx-auto px-6">
+    <!-- Job Grid -->
+    <section class="py-24 bg-white flex-grow">
+        <div class="max-w-7xl mx-auto px-6">
 
-            <div class="mb-12">
-                <span
-                    class="inline-block py-1 px-3 rounded-full bg-blue-100 text-[#2A8EC9] text-sm font-semibold mb-4">Open
-                    Role</span>
-                <h2 class="text-4xl font-bold text-slate-900 mb-2">AI Full-Stack Developer</h2>
-                <p class="text-lg text-slate-500">On-site / Full-time (Min of 2-3 YOE Required)</p>
-            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
 
-            <div class="prose prose-slate max-w-none">
+                <!-- Job Card 1 -->
+                <article
+                    class="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl transition-shadow group flex flex-col">
+                    <div class="p-8 flex flex-col flex-grow">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-sm font-semibold text-[#2A8EC9]">Engineering</div>
+                            <span
+                                class="inline-block py-0.5 px-2 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold border border-emerald-100">Open</span>
+                        </div>
 
-                <h3 class="text-2xl font-bold text-slate-900 mb-4 mt-8">Job Summary</h3>
-                <p class="text-slate-600 text-lg leading-relaxed mb-6">
-                    We are building an AI-powered Amazon advertising technology platform and are looking for an AI
-                    Full-Stack Developer who can take features from idea to production. You will work across the stack —
-                    integrating AI into Amazon Ads workflows, building scalable APIs, crafting intuitive web interfaces,
-                    deploying to the cloud, and ensuring the platform is secure, reliable, and production-ready.
-                </p>
-                <p class="text-slate-600 text-lg leading-relaxed mb-6">
-                    This role requires strong hands-on execution, strong product thinking, and the ability to move fast
-                    without compromising quality, accuracy, or security in a performance-sensitive ad tech environment.
-                </p>
+                        <h2 class="text-2xl font-bold text-slate-900 mb-4 group-hover:text-[#2A8EC9] transition-colors">
+                            <a href="jobs/ai-full-stack-developer.html">AI Full-Stack Engineer</a>
+                        </h2>
+                        <p class="text-slate-600 mb-6 flex-grow">
+                            Build and ship AI-powered features for an Amazon ad tech platform. Work with LLMs, build
+                            scalable APIs, and own production deployment.
+                        </p>
+                        <div class="flex items-center justify-between mt-auto pt-6 border-t border-slate-100">
+                            <div class="flex items-center gap-2 text-sm text-slate-500">
+                                <span class="font-medium text-slate-900">Remote / Hybrid</span>
+                            </div>
+                            <span class="text-sm text-slate-400 font-semibold text-[#2A8EC9]">Apply Now →</span>
+                        </div>
+                    </div>
+                </article>
 
-                <h3 class="text-2xl font-bold text-slate-900 mb-4 mt-12">Responsibilities</h3>
-                <ul class="list-disc pl-6 space-y-3 text-slate-600 text-lg mb-6">
-                    <li>Build and ship AI-powered features for an Amazon ad tech platform end-to-end</li>
-                    <li>Integrate AI models and tools into workflows for keyword research, bid optimization, campaign
-                        analysis, and decision support</li>
-                    <li>Work hands-on with AI platforms and tools such as OpenAI, Claude, Claude Code, Cursor,
-                        Antigravity, and similar AI developer tools</li>
-                    <li>Design and develop scalable backend services and APIs for ad data ingestion and processing</li>
-                    <li>Build clean, responsive frontend interfaces for advertisers and operators</li>
-                    <li>Own cloud deployment, CI/CD pipelines, and production environments</li>
-                    <li>Implement authentication, role-based access control, usage limits, and billing hooks</li>
-                    <li>Ensure application security, data privacy, and compliance with best practices</li>
-                    <li>Perform security checks, code reviews, and vulnerability assessments</li>
-                    <li>Monitor, debug, and optimize system performance, reliability, and cost</li>
-                    <li>Iterate quickly based on customer feedback and business requirements</li>
-                </ul>
-
-                <h3 class="text-2xl font-bold text-slate-900 mb-4 mt-12">Required Skills</h3>
-
-                <h4 class="text-xl font-semibold text-slate-900 mb-3 mt-6">AI & Ad Tech</h4>
-                <ul class="list-disc pl-6 space-y-2 text-slate-600 text-lg mb-6">
-                    <li>Strong hands-on experience with AI tools and platforms such as OpenAI, Claude, Claude Code,
-                        Cursor, Antigravity, or similar</li>
-                    <li>Experience integrating LLMs, embeddings, agents, and automation into production systems</li>
-                    <li>Understanding of AI cost control, latency, and reliability in real-time or near-real-time
-                        systems</li>
-                    <li>Familiarity with Amazon Ads concepts (campaigns, keywords, bids, search terms) is a strong plus
-                    </li>
-                </ul>
-
-                <h4 class="text-xl font-semibold text-slate-900 mb-3 mt-6">Backend</h4>
-                <ul class="list-disc pl-6 space-y-2 text-slate-600 text-lg mb-6">
-                    <li>Proficiency in Python or Node.js</li>
-                    <li>Experience building REST or GraphQL APIs</li>
-                    <li>Strong knowledge of databases (PostgreSQL, Redis, NoSQL)</li>
-                    <li>Experience handling large-scale data ingestion and processing is a plus</li>
-                </ul>
-
-                <h4 class="text-xl font-semibold text-slate-900 mb-3 mt-6">Frontend</h4>
-                <ul class="list-disc pl-6 space-y-2 text-slate-600 text-lg mb-6">
-                    <li>Experience with React, Next.js, or similar frameworks</li>
-                    <li>Ability to build scalable, reusable UI components</li>
-                    <li>Experience integrating backend and AI APIs into frontend applications</li>
-                </ul>
-
-                <h4 class="text-xl font-semibold text-slate-900 mb-3 mt-6">Cloud, DevOps & Security</h4>
-                <ul class="list-disc pl-6 space-y-2 text-slate-600 text-lg mb-6">
-                    <li>Experience deploying production systems on AWS, Azure, or GCP</li>
-                    <li>Familiarity with Docker and CI/CD pipelines</li>
-                    <li>Strong understanding of security best practices (OWASP, auth flows, secrets management, rate
-                        limiting)</li>
-                    <li>Experience securing multi-tenant platforms is a plus</li>
-                </ul>
-
-                <h3 class="text-2xl font-bold text-slate-900 mb-4 mt-12">Nice to Have</h3>
-                <ul class="list-disc pl-6 space-y-3 text-slate-600 text-lg mb-6">
-                    <li>Experience with Amazon Ads APIs or Selling Partner APIs</li>
-                    <li>Experience with vector databases (Pinecone, Weaviate, FAISS)</li>
-                    <li>Knowledge of multi-tenant SaaS or ad tech architectures</li>
-                    <li>Experience building decision-support or analytics platforms</li>
-                    <li>Prior startup or early-stage ad tech experience</li>
-                </ul>
-
-                <h3 class="text-2xl font-bold text-slate-900 mb-4 mt-12">Why Join Us</h3>
-                <ul class="list-disc pl-6 space-y-3 text-slate-600 text-lg mb-6">
-                    <li>Build a real AI-driven Amazon ad tech platform used by operators and brands</li>
-                    <li>High ownership and impact from day one</li>
-                    <li>Work at the intersection of AI, data, and advertising</li>
-                    <li>Fast-paced, execution-focused environment</li>
-                </ul>
-
-                <div class="mt-16 text-center">
-                    <a href="mailto:jobs@saddl.io"
-                        class="inline-block bg-[#2A8EC9] text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-[#2276A8] transition-colors shadow-lg">
-                        Apply Now
-                    </a>
+                <!-- Future Placeholder Card (Optional) -->
+                <!-- 
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-8 flex flex-col items-center justify-center text-center opacity-70">
+                    <div class="text-slate-400 font-medium mb-2">More roles coming soon</div>
+                    <p class="text-sm text-slate-400">Engineering • Product • Growth</p>
                 </div>
+                 -->
 
             </div>
+
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-400 py-16">
+    <footer class="bg-slate-900 text-slate-400 py-16 mt-auto">
         <div class="max-w-7xl mx-auto px-6">
             <div class="grid md:grid-cols-4 gap-12">
                 <div>

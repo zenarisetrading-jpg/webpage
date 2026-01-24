@@ -1,0 +1,265 @@
+/* HOW IT WORKS PAGE SPECIFIC STYLES */
+
+.how-hero {
+    padding: 14rem 0 6rem;
+    text-align: center;
+    background: var(--color-off-white);
+}
+
+/* Process Section */
+.process-section {
+    padding: 6rem 0;
+    background: white;
+}
+
+.process-steps {
+    max-width: 1000px;
+    margin: 4rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+}
+
+.process-step {
+    position: relative;
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.step-number-big {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    background: var(--gradient-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 800;
+    box-shadow: var(--shadow-lg);
+}
+
+.step-header h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.step-content {
+    padding-left: 6rem;
+}
+
+.step-description {
+    font-size: 1.1rem;
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+}
+
+.step-description strong {
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.step-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--gradient-soft);
+    padding: 1.25rem 1.5rem;
+    border-radius: 8px;
+}
+
+.detail-icon {
+    font-size: 1.5rem;
+}
+
+.detail-text {
+    font-size: 0.95rem;
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+/* Action Types */
+.action-types {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.action-type-card {
+    background: var(--gradient-soft);
+    border: 1px solid rgba(91, 86, 112, 0.12);
+    border-radius: 8px;
+    padding: 2rem 1.5rem;
+}
+
+.action-type-card h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: 0.75rem;
+}
+
+.action-type-card p {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+/* Export Demo */
+.export-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.export-file {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: var(--color-off-white);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid rgba(91, 86, 112, 0.12);
+}
+
+.file-icon {
+    font-size: 2rem;
+}
+
+.file-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.file-desc {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+/* Impact Preview */
+.impact-preview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.impact-stat {
+    background: var(--gradient-soft);
+    border: 1px solid rgba(91, 86, 112, 0.12);
+    border-radius: 8px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+}
+
+.impact-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+.impact-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+
+.impact-value.success {
+    color: var(--color-success);
+}
+
+.impact-value.danger {
+    color: var(--color-danger);
+}
+
+.impact-detail {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+/* Privacy Section */
+.privacy-section {
+    padding: 6rem 0;
+    background: var(--color-off-white);
+}
+
+.privacy-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+    margin-top: 4rem;
+}
+
+.privacy-card {
+    background: white;
+    border: 1px solid rgba(91, 86, 112, 0.12);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+}
+
+.privacy-card h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: 1rem;
+}
+
+.privacy-card p {
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+
+/* How CTA */
+.how-cta-section {
+    padding: 6rem 0;
+    background: var(--color-dark);
+    text-align: center;
+}
+
+.how-cta-section .cta-heading {
+    color: white;
+    font-size: 3rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .step-content {
+        padding-left: 0;
+    }
+
+    .action-types {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .impact-preview {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .privacy-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}

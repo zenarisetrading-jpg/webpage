@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frequently Asked Questions - Saddle AdPulse</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .faq-page {
+            padding: 8rem 0 6rem;
+            background: var(--bg-primary);
+        }
+        .faq-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        .faq-header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        .faq-header p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .faq-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .faq-item {
+            background: var(--bg-tertiary);
+            border: 1.5px solid var(--glass-border);
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .faq-item:hover {
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow-sm);
+        }
+        .faq-question {
+            padding: 1.8rem 2rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            user-select: none;
+        }
+        .faq-question h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            flex: 1;
+        }
+        .faq-toggle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        .faq-toggle::after {
+            content: '+';
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            transition: transform 0.3s ease;
+        }
+        .faq-item.active .faq-toggle {
+            background: var(--accent-primary);
+        }
+        .faq-item.active .faq-toggle::after {
+            content: '−';
+            color: white;
+        }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .faq-item.active .faq-answer {
+            max-height: 1000px;
+        }
+        .faq-answer-content {
+            padding: 0 2rem 2rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+        .faq-answer-content p {
+            margin-bottom: 1rem;
+        }
+        .faq-answer-content ul {
+            margin: 1rem 0 1rem 1.5rem;
+            list-style: disc;
+        }
+        .faq-answer-content li {
+            margin-bottom: 0.5rem;
+        }
+        .faq-answer-content strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .faq-answer-content code {
+            background: var(--bg-secondary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-primary);
+        }
+        .faq-cta {
+            text-align: center;
+            margin-top: 4rem;
+            padding: 3rem;
+            background: linear-gradient(135deg, rgba(8, 145, 178, 0.06) 0%, rgba(6, 182, 212, 0.04) 100%);
+            border-radius: 20px;
+            border: 2px solid rgba(8, 145, 178, 0.15);
+        }
+        .faq-cta h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        .faq-cta p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+        .faq-cta a {
+            display: inline-block;
+            background: var(--accent-gradient);
+            color: white;
+            padding: 1rem 2.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .faq-cta a:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+        @media (max-width: 768px) {
+            .faq-page {
+                padding: 6rem 0 4rem;
+            }
+            .faq-header h1 {
+                font-size: 2rem;
+            }
+            .faq-question {
+                padding: 1.5rem;
+            }
+            .faq-question h3 {
+                font-size: 1.05rem;
+            }
+            .faq-answer-content {
+                padding: 0 1.5rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <a href="index.html"><img src="logo.png" alt="Saddle"></a>
+                </div>
+                <div class="nav-links">
+                    <a href="index.html">Home</a>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="faq.html">FAQ</a>
+                    <a href="audit.html" class="cta-button">Run a Free Ad Impact Audit</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- FAQ Page -->
+    <section class="faq-page">
+        <div class="container">
+            <div class="faq-header">
+                <h1>Frequently Asked Questions</h1>
+                <p>Everything you need to know about AdPulse and how it transforms your Amazon PPC.</p>
+            </div>
+
+            <div class="faq-content">
+                <!-- Question 1 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What is AdPulse and how does it work?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>AdPulse analyzes your Amazon advertising data to find wasted spend, hidden opportunities, and optimal bid adjustments. Unlike other tools, it tracks which decisions actually worked and which didn't, so you can learn what drives revenue instead of guessing.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What are "Harvest Opportunities" and how do they work?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>These are high-performing search terms that are currently running in Auto or Broad/Phrase campaigns. AdPulse identifies them and recommends promoting them to Exact Match for better control and efficiency. If the same term appears in multiple campaigns, we help you consolidate traffic to the best-performing one.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 3 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How does AdPulse detect "bleeders" (negative keywords)?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>AdPulse identifies search terms that are spending money without generating sales. It uses your account's conversion rate to determine when a term has received enough traffic to prove it's not working. Once identified, we generate negative keyword recommendations to block them and stop the waste.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 4 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What is the Impact Dashboard and how is it different?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>The Impact Dashboard measures whether your optimization decisions actually drove results or if changes were just due to broader market trends. It separates what you controlled from what you didn't, so you only get credit for actions that truly made a difference. This prevents the false success metrics you see in other tools.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 5 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How does bid optimization work?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>AdPulse compares each keyword's performance to your account's baseline and adjusts bids accordingly. High performers get bid increases to capture more traffic, underperformers get decreases to improve efficiency. Keywords with low impressions get visibility boosts to help them compete in auctions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 6 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What data do I need to provide?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>You only need to upload your Search Term Report from Amazon Ads Console. Optionally, you can provide bulk files with Campaign/Ad Group IDs for easier implementation. We never access customer data, order details, or anything outside your advertising account.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 7 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How do I implement the recommendations?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>AdPulse generates Amazon-compatible bulk upload files for all recommendations. You simply download the file from AdPulse, then upload it to Amazon Ads Console under Bulk Operations. No manual editing or copying required—it's ready to go.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 8 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What's the difference between Simulation and Impact Dashboard?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Simulation predicts what will happen <em>before</em> you implement changes, helping you plan confidently. Impact Dashboard measures what <em>actually</em> happened <em>after</em> you make changes, proving which decisions worked. Together, they close the optimization feedback loop.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 9 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How long does it take to see results?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>You'll get optimization recommendations instantly after uploading your first report. Impact measurement takes 14-30 days to show reliable results due to Amazon's attribution windows. Most users see early signals within 2-3 weeks and full impact clarity after 30 days.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 10 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What's the difference between pricing tiers?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Starter ($49) gives you audit and recommendations with basic metrics. Growth ($99) adds full automation, Impact Dashboard, and Simulation. Scale ($199) is for sellers managing multiple brands. Agency plans start at $499 for the platform + per-client fees depending on features needed.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 11 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>Do you support multiple Amazon marketplaces?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Yes. AdPulse supports all Amazon marketplaces globally (North America, Europe, Asia-Pacific). Our optimization logic is currency-neutral, so thresholds work the same whether you're selling in USD, EUR, AED, or any other currency.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 12 -->
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>Is my data secure? How do you handle privacy?</h3>
+                        <div class="faq-toggle"></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Yes. We're SOC 2 Type II compliant with 256-bit encryption and GDPR/CCPA compliance. We only access your advertising metrics—never customer data, order details, or buyer information. Your data is used exclusively for your optimization and is never sold or shared. <a href="privacy.html" style="color: var(--accent-primary); font-weight: 600;">Full details here</a>.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="faq-cta">
+                <h2>Still have questions?</h2>
+                <p>See what opportunities you're missing with a free ad impact audit.</p>
+                <a href="audit.html">Run a Free Ad Impact Audit</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <!-- Empty section for spacing -->
+                    <p>AdPulse - Amazon PPC optimization that actually works.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#how-it-works">How It Works</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="audit.html">Run a Free Ad Impact Audit</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <a href="#">Documentation</a>
+                    <a href="#">Blog</a>
+                    <a href="#">Case Studies</a>
+                    <a href="faq.html">FAQ</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <a href="#">About</a>
+                    <a href="#">Contact</a>
+                    <a href="privacy.html">Privacy & Security</a>
+                    <a href="#">Terms</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Saddle AdPulse. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // FAQ Accordion functionality
+        const faqItems = document.querySelectorAll('.faq-item');
+
+        faqItems.forEach(item => {
+            const question = item.querySelector('.faq-question');
+
+            question.addEventListener('click', () => {
+                // Close other open items
+                faqItems.forEach(otherItem => {
+                    if (otherItem !== item && otherItem.classList.contains('active')) {
+                        otherItem.classList.remove('active');
+                    }
+                });
+
+                // Toggle current item
+                item.classList.toggle('active');
+            });
+        });
+
+        // Smooth scroll for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Navbar scroll effect
+        const navbar = document.querySelector('.navbar');
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
+            if (currentScroll <= 0) {
+                navbar.style.boxShadow = '0 1px 3px rgba(43, 45, 66, 0.08)';
+                navbar.style.background = 'rgba(245, 244, 240, 0.95)';
+            } else {
+                navbar.style.boxShadow = '0 4px 12px rgba(43, 45, 66, 0.15)';
+                navbar.style.background = 'rgba(245, 244, 240, 0.98)';
+            }
+        });
+    </script>
+</body>
+</html>

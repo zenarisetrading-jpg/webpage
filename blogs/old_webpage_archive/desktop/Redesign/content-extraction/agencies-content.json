@@ -1,0 +1,138 @@
+{
+    "page": "agencies",
+    "title": "Amazon PPC Management for Agencies | Saddle AdPulse",
+    "meta_description": "Finally, proof your clients can actually understand. Show exactly what your optimizations delivered.",
+    "sections": [
+        {
+            "id": "hero",
+            "badge": "For Agencies & Consultants",
+            "headline": "Finally, proof your clients can actually understand.",
+            "subtitle": "You do great work. But proving it is hard. When clients see invoices and ask \"what did we get?\"—you need better answers than spreadsheets and dashboards they don't understand.",
+            "cta_text": "Request Beta Access"
+        },
+        {
+            "id": "agency-problem",
+            "headline": "\"What did we get for that $15k?\"",
+            "scenarios": [
+                {
+                    "title": "The Renewal Call",
+                    "dialogue": "\"ROAS is up 12%. ACoS is down 3 points. Impressions increased 40%.\"",
+                    "client_response": "Client: \"Okay... but what does that mean in dollars?\""
+                },
+                {
+                    "title": "The Reality",
+                    "insight": "Your clients don't think in metrics. They think in money. They want to know: Did your work add more revenue than it cost?"
+                },
+                {
+                    "title": "The AdPulse Answer",
+                    "dialogue": "\"Over the last 6 months, we've saved you $47k in wasted spend and driven $180k in incremental revenue. Here's the report that proves it.\"",
+                    "client_response": "Client: \"Show me the breakdown.\"",
+                    "response_type": "success"
+                }
+            ]
+        },
+        {
+            "id": "agency-benefits",
+            "headline": "Built for how agencies actually work",
+            "benefits": [
+                {
+                    "title": "Client-Ready Reports in Seconds",
+                    "description": "One-click PDF exports that show exactly what you did, what it cost, and what they got. No more building reports from scratch every month."
+                },
+                {
+                    "title": "Prove Your ROI at Renewal Time",
+                    "description": "\"Over the last 6 months, we've saved you $47k in wasted spend and driven $180k in incremental revenue.\" That's the retention conversation you want."
+                },
+                {
+                    "title": "Cut Reporting Time by 80%",
+                    "description": "Stop exporting spreadsheets, building pivot tables, and trying to explain what happened. The Impact Dashboard does it automatically."
+                },
+                {
+                    "title": "Standardize Across All Clients",
+                    "description": "Same methodology, same reports, same proof of value—whether you're managing 5 accounts or 50."
+                },
+                {
+                    "title": "Multi-Account Management",
+                    "description": "Unified workspace for all your clients. Switch between accounts instantly. See aggregate performance across your portfolio."
+                },
+                {
+                    "title": "Branded Exports",
+                    "description": "Add your agency logo and branding to all reports. White-label the AdPulse engine as your own proprietary analysis."
+                }
+            ]
+        },
+        {
+            "id": "sample-report",
+            "headline": "What a client report looks like",
+            "report": {
+                "header": {
+                    "logo_placeholder": "[Your Agency Logo]",
+                    "title": "Q4 2024 Impact Report",
+                    "client": "Client: BrandName LLC"
+                },
+                "metrics": [
+                    {
+                        "label": "Net Decision Impact",
+                        "value": "+$127,450",
+                        "context": "vs. doing nothing"
+                    },
+                    {
+                        "label": "Wasted Spend Saved",
+                        "value": "$47,230",
+                        "context": "negative keywords & bid reductions"
+                    },
+                    {
+                        "label": "Incremental Revenue",
+                        "value": "$180,680",
+                        "context": "validated over 60 days"
+                    }
+                ],
+                "breakdown": {
+                    "title": "What We Did",
+                    "items": [
+                        "653 bid optimizations (96% validated as helpful)",
+                        "127 negative keywords added (saved $47k)",
+                        "89 harvest promotions (added $90k revenue)",
+                        "42 campaign structure changes (improved efficiency 18%)"
+                    ]
+                },
+                "footnote": "All figures measured using counterfactual analysis over 60 days. Impact numbers represent incremental gains beyond expected market performance."
+            },
+            "cta_text": "This is what you hand a client at renewal time."
+        },
+        {
+            "id": "pricing-teaser",
+            "headline": "Agency pricing that scales with you",
+            "pricing_cards": [
+                {
+                    "title": "Platform Access",
+                    "note": "Base fee for agency workspace",
+                    "includes": [
+                        "Unlimited team members",
+                        "Client segregation",
+                        "Agency dashboards"
+                    ]
+                },
+                {
+                    "title": "Per Active Client",
+                    "note": "Only pay for accounts you're actively managing",
+                    "includes": [
+                        "Full optimization engine",
+                        "Client-ready impact reports",
+                        "Branded exports"
+                    ],
+                    "highlight": true
+                }
+            ],
+            "footnote": "Active client = account with data uploaded in the last 30 days. If a client churns or pauses, you don't pay for them.",
+            "cta_text": "Request Pricing & Beta Access"
+        },
+        {
+            "id": "final-cta",
+            "headline": "Join agencies who can finally prove their value.",
+            "primary_cta_text": "Request Beta Access",
+            "secondary_cta_text": "Try with a Client Report",
+            "secondary_cta_link": "audit.html"
+        }
+    ]
+}

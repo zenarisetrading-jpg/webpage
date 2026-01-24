@@ -1,0 +1,71 @@
+{
+    "page": "faq",
+    "title": "Frequently Asked Questions - Saddle AdPulse",
+    "sections": [
+        {
+            "id": "hero",
+            "headline": "Frequently Asked Questions",
+            "subtitle": "Everything you need to know about AdPulse and how it transforms your Amazon PPC."
+        },
+        {
+            "id": "questions",
+            "faqs": [
+                {
+                    "question": "What is AdPulse and how does it work?",
+                    "answer": "AdPulse analyzes your Amazon advertising data to find wasted spend, hidden opportunities, and optimal bid adjustments. Unlike other tools, it tracks which decisions actually worked and which didn't, so you can learn what drives revenue instead of guessing."
+                },
+                {
+                    "question": "What are \"Harvest Opportunities\" and how do they work?",
+                    "answer": "These are high-performing search terms that are currently running in Auto or Broad/Phrase campaigns. AdPulse identifies them and recommends promoting them to Exact Match for better control and efficiency. If the same term appears in multiple campaigns, we help you consolidate traffic to the best-performing one."
+                },
+                {
+                    "question": "How does AdPulse detect \"bleeders\" (negative keywords)?",
+                    "answer": "AdPulse identifies search terms that are spending money without generating sales. It uses your account's conversion rate to determine when a term has received enough traffic to prove it's not working. Once identified, we generate negative keyword recommendations to block them and stop the waste."
+                },
+                {
+                    "question": "What is the Impact Dashboard and how is it different?",
+                    "answer": "The Impact Dashboard measures whether your optimization decisions actually drove results or if changes were just due to broader market trends. It separates what you controlled from what you didn't, so you only get credit for actions that truly made a difference. This prevents the false success metrics you see in other tools."
+                },
+                {
+                    "question": "How does bid optimization work?",
+                    "answer": "AdPulse compares each keyword's performance to your account's baseline and adjusts bids accordingly. High performers get bid increases to capture more traffic, underperformers get decreases to improve efficiency. Keywords with low impressions get visibility boosts to help them compete in auctions."
+                },
+                {
+                    "question": "What data do I need to provide?",
+                    "answer": "You only need to upload your Search Term Report from Amazon Ads Console. Optionally, you can provide bulk files with Campaign/Ad Group IDs for easier implementation. We never access customer data, order details, or anything outside your advertising account."
+                },
+                {
+                    "question": "How do I implement the recommendations?",
+                    "answer": "AdPulse generates Amazon-compatible bulk upload files for all recommendations. You simply download the file from AdPulse, then upload it to Amazon Ads Console under Bulk Operations. No manual editing or copying required—it's ready to go."
+                },
+                {
+                    "question": "What's the difference between Simulation and Impact Dashboard?",
+                    "answer": "Simulation predicts what will happen before you implement changes, helping you plan confidently. Impact Dashboard measures what actually happened after you make changes, proving which decisions worked. Together, they close the optimization feedback loop."
+                },
+                {
+                    "question": "How long does it take to see results?",
+                    "answer": "You'll get optimization recommendations instantly after uploading your first report. Impact measurement takes 14-30 days to show reliable results due to Amazon's attribution windows. Most users see early signals within 2-3 weeks and full impact clarity after 30 days."
+                },
+                {
+                    "question": "What's the difference between pricing tiers?",
+                    "answer": "Starter ($49) gives you audit and recommendations with basic metrics. Growth ($99) adds full automation, Impact Dashboard, and Simulation. Scale ($199) is for sellers managing multiple brands. Agency plans start at $499 for the platform + per-client fees depending on features needed."
+                },
+                {
+                    "question": "Do you support multiple Amazon marketplaces?",
+                    "answer": "Yes. AdPulse supports all Amazon marketplaces globally (North America, Europe, Asia-Pacific). Our optimization logic is currency-neutral, so thresholds work the same whether you're selling in USD, EUR, AED, or any other currency."
+                },
+                {
+                    "question": "Is my data secure? How do you handle privacy?",
+                    "answer": "Yes. We're SOC 2 Type II compliant with 256-bit encryption and GDPR/CCPA compliance. We only access your advertising metrics—never customer data, order details, or buyer information. Your data is used exclusively for your optimization and is never sold or shared."
+                }
+            ]
+        },
+        {
+            "id": "final-cta",
+            "headline": "Still have questions?",
+            "subtitle": "See what opportunities you're missing with a free ad impact audit.",
+            "cta_text": "Run a Free Ad Impact Audit",
+            "cta_link": "audit.html"
+        }
+    ]
+}

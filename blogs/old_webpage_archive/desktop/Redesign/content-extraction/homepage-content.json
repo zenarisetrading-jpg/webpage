@@ -1,0 +1,206 @@
+{
+    "page": "homepage",
+    "title": "See Which Amazon Ad Decisions Actually Made Money | Saddle AdPulse",
+    "meta_description": "Not metrics. Not trends. The actual dollar impact of every change. Run a free 2-minute ad impact check.",
+    "sections": [
+        {
+            "id": "navigation",
+            "logo": "logo.png",
+            "logo_alt": "Saddle AdPulse",
+            "links": [
+                {
+                    "text": "Features",
+                    "href": "features.html"
+                },
+                {
+                    "text": "Agencies",
+                    "href": "agencies.html"
+                },
+                {
+                    "text": "Compare",
+                    "href": "compare.html"
+                },
+                {
+                    "text": "About",
+                    "href": "about.html"
+                },
+                {
+                    "text": "FAQ",
+                    "href": "faq.html"
+                }
+            ],
+            "cta": {
+                "text": "Run Impact Check",
+                "href": "audit.html"
+            }
+        },
+        {
+            "id": "hero",
+            "headline": "See which Amazon ad decisions actually made money.",
+            "subtitle": "Not metrics. Not trends. The actual dollar impact of every change.",
+            "cta_text": "Run Free Ad Impact Check",
+            "cta_link": "audit.html",
+            "proof_text": "2-minute analysis • No API access needed"
+        },
+        {
+            "id": "problem-metrics",
+            "metrics": [
+                {
+                    "number": "$2,847",
+                    "label": "burning/mo",
+                    "description": "Search terms with 50+ clicks and zero sales",
+                    "status": "danger"
+                },
+                {
+                    "number": "23 winners",
+                    "label": "buried",
+                    "description": "Best keywords sitting at $0.30 in Auto campaigns",
+                    "status": "success"
+                },
+                {
+                    "number": "184 targets",
+                    "label": "need fixes",
+                    "description": "Bids too high or too low — you're guessing",
+                    "status": "warning"
+                }
+            ],
+            "accusation": "Your current tool can't show you this. We can.",
+            "cta_text": "Run Free Ad Impact Check",
+            "cta_link": "audit.html"
+        },
+        {
+            "id": "product-showcase",
+            "headline": "This is what knowing looks like.",
+            "highlight_word": "knowing",
+            "subtext": "Every number traces back to the decision that caused it.",
+            "video": "mock-dash.mp4",
+            "feature_cards": [
+                {
+                    "title": "+AED 20,187 proven impact",
+                    "description": "Your optimizations drove +7.6% revenue increase — that's AED 20,187 more than if you'd done nothing.",
+                    "icon_type": "bar-chart"
+                },
+                {
+                    "title": "653 decisions, clear ROAS lift",
+                    "description": "Offensive wins: +AED 23,265 from 372 actions. Defensive wins: +AED 18,236 from 281 actions.",
+                    "icon_type": "trending-up"
+                },
+                {
+                    "title": "Decision Score: +94 (Excellent)",
+                    "description": "97% helped, only 3% hurt. Your decisions outperform market baseline.",
+                    "icon_type": "check-circle"
+                },
+                {
+                    "title": "Can you trust these numbers?",
+                    "description": "Every impact claim passes normalized validation against market baseline. No guessing, no false positives.",
+                    "icon_type": "shield",
+                    "variant": "dark"
+                }
+            ],
+            "link_text": "See all features →",
+            "link_href": "features.html"
+        },
+        {
+            "id": "how-it-works",
+            "headline": "Live in 10 minutes",
+            "subtitle": "No API access. No complex setup. Just insights.",
+            "steps": [
+                {
+                    "number": 1,
+                    "title": "Upload report",
+                    "time": "2 minutes",
+                    "description": "Download your Search Term Report from Amazon and drag it here."
+                },
+                {
+                    "number": 2,
+                    "title": "Review actions",
+                    "time": "One-click exports",
+                    "description": "Get specific recommendations you can apply in Seller Central."
+                },
+                {
+                    "number": 3,
+                    "title": "See what worked",
+                    "time": "In 2 weeks",
+                    "description": "Track which decisions added real value vs. market movement."
+                }
+            ],
+            "link_text": "See detailed walkthrough →",
+            "link_href": "how-it-works.html"
+        },
+        {
+            "id": "agency-teaser",
+            "quote": "\"Clients always ask: what did we get for that $15k?\"",
+            "subtext": "AdPulse gives agencies the answer — with proof clients actually understand.",
+            "link_text": "See agency solutions →",
+            "link_href": "agencies.html",
+            "founder_line": "Built by a seller who spent $500k+ on PPC first.",
+            "founder_link_text": "Read the story →",
+            "founder_link_href": "about.html"
+        },
+        {
+            "id": "final-cta",
+            "headline": "Find out what your ad decisions are actually worth.",
+            "primary_cta_text": "Run Free Ad Impact Check",
+            "primary_cta_link": "audit.html",
+            "secondary_cta_text": "Request Beta Access",
+            "reassurance": "Your data stays in your browser. Takes 2 minutes."
+        },
+        {
+            "id": "footer",
+            "sections": [
+                {
+                    "title": "Product",
+                    "links": [
+                        {
+                            "text": "Features",
+                            "href": "features.html"
+                        },
+                        {
+                            "text": "How It Works",
+                            "href": "how-it-works.html"
+                        },
+                        {
+                            "text": "Compare",
+                            "href": "compare.html"
+                        },
+                        {
+                            "text": "Run Impact Check",
+                            "href": "audit.html"
+                        }
+                    ]
+                },
+                {
+                    "title": "Solutions",
+                    "links": [
+                        {
+                            "text": "For Agencies",
+                            "href": "agencies.html"
+                        },
+                        {
+                            "text": "For Sellers",
+                            "href": "features.html"
+                        }
+                    ]
+                },
+                {
+                    "title": "Company",
+                    "links": [
+                        {
+                            "text": "About",
+                            "href": "about.html"
+                        },
+                        {
+                            "text": "FAQ",
+                            "href": "faq.html"
+                        },
+                        {
+                            "text": "Privacy",
+                            "href": "privacy.html"
+                        }
+                    ]
+                }
+            ],
+            "copyright": "© 2025 Saddle AdPulse. All rights reserved."
+        }
+    ]
+}

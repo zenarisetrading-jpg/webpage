@@ -1,0 +1,150 @@
+{
+    "page": "features",
+    "title": "Features - Amazon PPC Decision Intelligence | Saddle AdPulse",
+    "meta_description": "Everything you need to optimize profitably and know what actually worked.",
+    "sections": [
+        {
+            "id": "hero",
+            "headline": "Everything you need to optimize profitably.",
+            "subtitle": "AdPulse combines optimization recommendations with impact measurement—so you can make changes with confidence and know what actually worked."
+        },
+        {
+            "id": "value-props",
+            "props": [
+                {
+                    "number": "01",
+                    "title": "Stop the Bleeding",
+                    "description": "AdPulse finds search terms burning money (2-3x your break-even with zero sales) and shows you exactly what to block."
+                },
+                {
+                    "number": "02",
+                    "title": "Capture Hidden Winners",
+                    "description": "Automatically identifies high-performers buried in Auto/Broad campaigns. Promotes them to exact match for maximum efficiency."
+                },
+                {
+                    "number": "03",
+                    "title": "Know What Actually Worked (With Proof)",
+                    "description": "Every decision gets tracked. Two weeks later, you see exactly how much revenue it drove—or didn't."
+                },
+                {
+                    "number": "04",
+                    "title": "Stop Repeating Mistakes",
+                    "description": "Without feedback, you make the same non-working changes over and over. AdPulse shows you what didn't work so you stop wasting time on bad patterns."
+                }
+            ]
+        },
+        {
+            "id": "features-grid",
+            "headline": "Complete optimization engine + impact measurement",
+            "features": [
+                {
+                    "title": "Waste Detection",
+                    "description": "Find search terms burning 2-3x your target ACoS. Stop paying for clicks that never convert.",
+                    "details": [
+                        "Identifies high-spend, zero-conversion terms",
+                        "Calculates exact waste amount",
+                        "Generates negative keyword bulk files"
+                    ]
+                },
+                {
+                    "title": "Keyword Harvesting",
+                    "description": "Auto-identify winners buried in Auto/Broad. Promote to exact match at optimal bids.",
+                    "details": [
+                        "Detects high-performing search terms",
+                        "Suggests optimal harvest bids (CPC + 20%)",
+                        "Tracks harvest impact over 60 days"
+                    ]
+                },
+                {
+                    "title": "Bid Optimization",
+                    "description": "Recommendations based on actual ROAS. Increase winners, decrease losers.",
+                    "details": [
+                        "ROAS-based bid adjustments",
+                        "Directional validation (did CPC move as expected?)",
+                        "Prevents over-bidding on low-margin products"
+                    ]
+                },
+                {
+                    "title": "Impact Tracking",
+                    "description": "See which decisions drove revenue over 14, 30, and 60 days.",
+                    "details": [
+                        "Counterfactual analysis (expected vs. actual)",
+                        "Market baseline adjustment",
+                        "Multi-horizon measurement (14D/30D/60D)"
+                    ]
+                },
+                {
+                    "title": "Forecasting",
+                    "description": "Predict outcomes before making changes. Know the projected impact.",
+                    "details": [
+                        "\"What if\" scenarios for bid changes",
+                        "Budget reallocation simulations",
+                        "Risk/reward analysis"
+                    ]
+                },
+                {
+                    "title": "One-Click Exports",
+                    "description": "Amazon-ready bulk files. Client-ready PDF reports. No manual work.",
+                    "details": [
+                        "Bulk upload files for Amazon Ads",
+                        "PDF impact reports for clients",
+                        "CSV exports for custom analysis"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "decision-intelligence",
+            "headline": "What is Decision Intelligence?",
+            "problem": {
+                "title": "The Problem",
+                "description": "Most PPC tools show you before/after metrics. But they can't tell you if your decisions caused the change, or if it was just market luck.",
+                "bad_example": {
+                    "label": "❌ Black Box Reporting",
+                    "text": "\"Your ROAS went from 2.5 to 3.0 after our optimizations!\"",
+                    "footnote": "(But the whole account went up 18%. Market trend? Seasonality? You'll never know.)"
+                }
+            },
+            "solution": {
+                "title": "The Solution",
+                "description": "AdPulse uses counterfactual analysis to calculate what would have happened without your changes—then measures the difference.",
+                "good_example": {
+                    "label": "✓ White Box Reporting",
+                    "text": "\"Expected $8,200 → Got $9,450 = +$1,250 Decision Impact\"",
+                    "footnote": "This is the incremental revenue your decision added, adjusted for market baseline."
+                }
+            },
+            "methodology": {
+                "title": "How It Works",
+                "steps": [
+                    {
+                        "number": 1,
+                        "title": "Track Every Decision",
+                        "description": "When you change a bid, add a negative, or harvest a keyword—we log it with timestamp and details."
+                    },
+                    {
+                        "number": 2,
+                        "title": "Measure at 14/30/60 Days",
+                        "description": "Amazon attribution is slow. We wait for real results, not 7-day noise."
+                    },
+                    {
+                        "number": 3,
+                        "title": "Calculate Expected Outcome",
+                        "description": "Based on account-wide trends and 30-day rolling baselines, we model what would have happened without your change."
+                    },
+                    {
+                        "number": 4,
+                        "title": "Show the Difference",
+                        "description": "Actual outcome - Expected outcome = Verified Decision Impact. No trust-me-bro claims."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "final-cta",
+            "headline": "See it in action",
+            "cta_text": "Run Free Ad Impact Check",
+            "cta_link": "audit.html"
+        }
+    ]
+}

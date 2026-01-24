@@ -1,0 +1,58 @@
+{
+    "page": "audit",
+    "title": "Free PPC Audit - Saddle AdPulse",
+    "sections": [
+        {
+            "id": "hero",
+            "headline": "Your Ad Impact Snapshot",
+            "subtitle": "Assess how clearly you can explain the value created by your ad decisions."
+        },
+        {
+            "id": "quiz",
+            "title": "Answer 5 quick questions",
+            "subtitle": "Assess how clearly you can explain the value created by your ad decisions.",
+            "time_estimate": "~60 seconds",
+            "cta_text": "Get My Health Score",
+            "disclaimer": "100% free • No credit card • Instant results"
+        },
+        {
+            "id": "results",
+            "score_card": {
+                "title": "Impact Readiness Score",
+                "subtitle": "Measures how clearly you can explain what your ad decisions actually contributed — beyond market movement."
+            },
+            "opportunity_card": {
+                "title": "Estimated Unexplained Value",
+                "subtitle": "per month in performance you can't confidently attribute to your actions."
+            },
+            "breakdown_card": {
+                "title": "Why the Score Is Limited"
+            },
+            "improvement_card": {
+                "title": "How High-Performing Teams Improve This",
+                "items": [
+                    "Separate the impact of actions from market movement",
+                    "Measure which decisions actually added value",
+                    "Build clear, defensible performance narratives"
+                ]
+            },
+            "cta_text": "Request Private Beta Access",
+            "cta_subtitle": "Move from metric improvement to provable impact."
+        },
+        {
+            "id": "upload",
+            "title": "Upload Your Search Term Report",
+            "subtitle": "We'll analyze your actual data and show you exactly where you're wasting money",
+            "dropzone_title": "Drop your file here or click to browse",
+            "dropzone_subtitle": "Supports CSV, XLSX • Search Term Report from Amazon Ads",
+            "cta_text": "✨ Analyze My Account",
+            "instructions": [
+                "Log in to Amazon Advertising",
+                "Go to Reports → Create Report",
+                "Select \"Search Term Report\"",
+                "Choose last 60-90 days",
+                "Download as CSV or Excel"
+            ]
+        }
+    ]
+}
