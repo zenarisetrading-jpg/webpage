@@ -188,16 +188,369 @@
                     <li>Opportunity to grow into senior/lead roles</li>
                 </ul>
 
-                <div class="mt-16 text-center not-prose">
-                    <a href="mailto:jobs@saddl.io"
-                        class="inline-block bg-[#2A8EC9] text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-[#2276A8] transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-200">
-                        Apply Now
-                    </a>
-                </div>
-
+                <button onclick="openModal()"
+                    class="inline-block bg-[#2A8EC9] text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-[#2276A8] transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-200 cursor-pointer">
+                    Apply Now
+                </button>
             </div>
+
+        </div>
         </div>
     </article>
+
+    <!-- Modal -->
+    <div id="applicationModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity opacity-0 duration-300"
+            id="modalBackdrop"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <!-- Modal Panel -->
+                <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all duration-300 sm:my-8 sm:w-full sm:max-w-2xl opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    id="modalPanel">
+
+                    <!-- Close Button -->
+                    <button type="button" onclick="closeModal()"
+                        class="absolute right-4 top-4 text-slate-400 hover:text-slate-500 z-10">
+                        <span class="sr-only">Close</span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    <div class="bg-white px-8 pb-8 pt-8">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full" id="modalContent">
+                                <h3 class="text-2xl font-bold leading-6 text-slate-900 mb-2" id="modal-title">Apply for
+                                    AI
+                                    Full Stack Engineer</h3>
+                                <div class="text-slate-500 mb-8">
+                                    <p>Please fill out the form below to submit your application.</p>
+                                </div>
+
+                                <form id="applicationForm" action="https://formsubmit.co/jobs@saddl.io" method="POST"
+                                    enctype="multipart/form-data" class="space-y-6 text-left">
+                                    <!-- FormSubmit Config -->
+                                    <input type="hidden" name="_subject"
+                                        value="New Application: AI Full Stack Engineer - Saddl" />
+                                    <input type="hidden" name="_captcha" value="false" />
+                                    <!-- Keep this empty, it's a honeypot -->
+                                    <input type="text" name="_honey" style="display:none">
+                                    <input type="hidden" name="_template" value="table">
+
+
+                                    <!-- Name -->
+                                    <div>
+                                        <label for="name"
+                                            class="block text-sm font-medium leading-6 text-slate-900">Full
+                                            Name <span class="text-red-500">*</span></label>
+                                        <div class="mt-2">
+                                            <input type="text" name="name" id="name" required
+                                                class="block w-full rounded-lg border-0 py-2 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#2A8EC9] sm:text-sm sm:leading-6 px-3">
+                                        </div>
+                                    </div>
+
+                                    <!-- Contact & Email Grid -->
+                                    <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-2">
+                                        <div>
+                                            <label for="phone"
+                                                class="block text-sm font-medium leading-6 text-slate-900">Contact
+                                                Number
+                                                <span class="text-red-500">*</span></label>
+                                            <div class="mt-2">
+                                                <input type="tel" name="phone" id="phone" required
+                                                    class="block w-full rounded-lg border-0 py-2 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#2A8EC9] sm:text-sm sm:leading-6 px-3">
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label for="email"
+                                                class="block text-sm font-medium leading-6 text-slate-900">Email Id
+                                                <span class="text-red-500">*</span></label>
+                                            <div class="mt-2">
+                                                <input type="email" name="email" id="email" required
+                                                    class="block w-full rounded-lg border-0 py-2 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#2A8EC9] sm:text-sm sm:leading-6 px-3">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Location -->
+                                    <div class="pt-2">
+                                        <label class="block text-sm font-medium leading-6 text-slate-900">Are you
+                                            currently based in Chennai, or are you open to relocating? <span
+                                                class="text-red-500">*</span></label>
+                                        <div class="mt-3 space-y-3">
+                                            <div class="flex items-center">
+                                                <input id="loc-chennai" name="location" type="radio"
+                                                    value="Yes, Currently in chennai" required
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="loc-chennai"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">Yes,
+                                                    Currently in chennai</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="loc-relocate" name="location" type="radio"
+                                                    value="Willing to relocate"
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="loc-relocate"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">Willing
+                                                    to relocate</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="loc-no" name="location" type="radio" value="No"
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="loc-no"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">No</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Experience -->
+                                    <div class="pt-2">
+                                        <label class="block text-sm font-medium leading-6 text-slate-900">Total years of
+                                            experience as an AI Full Stack Engineer <span
+                                                class="text-red-500">*</span></label>
+                                        <div class="mt-3 space-y-3">
+                                            <div class="flex items-center">
+                                                <input id="exp-2" name="experience" type="radio" value="2+" required
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="exp-2"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">2+</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="exp-3" name="experience" type="radio" value="3+"
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="exp-3"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">3+</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="exp-4" name="experience" type="radio" value="4+"
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="exp-4"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">4+</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="exp-other" name="experience" type="radio" value="Other"
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="exp-other"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">Other:</label>
+                                                <input type="text" name="experience_other"
+                                                    class="ml-2 border-b border-slate-300 focus:border-[#2A8EC9] focus:outline-none text-sm py-1 px-2 w-32 placeholder:font-light"
+                                                    placeholder="Specify">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- CTC -->
+                                    <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-2 pt-2">
+                                        <div>
+                                            <label for="current-ctc"
+                                                class="block text-sm font-medium leading-6 text-slate-900">Current CTC
+                                                (in
+                                                Lakhs) <span class="text-red-500">*</span></label>
+                                            <div class="mt-2">
+                                                <input type="text" name="current_ctc" id="current-ctc" required
+                                                    class="block w-full rounded-lg border-0 py-2 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#2A8EC9] sm:text-sm sm:leading-6 px-3">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="expected-ctc"
+                                                class="block text-sm font-medium leading-6 text-slate-900">Expected CTC
+                                                (in Lakhs) <span class="text-red-500">*</span></label>
+                                            <div class="mt-2">
+                                                <input type="text" name="expected_ctc" id="expected-ctc" required
+                                                    class="block w-full rounded-lg border-0 py-2 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#2A8EC9] sm:text-sm sm:leading-6 px-3">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Notice Period -->
+                                    <div class="pt-2">
+                                        <label class="block text-sm font-medium leading-6 text-slate-900">Are you
+                                            currently serving a notice period? <span
+                                                class="text-red-500">*</span></label>
+                                        <div class="mt-3 space-y-3">
+                                            <div class="flex items-center">
+                                                <input id="notice-yes" name="notice_period" type="radio" value="Yes"
+                                                    required
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="notice-yes"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">Yes</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="notice-no" name="notice_period" type="radio" value="No"
+                                                    class="h-4 w-4 border-slate-300 text-[#2A8EC9] focus:ring-[#2A8EC9]">
+                                                <label for="notice-no"
+                                                    class="ml-3 block text-sm font-medium leading-6 text-slate-700">No</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Last Working Day -->
+                                    <div>
+                                        <label for="last-day"
+                                            class="block text-sm font-medium leading-6 text-slate-900">What is your
+                                            official last working day?</label>
+                                        <div class="mt-2">
+                                            <input type="date" name="last_working_day" id="last-day"
+                                                class="block w-full rounded-lg border-0 py-2 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#2A8EC9] sm:text-sm sm:leading-6 px-3">
+                                        </div>
+                                    </div>
+
+                                    <!-- Resume -->
+                                    <div class="pt-2">
+                                        <label for="resume"
+                                            class="block text-sm font-medium leading-6 text-slate-900">Attach your
+                                            resume
+                                            here <span class="text-red-500">*</span></label>
+                                        <div class="mt-2">
+                                            <input type="file" name="resume" id="resume" required
+                                                accept=".pdf,.doc,.docx"
+                                                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-[#2A8EC9] hover:file:bg-blue-100">
+                                            <p class="mt-1 text-xs text-slate-500">Supported files: PDF, DOC, DOCX. Max
+                                                10MB.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Error/Success Message Container -->
+                                    <div id="form-message" class="hidden rounded-lg p-4 text-sm mb-4"></div>
+
+                                    <!-- Submit -->
+                                    <div
+                                        class="mt-8 flex items-center justify-end gap-x-4 border-t border-slate-100 pt-6">
+                                        <button type="button" onclick="closeModal()"
+                                            class="px-5 py-2.5 text-sm font-semibold leading-6 text-slate-900 hover:text-slate-700">Cancel</button>
+                                        <button type="submit" id="submitButton"
+                                            class="rounded-lg bg-[#2A8EC9] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#2276A8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2A8EC9] transition-all disabled:opacity-70 disabled:cursor-not-allowed">
+                                            <span class="inline-flex items-center gap-2">
+                                                Submit Application
+                                            </span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Success State (Hidden by default) -->
+                            <div id="successContent" class="hidden text-center w-full py-12">
+                                <div
+                                    class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6">
+                                    <svg class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-2xl font-bold text-slate-900 mb-2">Application Received!</h3>
+                                <p class="text-slate-600 mb-8 max-w-sm mx-auto">
+                                    Thank you for applying. We have received your details and resume. We will get back
+                                    to
+                                    you soon if your profile matches our requirements.
+                                </p>
+                                <button onclick="closeModal()"
+                                    class="rounded-lg bg-[#2A8EC9] px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#2276A8] transition-colors">
+                                    Close Window
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById('applicationModal');
+        const backdrop = document.getElementById('modalBackdrop');
+        const panel = document.getElementById('modalPanel');
+        const form = document.getElementById('applicationForm');
+        const submitBtn = document.getElementById('submitButton');
+        const originalBtnText = submitBtn.innerHTML;
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            // Trigger reflow for animation
+            void modal.offsetWidth;
+
+            backdrop.classList.remove('opacity-0');
+            panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+            panel.classList.add('opacity-100', 'translate-y-0', 'sm:scale-100');
+
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+
+        function closeModal() {
+            backdrop.classList.add('opacity-0');
+            panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+            panel.classList.remove('opacity-100', 'translate-y-0', 'sm:scale-100');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = ''; // Restore scrolling
+            }, 300);
+        }
+
+        // Close on backdrop click
+        backdrop.addEventListener('click', closeModal);
+
+        // Escape key to close
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+
+        // AJAX Form Submission
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            // Disable button and show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sending...
+            `;
+
+            fetch("https://formsubmit.co/ajax/jobs@saddl.io", {
+                method: "POST",
+                headers: {
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success === "true" || data.success === true) {
+                        // Hide form and show success message
+                        document.getElementById('modalContent').style.display = 'none';
+                        document.getElementById('successContent').classList.remove('hidden');
+                        form.reset();
+                    } else {
+                        // Show error details if available
+                        console.error('Form submission failed:', data);
+                        alert('Submission failed: ' + (data.message || 'Unknown error. Please email jobs@saddl.io'));
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    alert('Error: ' + error.message + '. Please ensure you are connected to the internet, or email us directly at jobs@saddl.io');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                });
+        });
+    </script>
 
     <!-- Footer -->
     <footer class="bg-slate-900 text-slate-400 py-16">
